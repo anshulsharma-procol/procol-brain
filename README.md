@@ -63,13 +63,119 @@ INITIAL -> USER_MESSAGE -> SEARCHING_SIMILAR_ISSUES -> SIMILAR_ISSUE_FOUND
 
 ## Install
 
+Once published:
+
 ```bash
 npm install @procol/brain-chat
 ```
 
-React 18 or 19 is a peer dependency. Styles are bundled and imported by the
+React 17, 18 or 19 is a peer dependency. Styles are bundled and imported by the
 package itself; bundlers that do not process CSS imports can instead load
 `@procol/brain-chat/styles.css`.
+
+### Before it is published
+
+Pick by what you are doing:
+
+**A packed tarball — recommended for consuming the SDK in another repo.**
+Installs like a registry package, so React resolves from the host app and there
+is no duplicate-React risk.
+
+```bash
+cd /path/to/procol-brain-chat
+npm run build && npm pack               # -> procol-brain-chat-0.1.0.tgz
+
+cd /path/to/your-app
+npm install /path/to/procol-brain-chat/procol-brain-chat-0.1.0.tgz
+```
+
+Repeat `npm pack` + `npm install` to pick up SDK changes.
+
+**`npm link` — for developing the SDK and the host app together.** Changes
+appear after each `npm run build` in the SDK, with no reinstall:
+
+```bash
+cd /path/to/procol-brain-chat && npm run build && npm link
+cd /path/to/your-app && npm link @procol/brain-chat
+```
+
+Linked (and `file:`) installs are symlinks, so a bundler can load a *second*
+copy of React from the SDK's own `node_modules` — which throws
+`Invalid hook call`. Guard against it in the host app:
+
+```ts
+// vite.config.ts
+export default defineConfig({
+  resolve: { dedupe: ['react', 'react-dom'] },
+})
+```
+
+**Straight from git — for teammates who just want to consume it:**
+
+```bash
+npm install git+ssh://git@github.com/<org>/procol-brain-chat.git
+npm install git+ssh://git@github.com/<org>/procol-brain-chat.git#v0.1.0   # pinned
+```
+
+This works because the package declares `"prepare": "npm run build"`. `dist/`
+is gitignored, and npm does **not** run `prepublishOnly` for git dependencies —
+without `prepare`, the install still reports success but ships no `dist/`, and
+the failure only appears later at build time.
+
+## Publishing
+
+```bash
+npm run build
+npm pack --dry-run        # confirm only dist/ + README ship (~84 kB)
+npm login                 # needs membership of the @procol org
+npm publish --access public
+```
+
+`prepublishOnly` rebuilds first, and `files` restricts the tarball to `dist/`
+and `README.md` — `src/` and `examples/` never ship.
+
+For a private GitHub Packages registry instead, add to `package.json`:
+
+```json
+"publishConfig": { "registry": "https://npm.pkg.github.com" }
+```
+
+then authenticate with a PAT carrying `write:packages`, and have consumers add
+`@procol:registry=https://npm.pkg.github.com` to their `.npmrc`.
+
+## Using it in a host app
+
+```tsx
+import { ProcolBrain } from '@procol/brain-chat'
+
+function App() {
+  return (
+    <>
+      <YourRoutes />
+      <ProcolBrain companyId="procol" userId={user.id} />
+    </>
+  )
+}
+```
+
+Mount it once, outside your router's `<Routes>`, so it survives navigation.
+To pass the current page as context (react-router v6):
+
+```tsx
+function SupportWidget() {
+  const { pathname } = useLocation()
+  const { id } = useParams()
+  const segment = pathname.split('/').filter(Boolean)[0] ?? 'home'
+
+  return (
+    <ProcolBrain
+      companyId="procol"
+      userId={user.id}
+      context={{ currentPage: segment, currentModule: MODULES[segment], recordId: id }}
+    />
+  )
+}
+```
 
 ## Props
 
