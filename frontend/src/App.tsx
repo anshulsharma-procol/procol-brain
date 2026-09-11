@@ -9,6 +9,9 @@ const Resolution = lazy(() => import('./pages/Resolution'))
 const AgentRegistry = lazy(() => import('./pages/AgentRegistry'))
 const Knowledge = lazy(() => import('./pages/Knowledge'))
 const Settings = lazy(() => import('./pages/Settings'))
+const AgentBuilderList = lazy(() => import('./agent-builder/AgentBuilderList'))
+const AgentCanvas = lazy(() => import('./agent-builder/AgentCanvas'))
+const AgentSettings = lazy(() => import('./agent-builder/AgentSettings'))
 
 function App() {
   return (
@@ -21,6 +24,10 @@ function App() {
         <Route path="/agents" element={<AgentRegistry />} />
         <Route path="/knowledge" element={<Knowledge />} />
         <Route path="/settings" element={<Settings />} />
+        <Route path="/agent-builder" element={<AgentBuilderList />} />
+        <Route path="/agent-builder/settings" element={<AgentSettings />} />
+        <Route path="/agent-builder/new" element={<AgentCanvas />} />
+        <Route path="/agent-builder/:agentId/edit" element={<AgentCanvas />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Suspense>

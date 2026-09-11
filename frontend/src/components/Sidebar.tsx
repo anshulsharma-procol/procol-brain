@@ -1,10 +1,11 @@
-import { BookOpen, Brain, ChevronRight, FileText, Home, Settings, Users } from 'lucide-react'
+import { BookOpen, Brain, ChevronRight, FileText, Home, Settings, Users, Workflow } from 'lucide-react'
 import { NavLink } from 'react-router-dom'
 
 const NAV_ITEMS = [
   { label: 'Home', to: '/', icon: Home },
   { label: 'Tickets', to: '/tickets', icon: FileText },
   { label: 'Agents', to: '/agents', icon: Users },
+  { label: 'Agent Builder', to: '/agent-builder', icon: Workflow },
   { label: 'Knowledge', to: '/knowledge', icon: BookOpen },
   { label: 'Settings', to: '/settings', icon: Settings },
 ]
