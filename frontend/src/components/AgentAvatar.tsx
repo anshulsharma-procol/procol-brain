@@ -14,15 +14,24 @@ const ICONS: Record<AgentId, typeof Brain> = {
 }
 
 const CIRCLE_SIZES = {
+  xs: 'h-5 w-5',
   sm: 'h-7 w-7',
   md: 'h-9 w-9',
   lg: 'h-11 w-11',
 } as const
 
 const SQUARE_SIZES = {
+  xs: 'h-7 w-7',
   sm: 'h-9 w-9',
   md: 'h-11 w-11',
   lg: 'h-14 w-14',
+} as const
+
+const ICON_SIZES = {
+  xs: 'h-2.5 w-2.5',
+  sm: 'h-3.5 w-3.5',
+  md: 'h-4 w-4',
+  lg: 'h-5 w-5',
 } as const
 
 interface AgentAvatarProps {
@@ -54,7 +63,7 @@ export default function AgentAvatar({ agentId, size = 'md', variant = 'solid' }:
         isBrain ? 'brand-gradient' : color.solidBg
       } text-white`}
     >
-      <Icon className="h-4 w-4" strokeWidth={2.25} />
+      <Icon className={ICON_SIZES[size]} strokeWidth={2.25} />
     </div>
   )
 }

@@ -1,24 +1,11 @@
-import { Plus } from 'lucide-react'
+import { ListFilter, Plus, Search } from 'lucide-react'
 import { useNavigate, useParams } from 'react-router-dom'
-import AgentInitials from '../components/AgentInitials'
+import Card from '../components/Card'
 import PageShell from '../components/PageShell'
-import StatusPill from '../components/StatusPill'
 import TicketInfoPanel from '../components/TicketInfoPanel'
+import TicketListRow from '../components/TicketListRow'
 import TopBar from '../components/TopBar'
 import { allTickets } from '../data/mockData'
-import type { Tone } from '../types'
-
-const TABLE_STATUS_TONE: Record<string, Tone> = {
-  'In Progress': 'info',
-  Pending: 'warning',
-  Resolved: 'success',
-}
-
-const PRIORITY_TONE: Record<string, Tone> = {
-  High: 'danger',
-  Medium: 'warning',
-  Low: 'neutral',
-}
 
 export default function Tickets() {
   const { id } = useParams()
@@ -47,49 +34,38 @@ export default function Tickets() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 px-8 py-6 xl:grid-cols-[1fr_440px]">
-        <div className="grid grid-cols-1 gap-3 self-start sm:grid-cols-2">
-          {allTickets.map((ticket) => {
-            const isSelected = ticket.id === selected.id
-            return (
+      <div className="grid grid-cols-1 gap-4 px-8 py-6 xl:grid-cols-[380px_1fr] xl:items-start">
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between gap-2 px-1">
+            <p className="text-sm font-semibold text-gray-500">{allTickets.length} tickets</p>
+            <div className="flex items-center gap-1">
               <button
-                key={ticket.id}
                 type="button"
-                onClick={() => navigate(`/tickets/${ticket.id}`)}
-                className={`flex flex-col gap-3 rounded-xl border p-4 text-left transition-colors ${
-                  isSelected ? 'border-blue-300 bg-blue-50/60' : 'border-gray-200 bg-white hover:bg-gray-50'
-                }`}
+                aria-label="Search tickets"
+                className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100"
               >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-gray-900">{ticket.number}</p>
-                    <p className="mt-0.5 truncate text-sm font-medium text-gray-700">{ticket.title}</p>
-                  </div>
-                  <StatusPill label={ticket.tableStatus} tone={TABLE_STATUS_TONE[ticket.tableStatus]} />
-                </div>
-
-                <p className="line-clamp-2 text-xs text-gray-500">{ticket.description}</p>
-
-                <div className="flex items-center gap-2">
-                  <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-gray-100">
-                    <div className="h-full rounded-full bg-blue-500" style={{ width: `${ticket.progress}%` }} />
-                  </div>
-                  <span className="text-xs text-gray-500">{ticket.progress}%</span>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <AgentInitials agentId={ticket.currentAgentId} />
-                    <div>
-                      <p className="text-xs font-medium text-gray-800">{ticket.currentAgentAction}</p>
-                      <p className="text-[11px] text-gray-400">{ticket.customer}</p>
-                    </div>
-                  </div>
-                  <StatusPill label={ticket.priority} tone={PRIORITY_TONE[ticket.priority]} />
-                </div>
+                <Search className="h-4 w-4" />
               </button>
-            )
-          })}
+              <button
+                type="button"
+                aria-label="Filter tickets"
+                className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100"
+              >
+                <ListFilter className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+
+          <Card className="overflow-hidden p-0">
+            {allTickets.map((ticket) => (
+              <TicketListRow
+                key={ticket.id}
+                ticket={ticket}
+                selected={ticket.id === selected.id}
+                onSelect={() => navigate(`/tickets/${ticket.id}`)}
+              />
+            ))}
+          </Card>
         </div>
 
         <div className="xl:sticky xl:top-6 xl:max-h-[calc(100vh-3rem)] xl:overflow-y-auto">
