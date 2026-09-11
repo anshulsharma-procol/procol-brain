@@ -91,24 +91,42 @@ npm install /path/to/procol-brain-chat/procol-brain-chat-0.1.0.tgz
 
 Repeat `npm pack` + `npm install` to pick up SDK changes.
 
-**`npm link` — for developing the SDK and the host app together.** Changes
-appear after each `npm run build` in the SDK, with no reinstall:
+npm rewrites the tarball path into a machine-specific relative `file:` entry in
+`package.json`, so **never commit that dependency line or the lockfile** — CI
+and teammates will fail with `ENOENT`.
+
+**`npm link` — for developing the SDK and the host app together.** Best
+live-reload story: an SDK `npm run build` reaches the running host dev server
+with no reinstall.
 
 ```bash
 cd /path/to/procol-brain-chat && npm run build && npm link
 cd /path/to/your-app && npm link @procol/brain-chat
 ```
 
-Linked (and `file:`) installs are symlinks, so a bundler can load a *second*
-copy of React from the SDK's own `node_modules` — which throws
-`Invalid hook call`. Guard against it in the host app:
+Linked (and `file:`) installs are symlinks, so the bundler loads a *second*
+copy of React from the SDK's own `node_modules`. Always add:
 
 ```ts
-// vite.config.ts
+// vite.config.ts in the host app
 export default defineConfig({
   resolve: { dedupe: ['react', 'react-dom'] },
 })
 ```
+
+Three traps, all verified rather than assumed:
+
+- **The dev server hides the bug.** Vite's dep optimizer collapses both imports
+  onto one pre-bundled React, so `vite` looks fine; only `vite build` ships two
+  copies, and the deployed page dies with
+  `Cannot read properties of null (reading 'useState')`.
+- **Any later `npm install` silently deletes the link** — `npm link` writes
+  nothing to `package.json`. Re-run it after every install.
+- **`npm link` symlinks the whole repo**, not the `files` allowlist, so
+  packaging mistakes stay invisible. Validate with `npm pack` before shipping.
+
+`npm i /path/to/procol-brain-chat --install-links` copies instead of
+symlinking: no dedupe config needed, at the cost of the live-reload loop.
 
 **Straight from git — for teammates who just want to consume it:**
 
@@ -122,11 +140,24 @@ is gitignored, and npm does **not** run `prepublishOnly` for git dependencies �
 without `prepare`, the install still reports success but ships no `dist/`, and
 the failure only appears later at build time.
 
+Two caveats: the first install takes minutes (npm clones, then installs all
+devDependencies to run the build), and `npm i --ignore-scripts` — common CI
+hardening — skips `prepare` and reproduces the empty-package failure. Verify
+with `ls node_modules/@procol/brain-chat/dist/index.js`.
+
+### Bundler required
+
+The entry self-imports its CSS, so the package is bundler-only. Importing it
+from plain Node or a non-transpiled SSR path throws
+`ERR_UNKNOWN_FILE_EXTENSION ".css"`. Under Next.js, add
+`transpilePackages: ['@procol/brain-chat']` or keep the widget in a
+`'use client'` leaf.
+
 ## Publishing
 
 ```bash
 npm run build
-npm pack --dry-run        # confirm only dist/ + README ship (~84 kB)
+npm pack --dry-run        # confirm only dist/, README and LICENSE ship (~86 kB)
 npm login                 # needs membership of the @procol org
 npm publish --access public
 ```

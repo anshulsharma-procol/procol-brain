@@ -22,6 +22,11 @@ export default defineConfig(({ command }) => ({
             tsconfigPath: './tsconfig.build.json',
             include: ['src'],
             insertTypesEntry: true,
+            // Roll every declaration into one self-contained dist/index.d.ts.
+            // Per-file output emits extensionless relative re-exports, which
+            // are errors under moduleResolution node16/nodenext - consumers
+            // silently get `any` because skipLibCheck hides them.
+            bundleTypes: true,
           }),
         ]
       : []),
