@@ -250,6 +250,13 @@
 
 /* ------------------------------------------------------------------ thread */
 
+.threadWrap {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+}
+
 .thread {
   flex: 1 1 auto;
   overflow-y: auto;
@@ -259,6 +266,33 @@
   flex-direction: column;
   gap: 12px;
   background: var(--pb-bg);
+}
+
+.jumpToLatest {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 6px 12px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--pb-text, #14181c);
+  color: #fff;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 22%);
+  animation: pbRise 120ms ease-out;
+}
+
+.jumpToLatest:hover {
+  opacity: 0.92;
+}
+
+.jumpToLatest:focus-visible {
+  outline: 2px solid var(--pb-accent, #2563eb);
+  outline-offset: 2px;
 }
 
 .contextChip {

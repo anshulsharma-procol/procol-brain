@@ -1,5 +1,5 @@
-import { useEffect, useRef } from 'react'
 import type { KeyboardEvent, RefObject } from 'react'
+import { useStickToBottom } from '../../hooks/useStickToBottom'
 import type { BrainContext } from '../../types/brain'
 import type { BrainMessage, SuggestedAction } from '../../types/messages'
 import styles from './ProcolBrain.module.css'
@@ -49,12 +49,25 @@ export function ChatWindow({
   onMinimize,
   onClose,
 }: ChatWindowProps) {
-  const threadRef = useRef<HTMLDivElement | null>(null)
+  // Follows the newest entry, unless the reader has scrolled up to read
+  // something — an investigation re-renders every time it polls, and yanking
+  // someone back down mid-sentence once a second is unusable.
+  const { attach, detached, onScroll, scrollToLatest } = useStickToBottom(messages)
 
-  useEffect(() => {
-    const node = threadRef.current
-    if (node) node.scrollTop = node.scrollHeight
-  }, [messages])
+  /**
+   * Sending re-pins, even from halfway up the transcript. Typing a message is
+   * asking to see what comes back, so the one place a jump is wanted is right
+   * after your own action.
+   */
+  const handleSend = (text: string) => {
+    scrollToLatest()
+    onSend(text)
+  }
+
+  const handleAction = (actionId: string) => {
+    scrollToLatest()
+    onAction(actionId)
+  }
 
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key === 'Escape') {
@@ -84,28 +97,41 @@ export function ChatWindow({
         onClose={onClose}
       />
 
-      <div
-        className={styles.thread}
-        ref={threadRef}
-        role="log"
-        aria-live="polite"
-        aria-relevant="additions text"
-      >
-        {contextLabel && <div className={styles.contextChip}>{contextLabel}</div>}
-        {messages
-          .filter((message) => showAgentActivity || message.kind !== 'agent-activity')
-          .map((message) => (
-            <ChatMessage key={message.id} message={message} />
-          ))}
+      <div className={styles.threadWrap}>
+        <div
+          className={styles.thread}
+          ref={attach}
+          onScroll={onScroll}
+          role="log"
+          aria-live="polite"
+          aria-relevant="additions text"
+        >
+          {contextLabel && <div className={styles.contextChip}>{contextLabel}</div>}
+          {messages
+            .filter((message) => showAgentActivity || message.kind !== 'agent-activity')
+            .map((message) => (
+              <ChatMessage key={message.id} message={message} />
+            ))}
+        </div>
+
+        {detached && (
+          <button
+            type="button"
+            className={styles.jumpToLatest}
+            onClick={scrollToLatest}
+          >
+            Jump to latest
+          </button>
+        )}
       </div>
 
-      <SuggestedActions actions={actions} disabled={busy} onSelect={onAction} />
+      <SuggestedActions actions={actions} disabled={busy} onSelect={handleAction} />
 
       <ChatInput
         disabled={busy}
         footnote={footnote}
         inputRef={inputRef}
-        onSend={onSend}
+        onSend={handleSend}
       />
     </div>
   )
