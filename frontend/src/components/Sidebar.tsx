@@ -17,7 +17,7 @@ const DEFAULT_TIP = 'Let AI agents solve real problems together.'
 
 export default function Sidebar({ tip = DEFAULT_TIP }: SidebarProps) {
   return (
-    <aside className="flex h-screen w-60 shrink-0 flex-col border-r border-gray-200 bg-white px-4 py-5">
+    <aside className="sticky top-0 flex h-screen w-60 shrink-0 flex-col overflow-y-auto border-r border-gray-200 bg-white px-4 py-5">
       <div className="flex items-center gap-2.5 px-2">
         <div className="brand-gradient flex h-9 w-9 items-center justify-center rounded-xl text-white">
           <Brain className="h-5 w-5" strokeWidth={2.25} />
