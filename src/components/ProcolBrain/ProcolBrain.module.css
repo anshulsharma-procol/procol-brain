@@ -710,3 +710,27 @@
     transition: none;
   }
 }
+
+/* ------------------------------------------------------------ inline mode */
+
+/*
+ * Docked variant: the panel fills its container instead of floating above the
+ * page. Descendant selectors (0,2,0) so these always win over the floating
+ * defaults, including the responsive overrides above.
+ */
+.inline {
+  position: static;
+  z-index: auto;
+  width: 100%;
+  height: 100%;
+  align-items: stretch;
+  gap: 0;
+}
+
+.inline .panel {
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  max-height: none;
+  animation: none;
+}

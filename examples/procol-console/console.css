@@ -236,3 +236,87 @@ table {
   text-transform: none;
   letter-spacing: normal;
 }
+
+/* ------------------------------------------------------------- demo shell */
+
+.demo__tabs {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  gap: 4px;
+  padding: 8px 14px;
+  background: #0b1220;
+  border-bottom: 1px solid #1e293b;
+}
+
+.demo__tab {
+  padding: 7px 14px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.demo__tab--active {
+  background: #1e293b;
+  color: #ffffff;
+}
+
+/* ---------------------------------------------------------------- gallery */
+
+.showcase {
+  padding: 26px 28px 60px;
+  background: #f1f5f9;
+  min-height: calc(100vh - 42px);
+}
+
+.showcase__intro {
+  margin-bottom: 22px;
+}
+
+.showcase__intro code {
+  padding: 1px 5px;
+  border-radius: 5px;
+  background: #e2e8f0;
+  font-size: 11.5px;
+}
+
+.showcase__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 22px;
+}
+
+.showcase__card {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.showcase__caption {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-height: 58px;
+}
+
+.showcase__caption strong {
+  font-size: 13px;
+}
+
+.showcase__caption span {
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.showcase__frame {
+  height: 560px;
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: 0 10px 30px -12px rgba(15, 23, 42, 0.25);
+}

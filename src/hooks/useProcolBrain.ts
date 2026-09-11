@@ -35,6 +35,11 @@ export interface UseProcolBrainResult {
   suggestedActions: SuggestedAction[]
   busy: boolean
   sendMessage: (text: string) => void
+  /**
+   * Discards the current conversation and reports `text` as a fresh issue.
+   * Idempotent, so it is safe to call from an effect.
+   */
+  startConversation: (text: string) => void
   runAction: (actionId: string) => void
   reset: () => void
 }
@@ -152,6 +157,73 @@ export function useProcolBrain(options: UseProcolBrainOptions): UseProcolBrainRe
     }
   }, [])
 
+  /** Question intent: a plain answer, no ticket. */
+  const runQuestionFlow = useCallback(
+    async (text: string, run: { isCurrent: () => boolean }) => {
+      const reply = await latest.current.api.sendMessage(request(text))
+      if (!run.isCurrent()) return
+      dispatch({ type: 'assistant_message', text: reply.message })
+      dispatch({ type: 'idle' })
+    },
+    [request],
+  )
+
+  /** Report / search intent: similarity search, then resolve or investigate. */
+  const runReportFlow = useCallback(
+    async (text: string, run: { signal: AbortSignal; isCurrent: () => boolean }) => {
+      lastIssueText.current = text
+
+      dispatch({
+        type: 'assistant_message',
+        text: "Thanks for reporting this. Let me check if we've solved a similar issue before.",
+      })
+      dispatch({ type: 'searching_similar_issues' })
+
+      const statusId = createId('status')
+      dispatch({
+        type: 'status',
+        id: statusId,
+        text: 'Searching previous solutions...',
+        status: 'running',
+      })
+
+      const issues = await latest.current.api.searchSimilarIssues(request(text))
+      if (!run.isCurrent()) return
+
+      const issue = issues[0]
+      if (issue) {
+        dispatch({
+          type: 'status',
+          id: statusId,
+          text: 'Found a similar resolved issue',
+          status: 'done',
+        })
+        dispatch({ type: 'similar_issue_found', issue })
+
+        await delay(600, run.signal)
+        if (!run.isCurrent()) return
+
+        dispatch({ type: 'assistant_message', text: 'Does this solution resolve your issue?' })
+        dispatch({ type: 'awaiting_confirmation' })
+        return
+      }
+
+      dispatch({
+        type: 'status',
+        id: statusId,
+        text: 'No similar resolved issue found',
+        status: 'empty',
+      })
+      dispatch({
+        type: 'assistant_message',
+        text: "I couldn't find a previous fix for this. I'll start a new investigation with our agent team.",
+      })
+
+      await runInvestigation(text, run)
+    },
+    [request, runInvestigation],
+  )
+
   const sendMessage = useCallback(
     (rawText: string) => {
       const text = rawText.trim()
@@ -161,69 +233,30 @@ export function useProcolBrain(options: UseProcolBrainOptions): UseProcolBrainRe
       const intent = stateRef.current.intent
       dispatch({ type: 'user_message', text })
 
-      void guard(async () => {
-        const { api: brain } = latest.current
-
-        if (intent === 'question') {
-          const reply = await brain.sendMessage(request(text))
-          if (!run.isCurrent()) return
-          dispatch({ type: 'assistant_message', text: reply.message })
-          dispatch({ type: 'idle' })
-          return
-        }
-
-        lastIssueText.current = text
-
-        dispatch({
-          type: 'assistant_message',
-          text: "Thanks for reporting this. Let me check if we've solved a similar issue before.",
-        })
-        dispatch({ type: 'searching_similar_issues' })
-
-        const statusId = createId('status')
-        dispatch({
-          type: 'status',
-          id: statusId,
-          text: 'Searching previous solutions...',
-          status: 'running',
-        })
-
-        const issues = await brain.searchSimilarIssues(request(text))
-        if (!run.isCurrent()) return
-
-        const issue = issues[0]
-        if (issue) {
-          dispatch({
-            type: 'status',
-            id: statusId,
-            text: 'Found a similar resolved issue',
-            status: 'done',
-          })
-          dispatch({ type: 'similar_issue_found', issue })
-
-          await delay(600, run.signal)
-          if (!run.isCurrent()) return
-
-          dispatch({ type: 'assistant_message', text: 'Does this solution resolve your issue?' })
-          dispatch({ type: 'awaiting_confirmation' })
-          return
-        }
-
-        dispatch({
-          type: 'status',
-          id: statusId,
-          text: 'No similar resolved issue found',
-          status: 'empty',
-        })
-        dispatch({
-          type: 'assistant_message',
-          text: "I couldn't find a previous fix for this. I'll start a new investigation with our agent team.",
-        })
-
-        await runInvestigation(text, run)
-      })
+      void guard(() =>
+        intent === 'question' ? runQuestionFlow(text, run) : runReportFlow(text, run),
+      )
     },
-    [beginRun, guard, request, runInvestigation],
+    [beginRun, guard, runQuestionFlow, runReportFlow],
+  )
+
+  const startConversation = useCallback(
+    (rawText: string) => {
+      const text = rawText.trim()
+      if (!text) return
+
+      abortRef.current?.abort()
+      dispatch({ type: 'reset', greeting })
+      // Keep the mirror in step with the dispatch we just queued, so the flow
+      // below does not reuse the previous conversation's ticket.
+      stateRef.current = createInitialState(greeting)
+      lastIssueText.current = ''
+
+      const run = beginRun()
+      dispatch({ type: 'user_message', text })
+      void guard(() => runReportFlow(text, run))
+    },
+    [beginRun, greeting, guard, runReportFlow],
   )
 
   const markResolved = useCallback(
@@ -313,6 +346,7 @@ export function useProcolBrain(options: UseProcolBrainOptions): UseProcolBrainRe
     suggestedActions,
     busy: isBusy(state.workflow),
     sendMessage,
+    startConversation,
     runAction,
     reset,
   }

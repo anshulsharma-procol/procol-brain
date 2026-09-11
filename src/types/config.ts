@@ -58,6 +58,19 @@ export interface ProcolBrainProps {
   position?: BrainPosition
   defaultOpen?: boolean
 
+  /**
+   * `floating` (default) renders a launcher plus an overlay panel.
+   * `inline` renders the panel docked inside its container - useful for a
+   * dedicated support page, and for previewing the widget in a design gallery.
+   */
+  display?: 'floating' | 'inline'
+
+  /**
+   * Submitted automatically the first time the widget opens. Lets a host open
+   * Brain with a pre-filled report, e.g. from an error boundary.
+   */
+  initialMessage?: string
+
   /** Displayed in the header and the greeting. Defaults to "Procol Brain". */
   assistantName?: string
   /** Image URL shown in the header. Falls back to a built-in mark. */

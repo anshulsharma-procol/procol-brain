@@ -29,6 +29,8 @@ export function ProcolBrain({
   theme,
   position = 'bottom-right',
   defaultOpen = false,
+  display = 'floating',
+  initialMessage,
   assistantName = DEFAULT_ASSISTANT_NAME,
   logo,
   launcherIcon,
@@ -42,7 +44,9 @@ export function ProcolBrain({
   onOpenChange,
   className,
 }: ProcolBrainProps) {
-  const [open, setOpen] = useState(defaultOpen)
+  const inline = display === 'inline'
+  const [openState, setOpen] = useState(defaultOpen)
+  const open = inline || openState
 
   const reactId = useId().replace(/:/g, '')
   const panelId = `pb-panel-${reactId}`
@@ -64,7 +68,15 @@ export function ProcolBrain({
     greeting ??
     `Hi! I'm ${assistantName} \u{1F44B}\n\nDescribe your issue and I'll help you find a solution.`
 
-  const { messages, suggestedActions, busy, sendMessage, runAction, reset } = useProcolBrain({
+  const {
+    messages,
+    suggestedActions,
+    busy,
+    sendMessage,
+    startConversation,
+    runAction,
+    reset,
+  } = useProcolBrain({
     api: brain,
     identity,
     context,
@@ -76,11 +88,19 @@ export function ProcolBrain({
 
   const setOpenState = useCallback(
     (next: boolean) => {
+      if (inline) return
       setOpen(next)
       onOpenChange?.(next)
     },
-    [onOpenChange],
+    [inline, onOpenChange],
   )
+
+  // Report the host-provided opening message. `startConversation` resets first,
+  // so re-running this effect (StrictMode, or a changed message) is harmless.
+  useEffect(() => {
+    if (!initialMessage) return
+    startConversation(initialMessage)
+  }, [initialMessage, startConversation])
 
   // Focus the composer when opening; hand focus back to the launcher on close.
   useEffect(() => {
@@ -106,7 +126,13 @@ export function ProcolBrain({
   const style = useMemo(() => themeToCssVariables(theme), [theme])
 
   const positionClass = position === 'bottom-left' ? styles.bottomLeft : styles.bottomRight
-  const rootClassName = [styles.root, positionClass, className].filter(Boolean).join(' ')
+  const rootClassName = [
+    styles.root,
+    inline ? styles.inline : positionClass,
+    className,
+  ]
+    .filter(Boolean)
+    .join(' ')
 
   return (
     <div className={rootClassName} style={style} data-procol-brain="">
@@ -121,6 +147,7 @@ export function ProcolBrain({
           messages={messages}
           actions={suggestedActions}
           busy={busy}
+          showControls={!inline}
           footnote={footer === false ? undefined : (footer ?? `Powered by ${assistantName}`)}
           inputRef={inputRef}
           onSend={sendMessage}
@@ -130,14 +157,16 @@ export function ProcolBrain({
         />
       )}
 
-      <BrainLauncher
-        label={launcherLabel}
-        icon={launcherIcon}
-        open={open}
-        panelId={panelId}
-        buttonRef={launcherRef}
-        onClick={() => setOpenState(!open)}
-      />
+      {!inline && (
+        <BrainLauncher
+          label={launcherLabel}
+          icon={launcherIcon}
+          open={open}
+          panelId={panelId}
+          buttonRef={launcherRef}
+          onClick={() => setOpenState(!open)}
+        />
+      )}
     </div>
   )
 }

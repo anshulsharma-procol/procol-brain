@@ -6,6 +6,8 @@ export interface BrainHeaderProps {
   subtitle: string
   logo?: string
   titleId: string
+  /** Hidden when the panel is docked inline and cannot be dismissed. */
+  showControls?: boolean
   onMinimize: () => void
   onClose: () => void
 }
@@ -15,6 +17,7 @@ export function BrainHeader({
   subtitle,
   logo,
   titleId,
+  showControls = true,
   onMinimize,
   onClose,
 }: BrainHeaderProps) {
@@ -39,24 +42,26 @@ export function BrainHeader({
         </div>
       </div>
 
-      <div className={styles.headerActions}>
-        <button
-          type="button"
-          className={styles.iconButton}
-          onClick={onMinimize}
-          aria-label="Minimize support chat"
-        >
-          <MinimizeIcon />
-        </button>
-        <button
-          type="button"
-          className={styles.iconButton}
-          onClick={onClose}
-          aria-label="Close support chat"
-        >
-          <CloseIcon />
-        </button>
-      </div>
+      {showControls && (
+        <div className={styles.headerActions}>
+          <button
+            type="button"
+            className={styles.iconButton}
+            onClick={onMinimize}
+            aria-label="Minimize support chat"
+          >
+            <MinimizeIcon />
+          </button>
+          <button
+            type="button"
+            className={styles.iconButton}
+            onClick={onClose}
+            aria-label="Close support chat"
+          >
+            <CloseIcon />
+          </button>
+        </div>
+      )}
     </header>
   )
 }

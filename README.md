@@ -82,6 +82,8 @@ package itself; bundlers that do not process CSS imports can instead load
 | `theme` | `ProcolBrainTheme` | Procol theme | Merged over the defaults |
 | `position` | `'bottom-right' \| 'bottom-left'` | `'bottom-right'` | |
 | `defaultOpen` | `boolean` | `false` | |
+| `display` | `'floating' \| 'inline'` | `'floating'` | `inline` docks the panel in its container |
+| `initialMessage` | `string` | — | Reported automatically on open |
 | `assistantName` | `string` | `'Procol Brain'` | Header + greeting |
 | `logo` | `string` | — | Image URL for the header mark |
 | `launcherIcon` | `ReactNode` | chat icon | |
@@ -176,6 +178,25 @@ Streaming progress: `startInvestigation` receives an `onProgress` callback and
 an `AbortSignal`, so an SSE or websocket transport drops in without touching
 the components.
 
+## Docked / inline mode
+
+`display="inline"` drops the launcher and renders the panel inside its own
+container — for a dedicated support page, a side drawer, or a design gallery.
+Size it from the parent:
+
+```tsx
+<div style={{ width: 400, height: 560 }}>
+  <ProcolBrain display="inline" companyId="abc-corp" />
+</div>
+```
+
+Pair it with `initialMessage` to open Brain with a pre-filled report, e.g. from
+an error boundary:
+
+```tsx
+<ProcolBrain companyId="abc-corp" defaultOpen initialMessage={`Error on ${page}: ${error.message}`} />
+```
+
 ## Headless use
 
 ```tsx
@@ -212,9 +233,17 @@ npm run lint
 npm run build      # dist/index.js, dist/index.cjs, dist/index.d.ts, dist/index.css
 ```
 
-`examples/procol-console` is a fake host application used for development only
-— it is never part of the published package. It includes live *Branding* and
-*Position* switches to demonstrate white-labelling.
+The demo has two tabs:
+
+- **Embedded in host app** — a fake Procol Console with the floating widget,
+  plus live *Branding* and *Position* switches to demonstrate white-labelling.
+- **UI states** — a gallery of six inline panels showing every screen at once
+  (initial, searching, similar issue found, agents investigating, resolution
+  ready, white-labelled). Each is a real widget backed by a scripted mock API,
+  so the cards are interactive.
+
+`examples/procol-console` is development only — it is never part of the
+published package.
 
 ## Repository layout
 
@@ -229,7 +258,7 @@ src/
   theme/                    defaultTheme, themeVariables
   index.ts                  the entire public API
 examples/
-  procol-console/           development demo host
+  procol-console/           development demo host (console + UI gallery)
   basic-react/              minimal integration snippet
 ```
 

@@ -18,6 +18,7 @@ export interface ChatWindowProps {
   messages: BrainMessage[]
   actions: SuggestedAction[]
   busy: boolean
+  showControls?: boolean
   footnote?: string
   inputRef?: RefObject<HTMLTextAreaElement | null>
   onSend: (text: string) => void
@@ -37,6 +38,7 @@ export function ChatWindow({
   messages,
   actions,
   busy,
+  showControls,
   footnote,
   inputRef,
   onSend,
@@ -74,6 +76,7 @@ export function ChatWindow({
         subtitle={subtitle}
         logo={logo}
         titleId={titleId}
+        showControls={showControls}
         onMinimize={onMinimize}
         onClose={onClose}
       />
