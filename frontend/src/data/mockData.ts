@@ -167,59 +167,273 @@ export const primaryTicket: Ticket = {
   ],
 }
 
-// Other tickets shown only in the Home "Active AI Operations" table.
-export const otherTickets: Pick<
-  Ticket,
-  | 'id'
-  | 'number'
-  | 'title'
-  | 'progress'
-  | 'currentAgentId'
-  | 'currentAgentAction'
-  | 'tableStatus'
-  | 'updated'
->[] = [
+// The other four tickets from the Home "Active AI Operations" table, now
+// fully fleshed out so they can also appear in the Tickets grid + detail
+// panel. Only #1245 has curated reference-image content; these are
+// reasonable synthetic data following the same shape.
+export const otherTickets: Ticket[] = [
   {
     id: '1242',
-    number: '1242',
+    number: '#1242',
     title: 'Purchase order failure',
+    description: 'Purchase order approval fails validation for multi-currency vendors above $10k.',
+    customer: 'Meridian Textiles',
+    status: 'Dev Agent Investigating',
+    tableStatus: 'In Progress',
+    priority: 'Medium',
+    category: 'Procurement',
+    createdAt: 'Sep 10, 2025, 9:40 AM',
+    reportedBy: 'Priya Nair (Procurement Team)',
+    impact: 'Blocks PO approval for 3 vendors',
+    attachment: 'po_error_log.txt',
+    issueQuote: [
+      'Purchase order approval keeps failing.',
+      'Multi-currency vendor POs above $10k throw a validation error before reaching the approver.',
+    ],
     progress: 45,
     currentAgentId: 'dev',
     currentAgentAction: 'Analyzing code',
-    tableStatus: 'In Progress',
     updated: '8 min ago',
+    brainActivity: [
+      { label: 'Ticket understood', detail: 'Identified as PO validation issue', time: '9:40 AM', state: 'done' },
+      { label: 'Clara consulted', detail: 'Fetching procurement rules', time: '9:41 AM', state: 'done' },
+      {
+        label: 'Assigned to Dev Agent',
+        detail: 'Investigating validation logic',
+        time: '9:42 AM',
+        state: 'active',
+      },
+      { label: 'QA Agent will validate', detail: 'Run regression tests', time: '', state: 'pending' },
+      { label: 'Waiting for manager approval', detail: 'Review and merge PR', time: '', state: 'pending' },
+    ],
+    messages: [
+      {
+        fromId: 'brain',
+        from: 'Brain',
+        to: 'Dev Agent',
+        time: '9:42 AM',
+        text: ['"Investigate why multi-currency POs above $10k fail validation."'],
+      },
+      {
+        fromId: 'dev',
+        from: 'Dev Agent',
+        to: 'Brain',
+        time: '',
+        text: ['Analyzing validation rules in poValidation.ts...'],
+        loading: true,
+      },
+    ],
+    rootCause: {
+      headline: 'Currency conversion runs after the threshold check, not before.',
+      detail: 'POs above $10k in a foreign currency are compared to the USD threshold before conversion, rejecting valid orders.',
+    },
+    fix: {
+      prNumber: '#448',
+      file: 'poValidation.ts',
+      description: 'Convert to base currency before applying the approval threshold check.',
+      merged: false,
+    },
+    testResults: { suite: 'Procurement', total: 32, passed: 0, failed: 0 },
+    timeline: [
+      { label: 'Ticket created', detail: 'Customer reported the issue', time: 'Sep 10, 9:40 AM', state: 'done' },
+      { label: 'Clara consulted', detail: 'Procurement rules retrieved', time: '9:41 AM', state: 'done' },
+      { label: 'Dev Agent', detail: 'Investigating root cause', time: '9:42 AM', state: 'current' },
+    ],
   },
   {
     id: '1238',
-    number: '1238',
+    number: '#1238',
     title: 'Vendor onboarding',
+    description: 'New vendor onboarding workflow needs a manager sign-off before it can go live.',
+    customer: 'Northwind Logistics',
+    status: 'Waiting for Approval',
+    tableStatus: 'Pending',
+    priority: 'Low',
+    category: 'Vendor Management',
+    createdAt: 'Sep 10, 2025, 9:16 AM',
+    reportedBy: 'Aisha Khan (Vendor Ops)',
+    impact: 'Delays onboarding for 1 new vendor',
+    attachment: 'vendor_checklist.pdf',
+    issueQuote: [
+      'New vendor onboarding is stuck at the compliance step.',
+      'Checklist looks complete, but the workflow needs a human sign-off to proceed.',
+    ],
     progress: 90,
     currentAgentId: 'manager',
     currentAgentAction: 'Ready for review',
-    tableStatus: 'Pending',
     updated: '12 min ago',
+    brainActivity: [
+      { label: 'Ticket understood', detail: 'Identified as onboarding sign-off', time: '9:16 AM', state: 'done' },
+      { label: 'Clara consulted', detail: 'Checklist requirements confirmed', time: '9:20 AM', state: 'done' },
+      { label: 'Compliance checks passed', detail: 'All documents verified', time: '9:35 AM', state: 'done' },
+      {
+        label: 'Waiting for manager approval',
+        detail: 'Ready for your review',
+        time: '9:40 AM',
+        state: 'active',
+      },
+    ],
+    messages: [
+      {
+        fromId: 'brain',
+        from: 'Brain',
+        to: 'Manager Agent',
+        time: '9:40 AM',
+        text: ['"Vendor checklist for Northwind Logistics is complete. Ready for sign-off."'],
+      },
+      {
+        fromId: 'manager',
+        from: 'Manager Agent',
+        to: 'Brain',
+        time: '',
+        text: ['Reviewing checklist before sign-off...'],
+        loading: true,
+      },
+    ],
+    rootCause: {
+      headline: 'No automated blocker — awaiting a required human sign-off.',
+      detail: 'The onboarding workflow intentionally requires manager approval once all compliance checks pass.',
+    },
+    fix: {
+      prNumber: '#—',
+      file: 'n/a',
+      description: 'No code change needed; awaiting manager approval to close out onboarding.',
+      merged: false,
+    },
+    testResults: { suite: 'Vendor Onboarding', total: 12, passed: 12, failed: 0 },
+    timeline: [
+      { label: 'Ticket created', detail: 'Vendor Ops started onboarding', time: 'Sep 10, 9:16 AM', state: 'done' },
+      { label: 'Clara consulted', detail: 'Checklist requirements retrieved', time: '9:20 AM', state: 'done' },
+      { label: 'Compliance checks passed', detail: 'All documents verified', time: '9:35 AM', state: 'done' },
+      { label: 'Ready for approval', detail: 'Waiting for your review', time: '9:40 AM', state: 'current' },
+    ],
   },
   {
     id: '1231',
-    number: '1231',
+    number: '#1231',
     title: 'Login issue for tenant',
+    description: 'Users at one tenant are intermittently unable to log in after the last SSO update.',
+    customer: 'Kestrel Analytics',
+    status: 'Clara Fetching Context',
+    tableStatus: 'In Progress',
+    priority: 'High',
+    category: 'Authentication',
+    createdAt: 'Sep 10, 2025, 9:06 AM',
+    reportedBy: 'Marcus Lee (IT Admin)',
+    impact: 'Affects ~15% of tenant logins',
+    attachment: 'sso_error_screenshot.png',
+    issueQuote: [
+      'Some users can\'t log in since yesterday.',
+      'It seems intermittent — a few users report being redirected back to the login page after SSO.',
+    ],
     progress: 60,
     currentAgentId: 'clara',
     currentAgentAction: 'Fetching context',
-    tableStatus: 'In Progress',
     updated: '18 min ago',
+    brainActivity: [
+      { label: 'Ticket understood', detail: 'Identified as intermittent SSO failure', time: '9:06 AM', state: 'done' },
+      { label: 'Clara consulted', detail: 'Fetching tenant SSO configuration', time: '9:08 AM', state: 'active' },
+      { label: 'Assigned to Dev Agent', detail: 'Investigate SSO session handling', time: '', state: 'pending' },
+      { label: 'QA Agent will validate', detail: 'Run regression tests', time: '', state: 'pending' },
+      { label: 'Waiting for manager approval', detail: 'Review and merge PR', time: '', state: 'pending' },
+    ],
+    messages: [
+      {
+        fromId: 'brain',
+        from: 'Brain',
+        to: 'Clara',
+        time: '9:08 AM',
+        text: ['"What SSO provider and session settings does Kestrel Analytics use?"'],
+      },
+      {
+        fromId: 'clara',
+        from: 'Clara',
+        to: 'Brain',
+        time: '',
+        text: ['Fetching tenant SSO configuration...'],
+        loading: true,
+      },
+    ],
+    rootCause: {
+      headline: 'Root cause not yet identified — investigation in progress.',
+      detail: 'Clara is retrieving the tenant\'s SSO configuration before Dev Agent investigates session handling.',
+    },
+    fix: {
+      prNumber: '#—',
+      file: 'n/a',
+      description: 'Fix pending root cause investigation.',
+      merged: false,
+    },
+    testResults: { suite: 'Authentication', total: 0, passed: 0, failed: 0 },
+    timeline: [
+      { label: 'Ticket created', detail: 'IT Admin reported the issue', time: 'Sep 10, 9:06 AM', state: 'done' },
+      { label: 'Clara consulted', detail: 'Fetching SSO configuration', time: '9:08 AM', state: 'current' },
+    ],
   },
   {
     id: '1228',
-    number: '1228',
+    number: '#1228',
     title: 'Report download error',
+    description: 'Exporting the monthly spend report as PDF fails for large date ranges.',
+    customer: 'Solace Manufacturing',
+    status: 'Dev Agent Investigating',
+    tableStatus: 'In Progress',
+    priority: 'Medium',
+    category: 'Reporting',
+    createdAt: 'Sep 10, 2025, 8:59 AM',
+    reportedBy: 'Elena Ruiz (Finance Team)',
+    impact: 'Blocks month-end report exports',
+    attachment: 'report_export_error.png',
+    issueQuote: [
+      'Report download fails for the full quarter.',
+      'Exporting a single month works fine, but selecting a full quarter times out.',
+    ],
     progress: 30,
     currentAgentId: 'dev',
     currentAgentAction: 'Investigating',
-    tableStatus: 'In Progress',
     updated: '25 min ago',
+    brainActivity: [
+      { label: 'Ticket understood', detail: 'Identified as export timeout', time: '8:59 AM', state: 'done' },
+      { label: 'Assigned to Dev Agent', detail: 'Investigating report generation', time: '9:02 AM', state: 'active' },
+      { label: 'QA Agent will validate', detail: 'Run regression tests', time: '', state: 'pending' },
+      { label: 'Waiting for manager approval', detail: 'Review and merge PR', time: '', state: 'pending' },
+    ],
+    messages: [
+      {
+        fromId: 'brain',
+        from: 'Brain',
+        to: 'Dev Agent',
+        time: '9:02 AM',
+        text: ['"Investigate why quarterly report exports time out."'],
+      },
+      {
+        fromId: 'dev',
+        from: 'Dev Agent',
+        to: 'Brain',
+        time: '',
+        text: ['Profiling report generation for large date ranges...'],
+        loading: true,
+      },
+    ],
+    rootCause: {
+      headline: 'Report query is not paginated for large date ranges.',
+      detail: 'Quarterly exports load every line item into memory at once, causing a timeout before the PDF is generated.',
+    },
+    fix: {
+      prNumber: '#455',
+      file: 'reportExport.ts',
+      description: 'Paginate the report query and stream rows into the PDF generator.',
+      merged: false,
+    },
+    testResults: { suite: 'Reporting', total: 18, passed: 0, failed: 0 },
+    timeline: [
+      { label: 'Ticket created', detail: 'Finance Team reported the issue', time: 'Sep 10, 8:59 AM', state: 'done' },
+      { label: 'Dev Agent', detail: 'Investigating root cause', time: '9:02 AM', state: 'current' },
+    ],
   },
 ]
+
+export const allTickets: Ticket[] = [primaryTicket, ...otherTickets]
 
 export const homeStats = {
   totalTickets: { value: 24, change: '+12%', caption: '+3 from last week' },

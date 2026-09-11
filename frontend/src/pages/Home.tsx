@@ -6,7 +6,7 @@ import Card from '../components/Card'
 import HeaderActions from '../components/HeaderActions'
 import PageShell from '../components/PageShell'
 import StatusPill from '../components/StatusPill'
-import { agentActivityChart, homeStats, otherTickets, primaryTicket, ticketStatusChart } from '../data/mockData'
+import { agentActivityChart, allTickets, homeStats, ticketStatusChart } from '../data/mockData'
 import type { Tone } from '../types'
 
 const STAT_CARDS = [
@@ -58,19 +58,23 @@ const TABLE_STATUS_TONE: Record<string, Tone> = {
   Resolved: 'success',
 }
 
-const operationsRows = [
-  {
-    id: primaryTicket.id,
-    number: primaryTicket.number.replace('#', ''),
-    title: primaryTicket.title === 'Invoice GST calculation incorrect' ? 'Invoice GST issue' : primaryTicket.title,
-    progress: primaryTicket.progress,
-    currentAgentId: primaryTicket.currentAgentId,
-    currentAgentAction: primaryTicket.currentAgentAction,
-    tableStatus: primaryTicket.tableStatus,
-    updated: primaryTicket.updated,
-  },
-  ...otherTickets,
-]
+// The Home table uses a shorter caption than the full ticket title for #1245
+// to match the reference screen; every other ticket's title is short enough
+// to use as-is.
+const SHORT_TITLE: Record<string, string> = {
+  '1245': 'Invoice GST issue',
+}
+
+const operationsRows = allTickets.map((ticket) => ({
+  id: ticket.id,
+  number: ticket.number.replace('#', ''),
+  title: SHORT_TITLE[ticket.id] ?? ticket.title,
+  progress: ticket.progress,
+  currentAgentId: ticket.currentAgentId,
+  currentAgentAction: ticket.currentAgentAction,
+  tableStatus: ticket.tableStatus,
+  updated: ticket.updated,
+}))
 
 const AGENT_LABEL: Record<string, string> = {
   brain: 'Brain',
