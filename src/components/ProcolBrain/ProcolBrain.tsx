@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { BrainApi } from '../../services/brainApi'
 import { createBrainClient } from '../../services/brainApi'
 import { MockBrainApi } from '../../services/mockBrainApi'
 import type { ProcolBrainProps } from '../../types/config'
 import { themeToCssVariables } from '../../theme/themeVariables'
 import { useProcolBrain } from '../../hooks/useProcolBrain'
+import { useInstanceId } from '../../hooks/useInstanceId'
 import styles from './ProcolBrain.module.css'
 import { BrainLauncher } from './BrainLauncher'
 import { ChatWindow } from './ChatWindow'
@@ -48,7 +49,7 @@ export function ProcolBrain({
   const [openState, setOpen] = useState(defaultOpen)
   const open = inline || openState
 
-  const reactId = useId().replace(/:/g, '')
+  const reactId = useInstanceId()
   const panelId = `pb-panel-${reactId}`
   const titleId = `pb-title-${reactId}`
 
