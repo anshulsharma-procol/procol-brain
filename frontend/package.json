@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:sdk": "vite build --config src/brain-chat/vite.config.ts && tsc -p src/brain-chat/tsconfig.build.json && echo 'export {}' > src/brain-chat/dist/styles.d.css.ts",
     "lint": "eslint .",
     "preview": "vite preview"
   },
