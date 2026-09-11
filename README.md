@@ -94,10 +94,24 @@ INITIAL -> USER_MESSAGE -> SEARCHING_SIMILAR_ISSUES -> SIMILAR_ISSUE_FOUND
 ## Running the demo with no backend
 
 `A2ABrainApi` is the default when no `apiBaseUrl` is given: a scripted
-orchestrator that plays the full Clara -> Dev -> QA -> Manager run from
+orchestrator that plays a full Clara -> Dev -> QA -> Manager run from
 [`src/data/demoScenario.ts`](src/data/demoScenario.ts). That file is the single
 place demo data lives - change the customer, the PR number or the test count
 there and the whole flow follows.
+
+Four real support problems ship with it, routed by keyword:
+
+| Ticket | Path | Ends with |
+| --- | --- | --- |
+| Invoice GST incorrect | Clara -> Dev -> QA -> Manager | PR #452, 47/47 |
+| GRN quantity mismatch | Clara -> Dev -> QA -> Manager | PR #458, 31/31 |
+| Auction bid rejected late | Clara -> Dev -> QA -> Manager | PR #467, 23/23 |
+| PO stuck in approval | Clara only | a settings change, no PR |
+
+The last one matters: a scenario can declare its own `plan`, so Brain stops
+after Clara when the answer is a configuration gap rather than a defect. Most
+support tickets are that shape, and it shows the orchestrator deciding rather
+than marching through a fixed pipeline.
 
 The envelopes are real, not decoration:
 

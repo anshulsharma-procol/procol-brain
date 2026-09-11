@@ -320,3 +320,32 @@ table {
   background: #ffffff;
   box-shadow: 0 10px 30px -12px rgba(15, 23, 42, 0.25);
 }
+
+.console__problems {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 10px 0;
+}
+
+.console__problem {
+  padding: 6px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #475569;
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.console__problem--active {
+  border-color: #2563eb;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.console__outcome {
+  margin: 6px 0 0;
+  color: #94a3b8;
+  font-size: 11.5px;
+}

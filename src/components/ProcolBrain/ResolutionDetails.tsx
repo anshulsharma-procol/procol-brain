@@ -117,6 +117,8 @@ export const ResolutionDetails = ({ resolution }: ResolutionDetailsProps) => {
         </div>
       )}
 
+      {/* Nothing to approve when Clara resolved it from configuration. */}
+      {(hasFix || resolution.approved) && (
       <div className={`${local.approval} ${resolution.approved ? local.approvalDone : ''}`}>
         <span
           className={`${styles.stepMarker} ${
@@ -128,6 +130,7 @@ export const ResolutionDetails = ({ resolution }: ResolutionDetailsProps) => {
         </span>
         {approvalLabel(resolution)}
       </div>
+      )}
 
       <p className={styles.detail}>{resolution.summary}</p>
     </section>

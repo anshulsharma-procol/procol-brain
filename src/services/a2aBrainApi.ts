@@ -196,7 +196,13 @@ export class A2ABrainApi implements BrainApi {
     const run = this.runFor(ticketId)
     run.ticket.status = 'investigating'
 
-    const steps: InvestigationStep[] = INVESTIGATION_PLAN.map((step, index) => ({
+    // A scenario can declare a shorter plan: a configuration issue stops after
+    // Clara rather than waking the engineering agents.
+    const plan = run.scenario.plan
+      ? INVESTIGATION_PLAN.filter((step) => run.scenario.plan?.includes(step.id))
+      : INVESTIGATION_PLAN
+
+    const steps: InvestigationStep[] = plan.map((step, index) => ({
       ...step,
       status: index === 0 ? 'active' : 'pending',
     }))
@@ -219,7 +225,7 @@ export class A2ABrainApi implements BrainApi {
       const next = steps[index + 1]
       if (next) next.status = 'active'
 
-      this.routeStage(run, current.id)
+      this.routeStage(run, current.id, Boolean(next))
       emit()
 
       for (const entry of run.scenario.activity) {
@@ -229,13 +235,32 @@ export class A2ABrainApi implements BrainApi {
         emit()
       }
 
-      // The final stage needs a human, so it stays active rather than complete.
-      if (index === steps.length - 2 && next) break
+      // Only the human gate holds the run open. A plan that ends earlier
+      // completes every stage it declared.
+      if (next?.id === 'approval' && index === steps.length - 2) break
     }
 
     await this.wait(900, signal)
 
-    const { dev, qa } = run.scenario
+    const { dev, qa, configFix } = run.scenario
+
+    // Clara settled it: an answer the customer can act on, with no PR to
+    // approve and nothing for a manager to gate.
+    if (configFix || !dev || !qa) {
+      const resolution: Resolution = {
+        ticketId,
+        summary: configFix?.summary ?? 'Resolved from product configuration - no code change needed.',
+        rootCause: configFix?.change ?? run.scenario.clara.notes,
+        checks: (configFix?.checks ?? ['Product context retrieved', 'Answer confirmed']).map(
+          (label) => ({ label, status: 'complete' as const }),
+        ),
+      }
+
+      run.ticket.status = 'awaiting_approval'
+      emit(resolution)
+      return resolution
+    }
+
     const resolution: Resolution = {
       ticketId,
       summary: 'Your issue has been fixed and is ready for approval.',
@@ -264,9 +289,13 @@ export class A2ABrainApi implements BrainApi {
    * one. Envelopes are created before that stage's lines are revealed so each
    * line can quote the taskId it belongs to.
    */
-  private routeStage(run: TicketRun, stageId: string): void {
+  private routeStage(run: TicketRun, stageId: string, hasNextStage: boolean): void {
     const answering = SETTLEMENTS[stageId]
-    if (answering) this.settleTask(run, answering, resultFor(run.scenario, answering))
+    const answer = answering ? resultFor(run.scenario, answering) : undefined
+    if (answering && answer) this.settleTask(run, answering, answer)
+
+    // Nothing left in the plan means nothing left to delegate to.
+    if (!hasNextStage) return
 
     const delegation = DELEGATIONS[stageId]
     if (delegation) {
@@ -380,7 +409,7 @@ function taskIdFor(run: TicketRun, agent: AgentId): string | undefined {
   return latestTaskFor(run, agent)?.task.taskId
 }
 
-function resultFor(scenario: DemoScenario, agent: AgentId): A2AAgentResult {
+function resultFor(scenario: DemoScenario, agent: AgentId): A2AAgentResult | undefined {
   if (agent === 'clara') return scenario.clara
   if (agent === 'dev-agent') return scenario.dev
   return scenario.qa
@@ -395,10 +424,10 @@ function handoverFor(scenario: DemoScenario, to: AgentId): Record<string, unknow
   if (to === 'dev-agent') {
     return { expected: scenario.clara.expected, customerConfig: scenario.clara.customerConfig }
   }
-  if (to === 'qa-agent') {
+  if (to === 'qa-agent' && scenario.dev) {
     return { pr: scenario.dev.pr.number, filesChanged: scenario.dev.filesChanged }
   }
-  if (to === 'manager') {
+  if (to === 'manager' && scenario.dev && scenario.qa) {
     return { pr: scenario.dev.pr.number, tests: `${scenario.qa.passed}/${scenario.qa.tests}` }
   }
   return {}

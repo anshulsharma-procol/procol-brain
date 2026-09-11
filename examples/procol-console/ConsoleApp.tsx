@@ -80,16 +80,48 @@ const BRANDS: Record<string, { assistantName: string; theme?: ProcolBrainTheme }
   },
 }
 
-const DEMO_MESSAGE =
-  'My ABC Corp invoice is showing incorrect GST. It should be 18%, but the system is calculating 12%.'
+/** Real problems a Procol customer would actually report. */
+const DEMO_PROBLEMS = [
+  {
+    id: 'gst',
+    label: 'Invoice GST wrong',
+    outcome: 'Clara -> Dev -> QA -> Manager, PR #452, 47/47 tests',
+    message:
+      'My ABC Corp invoice is showing incorrect GST. It should be 18%, but the system is calculating 12%.',
+  },
+  {
+    id: 'grn',
+    label: 'GRN quantity mismatch',
+    outcome: 'Clara -> Dev -> QA -> Manager, PR #458, 31/31 tests',
+    message:
+      'GRN/2627/5 is flagging a quantity mismatch on a partial delivery even though the variance is inside our 2% tolerance.',
+  },
+  {
+    id: 'auction',
+    label: 'Auction bid rejected',
+    outcome: 'Clara -> Dev -> QA -> Manager, PR #467, 23/23 tests',
+    message:
+      'Our vendor placed a bid 8 seconds before the auction closed and it was rejected as late, even though auto-extension is on.',
+  },
+  {
+    id: 'approval',
+    label: 'PO stuck in approval',
+    outcome: 'Clara answers alone - configuration gap, no code change',
+    message:
+      'PO/8821 has been pending approval for three days and the approver says they never received it.',
+  },
+] as const
+
 
 export function ConsoleApp() {
   const [activeId, setActiveId] = useState('invoices')
   const [events, setEvents] = useState<string[]>([])
   const [brandId, setBrandId] = useState<keyof typeof BRANDS>('procol')
+  const [problemId, setProblemId] = useState<(typeof DEMO_PROBLEMS)[number]['id']>('gst')
   const [position, setPosition] = useState<BrainPosition>('bottom-right')
 
   const brand = BRANDS[brandId]!
+  const problem = DEMO_PROBLEMS.find((entry) => entry.id === problemId) ?? DEMO_PROBLEMS[0]
 
   const active = MODULES.find((module) => module.id === activeId) ?? MODULES[0]!
 
@@ -149,17 +181,35 @@ export function ConsoleApp() {
         </header>
 
         <section className="console__hint">
-          <strong>Demo script</strong>
+          <strong>Demo problems</strong>
           <p>
-            Open <em>Help &amp; Support</em>, paste the line below, then choose{' '}
-            <em>No, investigate further</em> to watch Brain delegate to Clara, the Dev Agent,
-            QA and the Manager:
+            Pick one, open <em>Help &amp; Support</em> and paste it. If Brain finds a past fix,
+            choose <em>No, investigate further</em> to watch the agents work.
           </p>
-          <code>{DEMO_MESSAGE}</code>
+
+          <div className="console__problems">
+            {DEMO_PROBLEMS.map((problem) => (
+              <button
+                key={problem.id}
+                type="button"
+                className={
+                  problem.id === problemId
+                    ? 'console__problem console__problem--active'
+                    : 'console__problem'
+                }
+                onClick={() => setProblemId(problem.id)}
+              >
+                {problem.label}
+              </button>
+            ))}
+          </div>
+
+          <code>{problem.message}</code>
+          <p className="console__outcome">{problem.outcome}</p>
           <button
             type="button"
             className="console__copy"
-            onClick={() => void navigator.clipboard?.writeText(DEMO_MESSAGE)}
+            onClick={() => void navigator.clipboard?.writeText(problem.message)}
           >
             Copy
           </button>

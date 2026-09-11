@@ -103,9 +103,21 @@ export interface DemoScenario {
   /** Previously resolved ticket surfaced before any investigation starts. */
   similarIssue?: SimilarIssue
   clara: ClaraResult
-  dev: DevAgentResult
-  qa: QaAgentResult
-  approval: ApprovalResult
+  /**
+   * Stages this ticket actually needs, by id. Defaults to the full five.
+   * A configuration issue stops after Clara - Brain does not wake the
+   * engineering agents for something the customer can change in Settings.
+   */
+  plan?: string[]
+  /** Present when Clara's answer resolves it: no code change, no PR. */
+  configFix?: {
+    summary: string
+    change: string
+    checks: string[]
+  }
+  dev?: DevAgentResult
+  qa?: QaAgentResult
+  approval?: ApprovalResult
   /**
    * The agent conversation, in order. The orchestrator stamps ids and reveals
    * these one at a time as the matching pipeline stage runs.
@@ -340,6 +352,188 @@ const GRN_SCENARIO: DemoScenario = {
   ],
 }
 
+const AUCTION_SCENARIO: DemoScenario = {
+  id: 'auction',
+  match: ['auction', 'bid', 'bidding', 'lot', 'extension', 'timer', 'closed'],
+  ticket: {
+    reference: '1251',
+    title: 'Bid rejected seconds before auction close',
+    customer: 'Northwind Steel',
+    priority: 'HIGH',
+  },
+  similarIssue: undefined,
+  clara: {
+    expected: 'Auto-extension: any bid in the last 2 minutes extends the lot by 3 minutes',
+    customerConfig: { 'Auto-extension': 'On', 'Extension window': '2 min', 'Extension by': '3 min' },
+    notes:
+      'Northwind Steel runs English reverse auctions with auto-extension enabled on every lot.',
+  },
+  dev: {
+    rootCause:
+      'The bid validator compared against the lot\'s original close time, so bids arriving during an auto-extension were rejected as late.',
+    filesChanged: ['auctionTimer.ts', 'bidValidator.ts'],
+    pr: { number: 467, status: 'created', title: 'fix: validate bids against the extended close time' },
+  },
+  qa: {
+    status: 'passed',
+    tests: 23,
+    passed: 23,
+    failed: 0,
+    message: 'Auction timing suite passed, including two new extension-window cases.',
+  },
+  approval: { approved: true, approver: 'Manager' },
+  activity: [
+    {
+      afterStep: 'understand',
+      from: 'procol-brain',
+      to: 'clara',
+      via: 'A2A',
+      kind: 'request',
+      text: 'How should auto-extension behave for Northwind Steel auctions?',
+    },
+    {
+      afterStep: 'context',
+      from: 'clara',
+      to: 'procol-brain',
+      via: 'A2A',
+      kind: 'response',
+      text: 'Auto-extension is on: a bid in the last 2 minutes extends the lot by 3 minutes.',
+    },
+    {
+      afterStep: 'context',
+      from: 'procol-brain',
+      to: 'dev-agent',
+      via: 'A2A',
+      kind: 'request',
+      text: 'A bid 8 seconds before close was rejected. Check the bid validator against extension.',
+    },
+    {
+      afterStep: 'code',
+      from: 'dev-agent',
+      to: 'github',
+      via: 'MCP',
+      kind: 'tool',
+      text: 'Read auctionTimer.ts and bidValidator.ts, opened branch fix/auction-extension-window',
+      tool: { server: 'github', call: 'read_file + create_branch' },
+    },
+    {
+      afterStep: 'code',
+      from: 'dev-agent',
+      to: 'procol-brain',
+      via: 'A2A',
+      kind: 'response',
+      text: 'The validator used the original close time, ignoring the extension. PR #467 created.',
+    },
+    {
+      afterStep: 'code',
+      from: 'procol-brain',
+      to: 'qa-agent',
+      via: 'A2A',
+      kind: 'request',
+      text: 'Validate PR #467 against the auction timing suite.',
+    },
+    {
+      afterStep: 'validate',
+      from: 'qa-agent',
+      to: 'test-runner',
+      via: 'MCP',
+      kind: 'tool',
+      text: 'Ran auction timing suite with two new extension-window cases',
+      tool: { server: 'test-runner', call: 'run_tests' },
+    },
+    {
+      afterStep: 'validate',
+      from: 'qa-agent',
+      to: 'procol-brain',
+      via: 'A2A',
+      kind: 'response',
+      text: '23 / 23 tests passed, including the 8-second-before-close case.',
+    },
+    {
+      afterStep: 'validate',
+      from: 'procol-brain',
+      to: 'manager',
+      via: 'A2A',
+      kind: 'request',
+      text: 'Fix ready for approval: PR #467, 23/23 tests passing.',
+    },
+  ],
+}
+
+/**
+ * The branch most support tickets actually take: Clara's answer is enough, so
+ * Brain never wakes the engineering agents. Worth demoing - it shows the
+ * orchestrator deciding, not just running a fixed pipeline.
+ */
+const APPROVAL_SCENARIO: DemoScenario = {
+  id: 'approval-matrix',
+  match: ['approval', 'approver', 'stuck', 'pending since', 'matrix', 'not routed', 'never received'],
+  ticket: {
+    reference: '1253',
+    title: 'Purchase order stuck awaiting approval',
+    customer: 'ABC Corp',
+    priority: 'MEDIUM',
+  },
+  similarIssue: undefined,
+  plan: ['understand', 'context'],
+  clara: {
+    expected: 'Orders above 50,00,000 need Category Head + Finance approval',
+    customerConfig: {
+      'Approval threshold': '50,00,000',
+      'Required approvers': 'Category Head, Finance',
+      'Raw Material -> Category Head': 'not mapped',
+    },
+    notes:
+      'PO/8821 is 62,00,000 in Raw Material. No Category Head is mapped for that category, so the order parks instead of routing.',
+  },
+  configFix: {
+    summary:
+      'This is a configuration gap rather than a bug, so it can be fixed in your settings right now - no release needed.',
+    change:
+      'Settings -> Approval Matrix -> Raw Material: assign a Category Head. PO/8821 routes automatically once saved.',
+    checks: [
+      'Product context retrieved from Clara',
+      'Configuration gap identified',
+      'Fix available in your settings',
+    ],
+  },
+  activity: [
+    {
+      afterStep: 'understand',
+      from: 'procol-brain',
+      to: 'clara',
+      via: 'A2A',
+      kind: 'request',
+      text: 'Why would PO/8821 (62,00,000, Raw Material) not route to an approver for ABC Corp?',
+    },
+    {
+      afterStep: 'context',
+      from: 'clara',
+      to: 'product-db',
+      via: 'MCP',
+      kind: 'tool',
+      text: 'Read the approval matrix configured for ABC Corp',
+      tool: { server: 'product-db', call: 'get_customer_config' },
+    },
+    {
+      afterStep: 'context',
+      from: 'clara',
+      to: 'procol-brain',
+      via: 'A2A',
+      kind: 'response',
+      text: 'Above 50,00,000 needs Category Head + Finance. No Category Head is mapped for Raw Material, so the PO parks.',
+    },
+    {
+      afterStep: 'context',
+      from: 'procol-brain',
+      to: 'customer',
+      via: 'A2A',
+      kind: 'response',
+      text: 'Configuration gap, not a defect - no engineering agents needed. Here is the fix.',
+    },
+  ],
+}
+
 /** Used when nothing matches, so any typed message still demos end to end. */
 const GENERIC_SCENARIO: DemoScenario = {
   ...GST_SCENARIO,
@@ -349,7 +543,12 @@ const GENERIC_SCENARIO: DemoScenario = {
   ticket: { ...GST_SCENARIO.ticket, title: 'Reported issue', customer: 'Your organisation' },
 }
 
-export const SCENARIOS: DemoScenario[] = [GST_SCENARIO, GRN_SCENARIO]
+export const SCENARIOS: DemoScenario[] = [
+  GST_SCENARIO,
+  GRN_SCENARIO,
+  AUCTION_SCENARIO,
+  APPROVAL_SCENARIO,
+]
 
 /** Routes a customer message to a scripted run. */
 export function matchScenario(message: string): DemoScenario {

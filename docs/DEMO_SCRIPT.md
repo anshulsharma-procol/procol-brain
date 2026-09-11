@@ -18,6 +18,28 @@ app** tab. Everything below runs on `src/data/demoScenario.ts` — no backend.
 | 4:20 | Switch to the **UI states** tab | All six states at once | "Every state is one component with a swappable backend." |
 | 4:40 | Switch **Branding** to *Acme Support AI* | The same widget, teal, renamed | "And it isn't Procol-only. Another company embeds it with their name and their theme." |
 
+## The four problems
+
+The console's **Demo problems** row switches the pasted message. Each is a real
+procurement support ticket, and they deliberately take different paths.
+
+| Problem | Path | Ends with |
+| --- | --- | --- |
+| **Invoice GST wrong** | past fix #892 found → *No, investigate further* → Clara → Dev → QA → Manager | PR #452, 47/47 tests |
+| **GRN quantity mismatch** | past fix #731 found → investigate → Clara → Dev → QA → Manager | PR #458, 31/31 tests |
+| **Auction bid rejected** | no past fix → straight to the agent team | PR #467, 23/23 tests |
+| **PO stuck in approval** | Clara answers alone | A settings change, no PR, no approval gate |
+
+The fourth is the one to show a judge who has already seen the pipeline:
+
+> "Not every ticket is a bug. Brain asked Clara, learned this customer has no
+> Category Head mapped for Raw Material, and closed it with a settings change —
+> it never woke the engineering agents. The orchestrator decides; it isn't a
+> fixed pipeline."
+
+If you only have time for two, run **Invoice GST wrong** (the full workforce)
+and **PO stuck in approval** (the routing decision).
+
 ## The closing line
 
 > "Today Clara answers questions. Brain turns one assistant into a workforce:
