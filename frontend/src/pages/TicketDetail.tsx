@@ -280,7 +280,7 @@ function Transcript({ activity }: { activity: import('../platform/types').Activi
       >
         <ol aria-live="polite" className="space-y-0">
           {toExchanges(activity).map((exchange) => (
-            <TranscriptEntry key={exchange.head.id} exchange={exchange} />
+            <TranscriptEntry key={exchange.id} exchange={exchange} />
           ))}
         </ol>
       </div>

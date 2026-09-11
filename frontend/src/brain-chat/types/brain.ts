@@ -90,6 +90,13 @@ export interface Resolution {
     status: 'created' | 'open' | 'merged'
     title?: string
     url?: string
+    /**
+     * False when the pull request was not really opened — the patch exists on
+     * a branch and nothing else does. The widget then shows the number as
+     * plain text and says "prepared", because a link the customer cannot open
+     * is worse than no link.
+     */
+    real?: boolean
   }
   /** Files the fix touched. */
   filesChanged?: string[]

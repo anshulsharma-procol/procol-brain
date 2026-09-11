@@ -1,15 +1,13 @@
 import type {
-  Activity,
-  Agent,
-  Artifact,
-  Connector,
-  ProcessDefinition,
-  Run,
-  Stage as ContractStage,
+  ActivityDto,
+  AgentDto,
+  ArtifactDto,
+  ConnectorDto,
+  ProcessDefinitionDto,
+  RunDto,
+  SignalDto,
   Stats,
-  Ticket as ContractTicket,
-  TicketListRow,
-  StreamEventName,
+  TicketDto,
 } from '../contract'
 import type {
   Connection,
@@ -65,6 +63,16 @@ export interface HttpConsoleApiOptions {
   streaming?: boolean
 }
 
+/**
+ * Which agent completed each of the four stages, or null.
+ *
+ * Not in the contract — a compliant `GET /tickets` returns bare tickets — so
+ * everything downstream treats it as optional and the rail falls back to the
+ * run state. This deployment sends it because one request per row to rebuild
+ * a board is not a real option.
+ */
+type StageMap = Record<Stage['id'], string | null>
+
 /** Additive fields this deployment sends. Everything here is optional. */
 interface TicketExtras {
   categoryLabel?: string
@@ -75,6 +83,21 @@ interface TicketExtras {
   attachment?: string
   currentAgentId?: string
   currentAgentAction?: string
+  run?: (Pick<RunDto, 'id' | 'state' | 'path' | 'attempt' | 'startedAt'> & Partial<RunDto>) | null
+  stage?: StageMap
+}
+
+/** `GET /tickets/:id` — the contract's response, plus what we add to it. */
+interface TicketDetailBody {
+  ticket: TicketDto & TicketExtras
+  run: RunDto | null
+  artifacts: ArtifactDto[]
+  approval: { required: boolean; policyId?: string; reason?: string } | null
+  signal: SignalDto | null
+
+  // additive
+  stage?: StageMap
+  decision?: TicketDetail['decision'] | null
 }
 
 export function createHttpConsoleApi(options: HttpConsoleApiOptions): ConsoleApi {
@@ -138,8 +161,8 @@ export function createHttpConsoleApi(options: HttpConsoleApiOptions): ConsoleApi
 
       if (!summaries?.data?.length) {
         const [agents, connectors] = await Promise.all([
-          listOf<Agent>('/agents'),
-          listOf<Connector>('/connectors').catch(() => []),
+          listOf<AgentDto>('/agents'),
+          listOf<ConnectorDto>('/connectors').catch(() => []),
         ])
         return [buildImplicitWorkspace(agents, connectors)]
       }
@@ -150,8 +173,8 @@ export function createHttpConsoleApi(options: HttpConsoleApiOptions): ConsoleApi
       return Promise.all(
         summaries.data.map(async (summary) => {
           const [agents, connectors] = await Promise.all([
-            listOf<Agent>(`/agents?workspace=${ref(summary.id)}`),
-            listOf<Connector>(`/connectors?workspace=${ref(summary.id)}`).catch(() => []),
+            listOf<AgentDto>(`/agents?workspace=${ref(summary.id)}`),
+            listOf<ConnectorDto>(`/connectors?workspace=${ref(summary.id)}`).catch(() => []),
           ])
 
           return { ...buildImplicitWorkspace(agents, connectors), ...summary }
@@ -193,7 +216,7 @@ export function createHttpConsoleApi(options: HttpConsoleApiOptions): ConsoleApi
         responses.set(ticket.currentAgentId, (responses.get(ticket.currentAgentId) ?? 0) + 1)
       }
 
-      const agents = await listOf<Agent>(`/agents${scope(workspaceId)}`)
+      const agents = await listOf<AgentDto>(`/agents${scope(workspaceId)}`)
 
       return {
         activeTickets: stats.active,
@@ -222,19 +245,14 @@ export function createHttpConsoleApi(options: HttpConsoleApiOptions): ConsoleApi
         .filter(Boolean)
         .join('&')
 
-      const rows = await listOf<TicketListRow & TicketExtras>(`/tickets${query ? `?${query}` : ''}`)
+      const rows = await listOf<TicketDto & TicketExtras>(`/tickets${query ? `?${query}` : ''}`)
       return rows.map(adaptListRow)
     },
 
     async getTicket(ticketRef) {
       const [detail, activities] = await Promise.all([
-        get<{
-          ticket: ContractTicket & TicketExtras
-          run: Run | null
-          artifacts: Artifact[]
-          insight: { affectedTenants: number; affectedRecords: number } | null
-        }>(`/tickets/${ref(ticketRef)}`),
-        listOf<Activity>(`/tickets/${ref(ticketRef)}/activities`),
+        get<TicketDetailBody>(`/tickets/${ref(ticketRef)}`),
+        listOf<ActivityDto>(`/tickets/${ref(ticketRef)}/activities`),
       ])
 
       const matches = await optional<{ data: MemoryMatch[] }>(
@@ -250,7 +268,7 @@ export function createHttpConsoleApi(options: HttpConsoleApiOptions): ConsoleApi
     },
 
     async createTicket(input: CreateTicketInput) {
-      const created = await post<ContractTicket & TicketExtras>('/tickets', {
+      const created = await post<TicketDto & TicketExtras>('/tickets', {
         customer: input.customer,
         title: input.title,
         description: input.description,
@@ -262,7 +280,9 @@ export function createHttpConsoleApi(options: HttpConsoleApiOptions): ConsoleApi
     },
 
     async startInvestigation(ticketRef) {
-      const started = await post<{ runId: string; state: string }>(
+      // 202 for a new run, 200 with started: false when this joined the one
+      // already in flight. Both are success — a second click is not an error.
+      const started = await post<{ runId: string; started: boolean }>(
         `/tickets/${ref(ticketRef)}/investigate`,
       )
       return { runId: started.runId }
@@ -316,7 +336,11 @@ export function createHttpConsoleApi(options: HttpConsoleApiOptions): ConsoleApi
 
       const source = new EventSource(`${baseUrl}${path}`)
 
-      const NAMES: StreamEventName[] = [
+      // The event name is the payload's own `type`, so subscribing by name
+      // and switching on the field see the same thing. Listening per name
+      // (rather than to the default `message`) is what keeps a future event
+      // type from arriving as an unhandled row.
+      const NAMES: ActivityDto['type'][] = [
         'ticket.created',
         'run.started',
         'run.state',
@@ -335,14 +359,9 @@ export function createHttpConsoleApi(options: HttpConsoleApiOptions): ConsoleApi
 
       for (const name of NAMES) {
         const handler = ((event: MessageEvent<string>) => {
-          const payload = JSON.parse(event.data) as { ticketId?: string; activityId?: string }
-          listener({
-            type: 'activity',
-            name,
-            ticketRef: payload.ticketId,
-            activityId: payload.activityId,
-            payload,
-          })
+          // The payload IS the activity row — the same object `/activities`
+          // returns, down to the id and the seq. Nothing is reassembled.
+          listener({ type: 'activity', activity: JSON.parse(event.data) as ActivityDto })
         }) as EventListener
 
         handlers.set(name, handler)
@@ -363,7 +382,7 @@ export function createHttpConsoleApi(options: HttpConsoleApiOptions): ConsoleApi
     },
 
     async listProcesses() {
-      const processes = await optional<{ data: ProcessDefinition[] }>('processes', '/processes')
+      const processes = await optional<{ data: ProcessDefinitionDto[] }>('processes', '/processes')
       return processes?.data ?? []
     },
 
@@ -416,7 +435,7 @@ const STAGE_LABELS: { id: Stage['id']; label: string }[] = [
  * separates them: a configuration fix never had an investigate stage, and
  * showing it as pending would claim work is still coming that never was.
  */
-export function stagesFrom(stage: ContractStage | undefined, run: Run | null, status: Ticket['status']): Stage[] {
+export function stagesFrom(stage: StageMap | undefined, run: RunDto | null, status: Ticket['status']): Stage[] {
   const skipped =
     run?.path === 'CONFIG_FIX' || run?.path === 'ANSWER_ONLY'
       ? new Set<Stage['id']>(['investigate', 'verify'])
@@ -471,9 +490,9 @@ const RUN_STATE_ACTION: Record<string, string> = {
 }
 
 function adaptTicket(
-  ticket: ContractTicket & TicketExtras,
-  run: Run | null,
-  stage: ContractStage | null,
+  ticket: TicketDto & TicketExtras,
+  run: RunDto | null,
+  stage: StageMap | null,
 ): Ticket {
   const stages = stagesFrom(stage ?? undefined, run, ticket.status)
 
@@ -503,9 +522,9 @@ function adaptTicket(
   }
 }
 
-function adaptListRow(row: TicketListRow & TicketExtras): Ticket {
-  const run = row.run ? ({ ...row.run, path: row.run.path ?? null } as Run) : null
-  return adaptTicket(row, run, row.stage)
+function adaptListRow(row: TicketDto & TicketExtras): Ticket {
+  const run = row.run ? ({ ...row.run, path: row.run.path ?? null } as RunDto) : null
+  return adaptTicket(row, run, row.stage ?? null)
 }
 
 /**
@@ -514,7 +533,7 @@ function adaptListRow(row: TicketListRow & TicketExtras): Ticket {
  * one who finished last — which is right for a board column and honest about
  * being an inference.
  */
-function holderFrom(stage: ContractStage | null | undefined, run: Run | null): string | undefined {
+function holderFrom(stage: StageMap | null | undefined, run: RunDto | null): string | undefined {
   if (!run) return undefined
   if (run.state === 'AWAITING_APPROVAL') return 'human-approver'
   if (!stage) return undefined
@@ -522,24 +541,21 @@ function holderFrom(stage: ContractStage | null | undefined, run: Run | null): s
   return stage.verify ?? stage.investigate ?? stage.context ?? undefined
 }
 
-function humanise(category: ContractTicket['category']): string {
+function humanise(category: TicketDto['category']): string {
   if (!category) return 'Uncategorised'
   return category.charAt(0) + category.slice(1).toLowerCase()
 }
 
 function buildDetail(
-  detail: {
-    ticket: ContractTicket & TicketExtras
-    run: Run | null
-    artifacts: Artifact[]
-    insight: { affectedTenants: number; affectedRecords: number } | null
-  },
-  activities: Activity[],
+  detail: TicketDetailBody,
+  activities: ActivityDto[],
   memoryMatches: MemoryMatch[],
 ): TicketDetail {
-  const stage = stageFromActivities(activities)
+  // The rail, from the backend if it sends one and from the timeline if not:
+  // the contract's detail response has no stage map, so a compliant backend
+  // still fills the rail — by a longer route, from the same information.
+  const stage = detail.stage ?? detail.ticket.stage ?? stageFromActivities(activities)
   const ticket = adaptTicket(detail.ticket, detail.run, stage)
-  const decision = decisionFrom(activities, detail.run)
 
   return {
     ticket,
@@ -547,10 +563,15 @@ function buildDetail(
     activity: activities,
     artifacts: detail.artifacts,
     memoryMatches,
-    approvalPolicy: detail.run?.policyReason
-      ? { id: 'policy', appliesTo: [], reason: detail.run.policyReason, risk: 'high' }
+    approvalPolicy: detail.approval
+      ? {
+          id: detail.approval.policyId ?? 'policy',
+          appliesTo: [],
+          reason: detail.approval.reason ?? 'This run needs a person to approve it.',
+          risk: 'high',
+        }
       : undefined,
-    decision,
+    decision: detail.decision ?? decisionFrom(activities, detail.run),
   }
 }
 
@@ -559,36 +580,50 @@ function buildDetail(
  * the detail page reconstructs it from the timeline, which is the same
  * information by another route.
  */
-function stageFromActivities(activities: Activity[]): ContractStage {
-  const stage: ContractStage = { context: null, investigate: null, verify: null, approve: null }
+function stageFromActivities(activities: ActivityDto[]): StageMap {
+  const stage: StageMap = { context: null, investigate: null, verify: null, approve: null }
 
   for (const row of activities) {
-    if (row.type !== 'a2a.response' || row.level === 'error' || !row.fromAgent) continue
-    if (!stage.context) stage.context = row.fromAgent
-    else if (!stage.investigate) stage.investigate = row.fromAgent
-    else if (!stage.verify) stage.verify = row.fromAgent
+    if (row.type !== 'a2a.response' || row.status === 'failed') continue
+    if (!stage.context) stage.context = row.from
+    else if (!stage.investigate) stage.investigate = row.from
+    else if (!stage.verify) stage.verify = row.from
   }
 
-  const closed = activities.find((row) => row.type === 'run.completed')
+  const closed = activities.find(
+    (row) => row.type === 'run.completed' && row.outcome === 'RESOLVED',
+  )
   if (closed) stage.approve = 'human-approver'
 
   return stage
 }
 
-/** The human's decision, read back off the audit trail. */
-function decisionFrom(activities: Activity[], run: Run | null): TicketDetail['decision'] {
-  const row = [...activities]
+/**
+ * The human's decision, read back off the audit trail.
+ *
+ * Only reached when the backend does not send one: the contract has no
+ * decision object, so this finds the thought that recorded the verdict — the
+ * only place the person's name appears — and pairs it with the run.completed
+ * row that followed. It is an inference, which is why a sent `decision`
+ * always wins over it.
+ */
+function decisionFrom(activities: ActivityDto[], run: RunDto | null): TicketDetail['decision'] {
+  const verdict = [...activities]
     .reverse()
-    .find((candidate) => candidate.type === 'run.state' && candidate.fromAgent === 'human')
+    .find(
+      (row): row is Extract<ActivityDto, { type: 'brain.thought' }> =>
+        row.type === 'brain.thought' && /\b(approved|rejected|sent this back)\b/i.test(row.text),
+    )
+  if (!verdict) return undefined
 
-  if (!row) return undefined
+  const [headline, ...rest] = verdict.text.split('\n\n')
+  const approved = run?.state === 'RESOLVED' || /approved/i.test(headline ?? '')
 
-  const approved = run?.state === 'RESOLVED' || /approved/i.test(row.title)
   return {
     outcome: approved ? 'APPROVED' : 'REJECTED',
-    by: row.title.replace(/\s+(approved|sent).*$/i, '').trim() || 'A person',
-    note: row.body ?? undefined,
-    at: row.createdAt,
+    by: (headline ?? '').replace(/\s+(approved|rejected|sent).*$/i, '').trim() || 'A person',
+    note: rest.join('\n\n') || undefined,
+    at: verdict.at,
   }
 }
 
@@ -597,7 +632,7 @@ function decisionFrom(activities: Activity[], run: Run | null): TicketDetail['de
  * workspace extension still gets a named control tower, its registry and its
  * connectors — the switcher simply has one entry.
  */
-function buildImplicitWorkspace(agents: Agent[], connectors: Connector[]): Workspace {
+function buildImplicitWorkspace(agents: AgentDto[], connectors: ConnectorDto[]): Workspace {
   return {
     id: 'default',
     name: 'Control tower',
@@ -640,7 +675,7 @@ function buildImplicitWorkspace(agents: Agent[], connectors: Connector[]): Works
 }
 
 /** The contract's four kinds map onto the roles the UI paints. */
-function roleOf(agent: Agent): Workspace['agents'][number]['role'] {
+function roleOf(agent: AgentDto): Workspace['agents'][number]['role'] {
   const declared = (agent as { role?: string }).role
   if (declared) return declared as Workspace['agents'][number]['role']
 
@@ -659,7 +694,7 @@ function roleOf(agent: Agent): Workspace['agents'][number]['role'] {
   }
 }
 
-function shortLabel(agent: Agent): string {
+function shortLabel(agent: AgentDto): string {
   const words = agent.name.split(/\s+/)
   if (words.length === 1) return agent.name.slice(0, 2).toUpperCase()
   return words

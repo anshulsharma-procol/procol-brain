@@ -5,27 +5,20 @@
  *  SYNAPSE — API CONTRACT
  * ============================================================================
  *
- * The shared boundary between backend and frontend. Both sides compile against
- * this file. It is the single source of truth; the JSON in
- * docs/API_CONTRACT.md is these types rendered.
+ * The shared boundary between backend and frontend. Transcribed from the
+ * backend's own FRONTEND.md, which is generated from the code the server
+ * runs — so where the two ever disagree, `GET /api/contract` on a live server
+ * is the authority and this file is what needs correcting.
  *
- * FROZEN. Additive changes are free — a new optional field costs nobody
- * anything. Renames and removals are not: add a new field rather than
- * renaming an old one, even when the old name is wrong, and say it out loud in
- * the room before you touch anything here.
+ * FROZEN. Ask before changing anything here.
  *
- * This file is copied into both packages by `npm run contract:sync` at the
- * repo root, and `npm run contract:check` fails if the copies have drifted.
- * Edit THIS file, never a copy.
+ * Copied into both packages by `npm run contract:sync`; `contract:check`
+ * fails if a copy drifts. Edit THIS file, never a copy.
  */
 
 // ---------------------------------------------------------------------------
-// §1 Shared types
+// Enums
 // ---------------------------------------------------------------------------
-
-export type Priority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'
-export type Channel = 'email' | 'portal' | 'slack' | 'signal' | 'event'
-export type Category = 'BUG' | 'CONFIG' | 'QUESTION' | 'PROCESS'
 
 export type TicketStatus =
   | 'NEW'
@@ -35,6 +28,23 @@ export type TicketStatus =
   | 'NEEDS_HUMAN'
   | 'REJECTED'
 
+export type Priority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'
+export type Category = 'BUG' | 'CONFIG' | 'QUESTION' | 'PROCESS'
+export type Channel = 'email' | 'portal' | 'slack' | 'signal' | 'event'
+export type ResolutionPath = 'CODE_FIX' | 'CONFIG_FIX' | 'ANSWER_ONLY' | 'PROCESS'
+
+export type ArtifactKind =
+  | 'ROOT_CAUSE'
+  | 'PR'
+  | 'TEST_RESULT'
+  | 'CONFIG_FIX'
+  | 'CUSTOMER_REPLY'
+  | 'IMPACT'
+  | 'PROCESS_RESULT'
+
+export type AgentStatus = 'ONLINE' | 'OFFLINE' | 'UNKNOWN'
+
+/** The §6.1 machine. */
 export type RunState =
   | 'RECEIVED'
   | 'CLASSIFYING'
@@ -48,28 +58,6 @@ export type RunState =
   | 'AWAITING_APPROVAL'
   | 'RESOLVED'
   | 'NEEDS_HUMAN'
-
-export type RunPath = 'CODE_FIX' | 'CONFIG_FIX' | 'ANSWER_ONLY' | 'PROCESS'
-
-/** Known ids, open to any string: the registry is discovered, not enumerated. */
-export type AgentId = 'brain' | 'clara' | 'dev-agent' | 'qa-agent' | (string & {})
-
-export type TaskType =
-  | 'GET_PRODUCT_CONTEXT'
-  | 'INVESTIGATE_BUG'
-  | 'VALIDATE_FIX'
-  | 'VERIFY_DOCUMENTS'
-  | 'CREATE_RECORD'
-  | 'NOTIFY'
-
-export type ArtifactKind =
-  | 'ROOT_CAUSE'
-  | 'PR'
-  | 'TEST_RESULT'
-  | 'CONFIG_FIX'
-  | 'CUSTOMER_REPLY'
-  | 'IMPACT'
-  | 'PROCESS_RESULT'
 
 export type ActivityType =
   | 'ticket.created'
@@ -85,9 +73,21 @@ export type ActivityType =
   | 'agent.status'
   | 'signal.raised'
 
-export type Level = 'info' | 'success' | 'warn' | 'error'
+export type AgentId = 'brain' | 'clara' | 'dev-agent' | 'qa-agent' | (string & {})
 
-export interface Ticket {
+export type TaskType =
+  | 'GET_PRODUCT_CONTEXT'
+  | 'INVESTIGATE_BUG'
+  | 'VALIDATE_FIX'
+  | 'VERIFY_DOCUMENTS'
+  | 'CREATE_RECORD'
+  | 'NOTIFY'
+
+// ---------------------------------------------------------------------------
+// Entities
+// ---------------------------------------------------------------------------
+
+export interface TicketDto {
   id: string
   /** null when raised by monitoring rather than by a person. */
   customer: string | null
@@ -103,52 +103,29 @@ export interface Ticket {
   updatedAt: string
 }
 
-export interface Run {
+export interface RunDto {
   id: string
   ticketId: string
   state: RunState
-  path: RunPath | null
+  path: ResolutionPath | null
   /** 1 or 2. The dev↔QA loop is capped. */
   attempt: number
   summary: string | null
-  /** Why approval is required — render it above the button. */
-  policyReason: string | null
   startedAt: string
   endedAt: string | null
 }
 
-export interface Activity {
-  id: string
-  ticketId: string
-  runId: string | null
-  /** Order and dedupe on this. Never on createdAt. */
-  seq: number
-  type: ActivityType
-  fromAgent: AgentId | null
-  toAgent: AgentId | null
-  /** The one line shown in the timeline. */
-  title: string
-  /** Prose, or a JSON string for the payload disclosure. Stays a string. */
-  body: string | null
-  level: Level
-  /** Groups agent.log lines under their parent exchange. */
-  taskId: string | null
-  /** Present on a2a.response. */
-  durationMs: number | null
-  createdAt: string
-}
-
-export interface Artifact {
+export interface ArtifactDto {
   id: string
   ticketId: string
   kind: ArtifactKind
   title: string
-  /** Discriminated by kind — see §3 below. Parsed, never a JSON string. */
+  /** Parsed, never a JSON string. Shape depends on `kind`. */
   data: ArtifactData
   createdAt: string
 }
 
-export interface Task {
+export interface TaskDto {
   id: string
   ticketId: string
   runId: string
@@ -156,7 +133,6 @@ export interface Task {
   toAgent: AgentId
   type: TaskType
   status: 'PENDING' | 'WORKING' | 'COMPLETED' | 'FAILED'
-  /** Parsed JSON, not a string. */
   input: unknown
   output: unknown | null
   error: string | null
@@ -165,13 +141,13 @@ export interface Task {
   endedAt: string | null
 }
 
-export interface Agent {
+export interface AgentDto {
   id: AgentId
   name: string
   kind: 'knowledge' | 'engineering' | 'validation' | 'ops'
   baseUrl: string
   protocol: 'A2A'
-  status: 'ONLINE' | 'OFFLINE' | 'UNKNOWN'
+  status: AgentStatus
   capabilities: string[]
   tools: { name: string; via: 'MCP' | 'CONNECTOR' }[]
   description: string | null
@@ -179,34 +155,128 @@ export interface Agent {
   tasksToday: number
 }
 
-export interface Connector {
+export interface ConnectorDto {
   id: string
   kind: 'database' | 'warehouse' | 'saas-api' | 'file' | 'event-stream' | 'mcp'
   capabilities: string[]
   health: { ok: boolean; latencyMs: number }
 }
 
+export interface SignalDto {
+  id: string
+  source: string
+  kind: string
+  summary: string
+  metrics: Record<string, unknown>
+  ticketId: string | null
+  createdAt: string
+}
+
+export interface PolicyDto {
+  id: string
+  reason: string
+}
+
 // ---------------------------------------------------------------------------
-// §3 Artifact payloads — the approval panel depends on these exact shapes
+// Activities and SSE — the same envelope
+// ---------------------------------------------------------------------------
+
+/**
+ * Every activity row and every SSE payload carries these five fields, and the
+ * values are identical in both — which is what makes a mid-run refresh
+ * rebuild the same timeline.
+ *
+ * Dedupe on `id`, order on `seq`. Never order on `at`: millisecond collisions
+ * are guaranteed, and events can land out of order.
+ */
+export interface ActivityBase {
+  id: string
+  seq: number
+  type: ActivityType
+  ticketId: string
+  at: string
+}
+
+export type ActivityDto =
+  | (ActivityBase & { type: 'ticket.created'; ticket: TicketDto })
+  | (ActivityBase & { type: 'run.started'; runId: string })
+  | (ActivityBase & {
+      type: 'run.state'
+      runId: string
+      state: RunState
+      path: ResolutionPath | null
+      attempt: number
+    })
+  /** The Brain's reasoning in plain English. Render it prominently. */
+  | (ActivityBase & { type: 'brain.thought'; text: string })
+  | (ActivityBase & {
+      type: 'a2a.request'
+      taskId: string
+      from: AgentId
+      to: AgentId
+      taskType: TaskType
+      summary: string
+    })
+  | (ActivityBase & {
+      type: 'a2a.response'
+      taskId: string
+      from: AgentId
+      to: AgentId
+      status: string
+      summary: string
+      durationMs: number | null
+    })
+  /** Render as an indented sub-line under the exchange with the same taskId. */
+  | (ActivityBase & { type: 'agent.log'; taskId: string; agent: AgentId; line: string })
+  /** Carries the whole artifact — no refetch needed. */
+  | (ActivityBase & { type: 'artifact.created'; artifact: ArtifactDto })
+  | (ActivityBase & {
+      type: 'run.awaiting_approval'
+      runId: string
+      policyId: string
+      policyReason: string
+    })
+  | (ActivityBase & { type: 'run.completed'; runId: string; outcome: string })
+  /** `seq` is -1 and it is not ticket-scoped. Keep it out of a timeline. */
+  | (ActivityBase & { type: 'agent.status'; agentId: AgentId; status: AgentStatus })
+  | (ActivityBase & { type: 'signal.raised'; signal: SignalDto })
+
+/** An SSE payload is an activity row. */
+export type SseEnvelope = ActivityDto
+
+/** Narrow an activity to one type. */
+export type ActivityOf<T extends ActivityType> = Extract<ActivityDto, { type: T }>
+
+// ---------------------------------------------------------------------------
+// Artifact payloads
 // ---------------------------------------------------------------------------
 
 export interface RootCauseData {
-  summary: string
-  detail: string
+  rootCause: string
+  file: string
   /** 0–1. */
   confidence: number
+  attempt: number
 }
 
 export interface PrData {
   number: number
   url: string
-  state: 'created' | 'merged' | 'mock'
+  state: string
+  /**
+   * False when the pull request could not be opened — a token or the network.
+   * The patch still exists on `branch` and `note` says why. Do not render it
+   * as a live PR link in that case: an unclickable link that looks clickable
+   * is worse than saying plainly that it is a patch on a branch.
+   */
+  real: boolean
+  note?: string
   branch: string
-  files: string[]
-  additions: number
-  deletions: number
-  /** Unified diff. The UI renders red/green lines from this string. */
-  patch: string
+  title: string
+  body: string
+  filesChanged: string[]
+  /** Unified diff. */
+  diff: string
 }
 
 export interface TestResultData {
@@ -217,30 +287,45 @@ export interface TestResultData {
   durationMs: number
   suites: string[]
   failures: string[]
+  message: string
+  branch: string
+  attempt: number
 }
 
 export interface ConfigFixData {
-  summary: string
+  title: string
   steps: string[]
-  system: string
+  rationale: string
+  /** False is the point: Brain decided engineering was not needed. */
+  requiresCodeChange: boolean
+  citations: string[]
+  customer: string
 }
 
 export interface CustomerReplyData {
   subject: string
   body: string
-  sentTo: string
+  citations?: string[]
+  sentAt?: string
+  approvedBy?: string
 }
 
 export interface ImpactData {
   affectedTenants: number
   affectedRecords: number
   firstSeen: string
+  trend: { date: string; count: number }[]
+  /** Show it behind a disclosure. A number with its query attached is evidence. */
+  sql: string
+  source: string
 }
 
 export interface ProcessResultData {
-  processKey: string
-  stepsCompleted: string[]
-  records: { type: string; id: string }[]
+  key: string
+  name: string
+  completed: { stepId: string; name: string; detail: string; output?: unknown }[]
+  pending: { stepId: string; name: string; action: string }[]
+  input: unknown
 }
 
 export type ArtifactData =
@@ -252,8 +337,7 @@ export type ArtifactData =
   | ImpactData
   | ProcessResultData
 
-/** Narrow an artifact to its payload by kind. */
-export type ArtifactOf<K extends ArtifactKind> = Artifact & {
+export type ArtifactOf<K extends ArtifactKind> = ArtifactDto & {
   kind: K
   data: K extends 'ROOT_CAUSE'
     ? RootCauseData
@@ -271,10 +355,9 @@ export type ArtifactOf<K extends ArtifactKind> = Artifact & {
 }
 
 // ---------------------------------------------------------------------------
-// §0 Envelopes
+// Envelopes and endpoint payloads
 // ---------------------------------------------------------------------------
 
-/** Lists are always wrapped. Single objects are returned bare. */
 export interface ListResponse<T> {
   data: T[]
 }
@@ -283,39 +366,18 @@ export interface ErrorResponse {
   error: { code: string; message: string }
 }
 
-// ---------------------------------------------------------------------------
-// §2 Endpoint payloads
-// ---------------------------------------------------------------------------
-
-/**
- * Which agent completed each stage, or null if it has not been reached. This
- * is what lets the four-dot rail pick each dot's colour. The stage in flight
- * is the first null while the ticket is RUNNING.
- */
-export interface Stage {
-  context: AgentId | null
-  investigate: AgentId | null
-  verify: AgentId | null
-  approve: AgentId | null
-}
-
-/** A row of `GET /api/tickets`. */
-export interface TicketListRow extends Ticket {
-  run: Pick<Run, 'id' | 'state' | 'path' | 'attempt' | 'startedAt'> | null
-  stage: Stage
-}
-
-/** `GET /api/tickets/:id`. Paints the whole page except the timeline. */
+/** `GET /tickets/:id`. Paints the whole page except the timeline. */
 export interface TicketDetailResponse {
-  ticket: Ticket
+  ticket: TicketDto
   /** null before the first investigation. */
-  run: Run | null
-  artifacts: Artifact[]
-  /** null unless one exists. */
-  insight: Pick<ImpactData, 'affectedTenants' | 'affectedRecords'> | null
+  run: RunDto | null
+  artifacts: ArtifactDto[]
+  /** Render `reason` above the buttons when `required`. */
+  approval: { required: boolean; policyId?: string; reason?: string } | null
+  /** Present when monitoring raised this rather than a person. */
+  signal: SignalDto | null
 }
 
-/** `POST /api/tickets`. */
 export interface CreateTicketBody {
   customer: string
   title: string
@@ -324,32 +386,44 @@ export interface CreateTicketBody {
   channel?: Channel
 }
 
-/** `POST /api/tickets/:id/investigate` — 202, or 200 with the active run. */
+/** `POST /tickets/:id/investigate` — 202, and idempotent. */
 export interface InvestigateResponse {
   runId: string
-  state: RunState
+  /** False when a run was already in flight and this call joined it. */
+  started: boolean
 }
 
-/** `POST /api/tickets/:id/decision`. */
 export interface DecisionBody {
   decision: 'APPROVE' | 'REJECT'
   note?: string
 }
 
 export interface DecisionResponse {
-  ticket: Ticket
-  run: Run
-  artifacts: Artifact[]
+  decision: 'APPROVE' | 'REJECT'
+  ticketStatus: TicketStatus
+  runState: RunState
+  reply?: ArtifactDto
 }
 
-/** `GET /api/agents/:id` — `card` is the agent's own card, unmodified. */
+/** `GET /runs/:runId`. */
+export interface RunDetailResponse {
+  run: RunDto
+  tasks: TaskDto[]
+  steps: { id: string; state: RunState; at: string }[]
+}
+
+/** `GET /agents/:id` — `card` is the agent's own card, unmodified. */
 export interface AgentDetailResponse {
-  agent: Agent
   card: unknown
-  recentTasks: Task[]
+  recentTasks: TaskDto[]
 }
 
-/** `GET /api/stats`. */
+/** `GET /agents/capabilities` — who can do what. */
+export interface CapabilityRow {
+  capability: string
+  agentIds: AgentId[]
+}
+
 export interface Stats {
   active: number
   aiWorking: number
@@ -358,19 +432,18 @@ export interface Stats {
   avgResolutionMins: number
 }
 
-/** `GET /api/insights?ticketId=`. */
 export interface Insight {
   affectedTenants: number
   affectedRecords: number
   firstSeen: string
   trend: { date: string; count: number }[]
+  sql: string
 }
 
-/** `POST /api/ask` — discriminated on `shape`. */
 export interface AskColumn {
   key: string
   label: string
-  type: 'string' | 'number' | 'currency' | 'date'
+  type: string
   /** Which value gets the inline bar. */
   primary?: boolean
 }
@@ -382,52 +455,30 @@ export type AskAnswer =
       columns: AskColumn[]
       rows: Record<string, string | number>[]
       sql: string
-      tookMs: number
     }
-  | {
-      shape: 'number'
-      title: string
-      value: number
-      unit?: string
-      delta?: { value: number; label: string }
-      sql: string
-      tookMs: number
-    }
+  | { shape: 'number'; title: string; value: number; unit?: string; sql: string }
   | {
       shape: 'series'
       title: string
+      series: { x: string; y: number }[]
       unit?: string
-      points: { x: string; y: number }[]
       sql: string
-      tookMs: number
     }
 
-/** `POST /api/signals`. */
 export interface SignalBody {
   source: string
   kind: string
   summary: string
-  metrics: Record<string, unknown>
+  metrics?: Record<string, unknown>
   escalate?: boolean
 }
 
-export interface Signal {
-  id: string
-  source: string
-  kind: string
-  summary: string
-  metrics: Record<string, unknown>
-  ticketId: string | null
-  createdAt: string
-}
-
 export interface SignalResponse {
-  signal: Signal
-  ticket: Ticket | null
+  signal: SignalDto
+  ticket: TicketDto | null
 }
 
-/** `GET /api/processes`. */
-export interface ProcessDefinition {
+export interface ProcessDefinitionDto {
   key: string
   name: string
   trigger: 'event' | 'schedule' | 'manual'
@@ -438,79 +489,19 @@ export interface ProcessDefinition {
 export interface ProcessRunResponse {
   ticketId: string
   runId: string
+  started: boolean
+  processKey: string
 }
-
-// ---------------------------------------------------------------------------
-// §4 SSE
-// ---------------------------------------------------------------------------
-
-/**
- * Every event carries `activityId` and `seq`. That is what makes the
- * history-plus-stream join safe: fetch `/activities`, open the stream, drop
- * any event whose `activityId` is already held. Without those two fields the
- * boundary entry double-renders, which is the commonest bug in this UI.
- */
-export interface StreamEventBase {
-  ticketId: string
-  seq: number
-  activityId: string
-}
-
-/**
- * The event NAME travels on the SSE `event:` line, so it is a key here rather
- * than a field in the payload — which is also why `a2a.request` can use
- * `type` for the task type without colliding with anything.
- */
-export interface StreamEventMap {
-  'ticket.created': StreamEventBase & { ticket: Ticket }
-  'run.started': StreamEventBase & { runId: string }
-  'run.state': StreamEventBase & {
-    runId: string
-    state: RunState
-    path: RunPath | null
-    attempt: number
-  }
-  'brain.thought': StreamEventBase & { text: string }
-  'a2a.request': StreamEventBase & {
-    taskId: string
-    from: AgentId
-    to: AgentId
-    type: TaskType
-    summary: string
-  }
-  'a2a.response': StreamEventBase & {
-    taskId: string
-    from: AgentId
-    to: AgentId
-    status: string
-    summary: string
-    durationMs: number | null
-  }
-  'agent.log': StreamEventBase & { taskId: string; agent: AgentId; line: string }
-  'artifact.created': StreamEventBase & { artifact: Artifact }
-  'run.awaiting_approval': StreamEventBase & { runId: string; policyReason: string }
-  'run.completed': StreamEventBase & { runId: string; outcome: 'RESOLVED' | 'NEEDS_HUMAN' }
-  /** Registry-level, so no ticket. */
-  'agent.status': { agentId: AgentId; status: Agent['status'] }
-  'signal.raised': { signal: Signal; ticketId: string | null }
-}
-
-export type StreamEventName = keyof StreamEventMap
-export type StreamEventPayload<K extends StreamEventName = StreamEventName> = StreamEventMap[K]
 
 // ---------------------------------------------------------------------------
 // Extensions
 // ---------------------------------------------------------------------------
 
 /**
- * Everything below is OUTSIDE the frozen contract: additive endpoints this
- * deployment happens to serve. A contract-compliant backend is not required
- * to implement any of them, so every consumer must treat them as optional and
- * degrade quietly when they 404.
- *
- * That rule is what keeps the promise that pointing the console at a
- * different backend is a URL change: the screens that matter run on §2 alone,
- * and these only ever add to what is on screen.
+ * Outside the frozen contract: endpoints this deployment happens to serve.
+ * A compliant backend implements none of them, so every consumer treats them
+ * as optional and degrades quietly on a 404. That rule is what keeps the
+ * promise that pointing the console at another backend is a URL change.
  */
 export interface WorkspaceSummary {
   id: string
@@ -528,7 +519,7 @@ export interface MemoryEntry {
   symptom: string
   rootCause: string
   resolution: string
-  path: RunPath
+  path: ResolutionPath
   tags: string[]
   reuseCount: number
   minutesSavedPerReuse: number

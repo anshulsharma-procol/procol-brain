@@ -8,14 +8,18 @@ import { EventEmitter } from 'node:events'
 import type { ActivityEvent } from './domain/types.js'
 
 export type BrainEvent =
-  /** One row was appended to a ticket's audit trail. */
+  /**
+   * One row was appended to a ticket's audit trail.
+   *
+   * `workspaceId` is null for the events that belong to no one workspace —
+   * an agent going offline is everyone's news — and a scoped subscriber lets
+   * those through rather than filtering them out.
+   */
   | {
       type: 'activity'
       ticketRef: string
-      workspaceId: string
+      workspaceId: string | null
       activity: ActivityEvent
-      /** Extra fields the contract's payload for this event type carries. */
-      wire: Record<string, unknown>
     }
   /** Something changed that a board would want to re-read. */
   | { type: 'board.updated'; workspaceId: string }

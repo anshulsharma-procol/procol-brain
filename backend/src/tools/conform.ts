@@ -8,8 +8,9 @@ import { z } from 'zod'
  *   npm run conform                      # check this service
  *   npm run conform -- https://host/api  # check anyone else's
  *
- * Validates every endpoint in docs/API_CONTRACT.md §2 against the types in
- * contracts/api.ts, with Zod standing in for the compiler at runtime.
+ * Validates every endpoint in the contract (contracts/api.ts, transcribed
+ * from the backend's FRONTEND.md) against a live server, with Zod standing in
+ * for the compiler at runtime.
  *
  * This is what makes "point the console at the real backend and it just
  * works" a claim you can check instead of a hope. Run it against Ayush's host
@@ -24,7 +25,7 @@ import { z } from 'zod'
 const BASE = process.argv[2] ?? 'http://localhost:4000/api'
 
 // ---------------------------------------------------------------------------
-// §1 shapes
+// Enums and entities
 // ---------------------------------------------------------------------------
 
 const iso = z.string().refine((value) => !Number.isNaN(Date.parse(value)), 'not an ISO timestamp')
@@ -54,8 +55,7 @@ const runState = z.enum([
   'RESOLVED',
   'NEEDS_HUMAN',
 ])
-const runPath = z.enum(['CODE_FIX', 'CONFIG_FIX', 'ANSWER_ONLY', 'PROCESS']).nullable()
-const level = z.enum(['info', 'success', 'warn', 'error'])
+const resolutionPath = z.enum(['CODE_FIX', 'CONFIG_FIX', 'ANSWER_ONLY', 'PROCESS']).nullable()
 const artifactKind = z.enum([
   'ROOT_CAUSE',
   'PR',
@@ -64,20 +64,6 @@ const artifactKind = z.enum([
   'CUSTOMER_REPLY',
   'IMPACT',
   'PROCESS_RESULT',
-])
-const activityType = z.enum([
-  'ticket.created',
-  'run.started',
-  'run.state',
-  'brain.thought',
-  'a2a.request',
-  'a2a.response',
-  'agent.log',
-  'artifact.created',
-  'run.awaiting_approval',
-  'run.completed',
-  'agent.status',
-  'signal.raised',
 ])
 
 const ticket = z.object({
@@ -98,55 +84,39 @@ const run = z.object({
   id: z.string().min(1),
   ticketId: z.string().min(1),
   state: runState,
-  path: runPath,
+  path: resolutionPath,
   attempt: z.number().int().min(1).max(2),
   summary: z.string().nullable(),
-  policyReason: z.string().nullable(),
   startedAt: iso,
   endedAt: iso.nullable(),
 })
 
-const stage = z.object({
-  context: z.string().nullable(),
-  investigate: z.string().nullable(),
-  verify: z.string().nullable(),
-  approve: z.string().nullable(),
-})
-
-const activity = z.object({
-  id: z.string().min(1),
-  ticketId: z.string().min(1),
-  runId: z.string().nullable(),
-  seq: z.number().int(),
-  type: activityType,
-  fromAgent: z.string().nullable(),
-  toAgent: z.string().nullable(),
-  title: z.string(),
-  // The one field people get wrong: it stays a string, so the frontend never
-  // calls JSON.parse on a response.
-  body: z.string().nullable(),
-  level,
-  taskId: z.string().nullable(),
-  durationMs: z.number().nullable(),
-  createdAt: iso,
-})
-
-/** §3 — the approval panel depends on these exactly. */
+/**
+ * Artifact payloads — §"Artifact payloads".
+ *
+ * These are the shapes the approval panel reads field by field, so a rename
+ * here is a blank panel rather than a type error. Checking them is most of
+ * the value of this tool.
+ */
 const ARTIFACT_DATA: Record<string, z.ZodTypeAny> = {
   ROOT_CAUSE: z.object({
-    summary: z.string(),
-    detail: z.string(),
+    rootCause: z.string(),
+    file: z.string(),
     confidence: z.number().min(0).max(1),
+    attempt: z.number().int(),
   }),
   PR: z.object({
     number: z.number(),
     url: z.string(),
-    state: z.enum(['created', 'merged', 'mock']),
+    state: z.string(),
+    // The flag that stops the UI rendering an unclickable link as a live PR.
+    real: z.boolean(),
+    note: z.string().optional(),
     branch: z.string(),
-    files: z.array(z.string()),
-    additions: z.number(),
-    deletions: z.number(),
-    patch: z.string(),
+    title: z.string(),
+    body: z.string(),
+    filesChanged: z.array(z.string()),
+    diff: z.string(),
   }),
   TEST_RESULT: z.object({
     status: z.enum(['passed', 'failed']),
@@ -156,26 +126,41 @@ const ARTIFACT_DATA: Record<string, z.ZodTypeAny> = {
     durationMs: z.number(),
     suites: z.array(z.string()),
     failures: z.array(z.string()),
+    message: z.string(),
+    branch: z.string(),
+    attempt: z.number().int(),
   }),
   CONFIG_FIX: z.object({
-    summary: z.string(),
+    title: z.string(),
     steps: z.array(z.string()),
-    system: z.string(),
+    rationale: z.string(),
+    requiresCodeChange: z.boolean(),
+    citations: z.array(z.string()),
+    customer: z.string(),
   }),
   CUSTOMER_REPLY: z.object({
     subject: z.string(),
     body: z.string(),
-    sentTo: z.string(),
+    citations: z.array(z.string()).optional(),
+    sentAt: z.string().optional(),
+    approvedBy: z.string().optional(),
   }),
   IMPACT: z.object({
     affectedTenants: z.number(),
     affectedRecords: z.number(),
     firstSeen: z.string(),
+    trend: z.array(z.object({ date: z.string(), count: z.number() })),
+    sql: z.string(),
+    source: z.string(),
   }),
   PROCESS_RESULT: z.object({
-    processKey: z.string(),
-    stepsCompleted: z.array(z.string()),
-    records: z.array(z.object({ type: z.string(), id: z.string() })),
+    key: z.string(),
+    name: z.string(),
+    completed: z.array(
+      z.object({ stepId: z.string(), name: z.string(), detail: z.string() }).passthrough(),
+    ),
+    pending: z.array(z.object({ stepId: z.string(), name: z.string(), action: z.string() })),
+    input: z.unknown(),
   }),
 }
 
@@ -202,6 +187,87 @@ const artifact = z
       })
     }
   })
+
+/**
+ * The activity envelope and its twelve payloads.
+ *
+ * A discriminated union, exactly as the contract defines it — because the
+ * whole reason the SSE payload and the stored row are one object is that a
+ * client can switch on `type` and trust the fields. If a type carries a field
+ * under the wrong name this is where it shows.
+ */
+const base = { id: z.string().min(1), seq: z.number().int(), ticketId: z.string(), at: iso }
+const agentId = z.string().min(1)
+
+const activity = z.discriminatedUnion('type', [
+  z.object({ ...base, type: z.literal('ticket.created'), ticket: ticket.passthrough() }).passthrough(),
+  z.object({ ...base, type: z.literal('run.started'), runId: z.string() }).passthrough(),
+  z
+    .object({
+      ...base,
+      type: z.literal('run.state'),
+      runId: z.string(),
+      state: runState,
+      path: resolutionPath,
+      attempt: z.number().int(),
+    })
+    .passthrough(),
+  z.object({ ...base, type: z.literal('brain.thought'), text: z.string().min(1) }).passthrough(),
+  z
+    .object({
+      ...base,
+      type: z.literal('a2a.request'),
+      taskId: z.string(),
+      from: agentId,
+      to: agentId,
+      taskType: z.string(),
+      summary: z.string(),
+    })
+    .passthrough(),
+  z
+    .object({
+      ...base,
+      type: z.literal('a2a.response'),
+      taskId: z.string(),
+      from: agentId,
+      to: agentId,
+      status: z.string(),
+      summary: z.string(),
+      durationMs: z.number().nullable(),
+    })
+    .passthrough(),
+  z
+    .object({
+      ...base,
+      type: z.literal('agent.log'),
+      taskId: z.string(),
+      agent: agentId,
+      line: z.string(),
+    })
+    .passthrough(),
+  z.object({ ...base, type: z.literal('artifact.created'), artifact }).passthrough(),
+  z
+    .object({
+      ...base,
+      type: z.literal('run.awaiting_approval'),
+      runId: z.string(),
+      policyId: z.string(),
+      policyReason: z.string(),
+    })
+    .passthrough(),
+  z
+    .object({ ...base, type: z.literal('run.completed'), runId: z.string(), outcome: z.string() })
+    .passthrough(),
+  z
+    .object({
+      ...base,
+      type: z.literal('agent.status'),
+      agentId,
+      status: z.enum(['ONLINE', 'OFFLINE', 'UNKNOWN']),
+    })
+    .passthrough(),
+  z.object({ ...base, type: z.literal('signal.raised'), signal: z.record(z.unknown()) }).passthrough(),
+])
 
 const task = z.object({
   id: z.string().min(1),
@@ -246,6 +312,16 @@ const stats = z.object({
   needsApproval: z.number(),
   resolvedToday: z.number(),
   avgResolutionMins: z.number(),
+})
+
+const signal = z.object({
+  id: z.string().min(1),
+  source: z.string(),
+  kind: z.string(),
+  summary: z.string(),
+  metrics: z.record(z.unknown()),
+  ticketId: z.string().nullable(),
+  createdAt: iso,
 })
 
 const list = <T extends z.ZodTypeAny>(item: T) => z.object({ data: z.array(item) })
@@ -302,18 +378,19 @@ async function main() {
 
   const checks: Check[] = []
   let sampleTicketId = ''
+  let sampleRunId = ''
 
   checks.push({
-    name: 'GET /tickets — list of Ticket + run + stage',
+    name: 'GET /tickets — a bare list of Ticket',
     run: async () => {
       const { status, body } = await get('/tickets')
       if (status !== 200) throw new Error(`expected 200, got ${status}`)
 
-      const rows = (body as { data: unknown[] }).data
-      const error = expect(list(ticket.passthrough().and(z.object({ run: run.partial().nullable(), stage }))), body)
+      const error = expect(list(ticket.passthrough()), body)
       if (error) throw new Error(error)
-      if (rows.length === 0) throw new Error('no tickets to check — seed the board first')
 
+      const rows = (body as { data: unknown[] }).data
+      if (rows.length === 0) throw new Error('no tickets to check — seed the board first')
       sampleTicketId = (rows[0] as { id: string }).id
     },
   })
@@ -337,7 +414,21 @@ async function main() {
   })
 
   checks.push({
-    name: 'GET /agents/:id — agent, raw card, recent tasks',
+    name: 'GET /agents/capabilities — capability → agent ids',
+    run: async () => {
+      const { status, body } = await get('/agents/capabilities')
+      if (status !== 200) throw new Error(`expected 200, got ${status}`)
+
+      const error = expect(
+        list(z.object({ capability: z.string(), agentIds: z.array(z.string()) })),
+        body,
+      )
+      if (error) throw new Error(error)
+    },
+  })
+
+  checks.push({
+    name: 'GET /agents/:id — the raw card and recent tasks',
     run: async () => {
       const { body: listBody } = await get('/agents')
       const first = (listBody as { data: { id: string }[] }).data[0]
@@ -347,7 +438,7 @@ async function main() {
       if (status !== 200) throw new Error(`expected 200, got ${status}`)
 
       const error = expect(
-        z.object({ agent: agent.passthrough(), card: z.unknown(), recentTasks: z.array(task.passthrough()) }),
+        z.object({ card: z.unknown(), recentTasks: z.array(task.passthrough()) }).passthrough(),
         body,
       )
       if (error) throw new Error(error)
@@ -364,21 +455,51 @@ async function main() {
   })
 
   checks.push({
-    name: 'GET /tickets/:id — ticket, run, artifacts, insight',
+    name: 'GET /tickets/:id — ticket, run, artifacts, approval, signal',
     run: async () => {
       const { status, body } = await get(`/tickets/${encodeURIComponent(sampleTicketId)}`)
       if (status !== 200) throw new Error(`expected 200, got ${status}`)
 
       const error = expect(
-        z.object({
-          ticket: ticket.passthrough(),
-          run: run.passthrough().nullable(),
-          artifacts: z.array(artifact),
-          insight: z
-            .object({ affectedTenants: z.number(), affectedRecords: z.number() })
-            .passthrough()
-            .nullable(),
-        }),
+        z
+          .object({
+            ticket: ticket.passthrough(),
+            run: run.passthrough().nullable(),
+            artifacts: z.array(artifact),
+            approval: z
+              .object({
+                required: z.boolean(),
+                policyId: z.string().optional(),
+                reason: z.string().optional(),
+              })
+              .nullable(),
+            signal: signal.passthrough().nullable(),
+          })
+          .passthrough(),
+        body,
+      )
+      if (error) throw new Error(error)
+
+      sampleRunId = (body as { run: { id: string } | null }).run?.id ?? ''
+    },
+  })
+
+  checks.push({
+    name: 'GET /runs/:runId — the run, its tasks and its state history',
+    run: async () => {
+      if (!sampleRunId) throw new Error('no run on the sample ticket to read')
+
+      const { status, body } = await get(`/runs/${encodeURIComponent(sampleRunId)}`)
+      if (status !== 200) throw new Error(`expected 200, got ${status}`)
+
+      const error = expect(
+        z
+          .object({
+            run: run.passthrough(),
+            tasks: z.array(task.passthrough()),
+            steps: z.array(z.object({ id: z.string(), state: runState, at: iso })),
+          })
+          .passthrough(),
         body,
       )
       if (error) throw new Error(error)
@@ -386,10 +507,10 @@ async function main() {
   })
 
   checks.push({
-    name: 'GET /tickets/:id/activities — ordered by seq, body is a string',
+    name: 'GET /tickets/:id/activities — the union, ordered by seq',
     run: async () => {
       const { body } = await get(`/tickets/${encodeURIComponent(sampleTicketId)}/activities`)
-      const error = expect(list(activity.passthrough()), body)
+      const error = expect(list(activity), body)
       if (error) throw new Error(error)
 
       const rows = (body as { data: { seq: number }[] }).data
@@ -423,7 +544,7 @@ async function main() {
   })
 
   checks.push({
-    name: 'POST /tickets → 201 with a Ticket, then a 202 investigate',
+    name: 'POST /tickets → 201 with a Ticket, then an idempotent investigate',
     run: async () => {
       const created = await post('/tickets', {
         customer: 'Conformance Co',
@@ -443,18 +564,25 @@ async function main() {
         throw new Error(`investigate: expected 202 (or 200 when joining), got ${started.status}`)
       }
 
-      const shape = expect(z.object({ runId: z.string(), state: runState }), started.body)
+      const shape = expect(
+        z.object({ runId: z.string().min(1), started: z.boolean() }).passthrough(),
+        started.body,
+      )
       if (shape) throw new Error(shape)
 
-      // A second POST must join the run in flight, never fork one.
+      // A second POST must join the run in flight, never fork one — and must
+      // say so by answering started: false.
       const again = await post(`/tickets/${encodeURIComponent(id)}/investigate`)
       if (again.status !== 200 && again.status !== 202) {
         throw new Error(`second investigate: expected 200/202, got ${again.status}`)
       }
-      const firstRun = (started.body as { runId: string }).runId
-      const secondRun = (again.body as { runId: string }).runId
-      if (firstRun !== secondRun) {
-        throw new Error(`double investigate forked a second run: ${firstRun} then ${secondRun}`)
+      const first = started.body as { runId: string }
+      const second = again.body as { runId: string; started: boolean }
+      if (first.runId !== second.runId) {
+        throw new Error(`double investigate forked a second run: ${first.runId} then ${second.runId}`)
+      }
+      if (second.started !== false) {
+        throw new Error('joining a run in flight must answer started: false')
       }
     },
   })
@@ -493,6 +621,60 @@ async function main() {
   })
 
   checks.push({
+    name: 'POST /tickets/:id/decision — the decision, both states, and the reply',
+    run: async () => {
+      const { body } = await get('/tickets?status=AWAITING_APPROVAL')
+      const rows = (body as { data: { id: string }[] }).data
+      if (rows.length === 0) return
+
+      const { status, body: decided } = await post(
+        `/tickets/${encodeURIComponent(rows[0]!.id)}/decision`,
+        { decision: 'APPROVE', note: 'Approved by the conformance checker.' },
+      )
+      if (status !== 200) throw new Error(`expected 200, got ${status}`)
+
+      const error = expect(
+        z
+          .object({
+            decision: z.enum(['APPROVE', 'REJECT']),
+            ticketStatus,
+            runState,
+            reply: artifact.optional(),
+          })
+          .passthrough(),
+        decided,
+      )
+      if (error) throw new Error(error)
+    },
+  })
+
+  checks.push({
+    name: 'GET /insights — the numbers with the query that produced them',
+    run: async () => {
+      const { status, body } = await get(
+        `/insights?ticketId=${encodeURIComponent(sampleTicketId)}`,
+      )
+      // A ticket with no impact recorded answers 404, which is correct.
+      if (status === 404) return
+      if (status !== 200) throw new Error(`expected 200 or 404, got ${status}`)
+
+      const error = expect(
+        z
+          .object({
+            affectedTenants: z.number(),
+            affectedRecords: z.number(),
+            firstSeen: z.string(),
+            trend: z.array(z.object({ date: z.string(), count: z.number() })),
+            sql: z.string().min(1),
+          })
+          .passthrough(),
+        body,
+      )
+      if (error) throw new Error(error)
+    },
+  })
+
+  checks.push({
     name: 'POST /ask — discriminated on shape, sql always present',
     run: async () => {
       const { body } = await post('/ask', {
@@ -500,29 +682,57 @@ async function main() {
       })
       const error = expect(
         z.discriminatedUnion('shape', [
-          z.object({
-            shape: z.literal('table'),
-            title: z.string(),
-            columns: z.array(z.object({ key: z.string(), label: z.string(), type: z.string() }).passthrough()),
-            rows: z.array(z.record(z.unknown())),
-            sql: z.string(),
-            tookMs: z.number(),
-          }),
-          z.object({
-            shape: z.literal('number'),
-            title: z.string(),
-            value: z.number(),
-            sql: z.string(),
-            tookMs: z.number(),
-          }).passthrough(),
-          z.object({
-            shape: z.literal('series'),
-            title: z.string(),
-            points: z.array(z.object({ x: z.string(), y: z.number() })),
-            sql: z.string(),
-            tookMs: z.number(),
-          }).passthrough(),
+          z
+            .object({
+              shape: z.literal('table'),
+              title: z.string(),
+              columns: z.array(
+                z.object({ key: z.string(), label: z.string(), type: z.string() }).passthrough(),
+              ),
+              rows: z.array(z.record(z.unknown())),
+              sql: z.string().min(1),
+            })
+            .passthrough(),
+          z
+            .object({
+              shape: z.literal('number'),
+              title: z.string(),
+              value: z.number(),
+              sql: z.string().min(1),
+            })
+            .passthrough(),
+          z
+            .object({
+              shape: z.literal('series'),
+              title: z.string(),
+              series: z.array(z.object({ x: z.string(), y: z.number() })),
+              sql: z.string().min(1),
+            })
+            .passthrough(),
         ]),
+        body,
+      )
+      if (error) throw new Error(error)
+    },
+  })
+
+  checks.push({
+    name: 'GET /ask/examples',
+    run: async () => {
+      const { status, body } = await get('/ask/examples')
+      if (status !== 200) throw new Error(`expected 200, got ${status}`)
+      const error = expect(list(z.string()), body)
+      if (error) throw new Error(error)
+    },
+  })
+
+  checks.push({
+    name: 'GET /policies — every gate, in the words it is rendered in',
+    run: async () => {
+      const { status, body } = await get('/policies')
+      if (status !== 200) throw new Error(`expected 200, got ${status}`)
+      const error = expect(
+        list(z.object({ id: z.string().min(1), reason: z.string().min(1) }).passthrough()),
         body,
       )
       if (error) throw new Error(error)
@@ -550,6 +760,16 @@ async function main() {
   })
 
   checks.push({
+    name: 'GET /signals',
+    run: async () => {
+      const { status, body } = await get('/signals')
+      if (status !== 200) throw new Error(`expected 200, got ${status}`)
+      const error = expect(list(signal.passthrough()), body)
+      if (error) throw new Error(error)
+    },
+  })
+
+  checks.push({
     name: 'POST /signals — signal plus an optional ticket',
     run: async () => {
       const { status, body } = await post('/signals', {
@@ -561,10 +781,7 @@ async function main() {
       if (status !== 200 && status !== 201) throw new Error(`expected 200/201, got ${status}`)
 
       const error = expect(
-        z.object({
-          signal: z.object({ id: z.string(), summary: z.string() }).passthrough(),
-          ticket: ticket.passthrough().nullable(),
-        }),
+        z.object({ signal: signal.passthrough(), ticket: ticket.passthrough().nullable() }),
         body,
       )
       if (error) throw new Error(error)
@@ -572,7 +789,7 @@ async function main() {
   })
 
   checks.push({
-    name: 'SSE /tickets/:id/stream — every event carries activityId and seq',
+    name: 'SSE /tickets/:id/stream — the event name is the payload type',
     run: async () => {
       const controller = new AbortController()
       const response = await fetch(`${BASE}/tickets/${encodeURIComponent(sampleTicketId)}/stream`, {
@@ -589,9 +806,16 @@ async function main() {
         throw new Error('missing Cache-Control: no-cache')
       }
 
-      // Read whatever arrives in a short window; an idle stream is fine.
+      // Provoke traffic on the stream we are already holding open, so this
+      // checks real events rather than passing on an idle connection.
+      void post('/signals', {
+        source: 'conformance',
+        kind: 'STREAM_PROBE',
+        summary: 'Checking that SSE frames match the contract.',
+      })
+
       const reader = response.body!.getReader()
-      const timer = setTimeout(() => controller.abort(), 1500)
+      const timer = setTimeout(() => controller.abort(), 2000)
       let buffer = ''
       try {
         for (;;) {
@@ -605,13 +829,45 @@ async function main() {
         clearTimeout(timer)
       }
 
-      for (const line of buffer.split('\n')) {
-        if (!line.startsWith('data:')) continue
-        const payload = JSON.parse(line.slice(5))
-        if (!('activityId' in payload) || !('seq' in payload)) {
-          throw new Error(`event payload is missing activityId/seq: ${line.slice(0, 120)}`)
+      // Each frame: `id:` for Last-Event-ID replay, `event:` naming the type,
+      // `data:` carrying the row. The name and the payload's own `type` must
+      // agree — a client subscribing by event name and a client switching on
+      // the field have to see the same thing.
+      for (const frame of buffer.split('\n\n')) {
+        const data = frame.split('\n').find((line) => line.startsWith('data:'))
+        if (!data) continue
+
+        const name = frame.split('\n').find((line) => line.startsWith('event:'))?.slice(6).trim()
+        const payload = JSON.parse(data.slice(5)) as Record<string, unknown>
+
+        if (name === 'board.updated') continue
+
+        const error = expect(activity, payload)
+        if (error) throw new Error(`${name}: ${error}`)
+        if (name !== payload.type) {
+          throw new Error(`event name "${name}" does not match payload type "${String(payload.type)}"`)
         }
       }
+    },
+  })
+
+  checks.push({
+    name: 'GET /contract — the server describes what it serves',
+    run: async () => {
+      const { status, body } = await get('/contract')
+      if (status !== 200) throw new Error(`expected 200, got ${status}`)
+
+      const error = expect(
+        z
+          .object({
+            version: z.string(),
+            endpoints: z.array(z.string()).min(1),
+            extensions: z.array(z.string()),
+          })
+          .passthrough(),
+        body,
+      )
+      if (error) throw new Error(error)
     },
   })
 

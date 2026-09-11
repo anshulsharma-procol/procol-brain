@@ -64,9 +64,12 @@ export const ResolutionDetails = ({ resolution }: ResolutionDetailsProps) => {
 
           {pr && (
             <div className={local.prRow}>
-              {/* A missing url means the PR lives behind a system the customer
-                  cannot reach, so it renders as text rather than a dead link. */}
-              {pr.url ? (
+              {/* Rendered as a link only when there is somewhere to go and the
+                  pull request was really opened. A missing url means it lives
+                  behind a system the customer cannot reach; `real: false`
+                  means it does not exist to reach. Either way, a dead link is
+                  worse than plain text. */}
+              {pr.url && pr.real !== false ? (
                 <a
                   className={local.prLink}
                   href={pr.url}
@@ -78,7 +81,9 @@ export const ResolutionDetails = ({ resolution }: ResolutionDetailsProps) => {
               ) : (
                 <span className={local.prNumber}>PR #{pr.number}</span>
               )}
-              <span className={local.prStatus}>{pr.status}</span>
+              <span className={local.prStatus}>
+                {pr.real === false ? 'prepared' : pr.status}
+              </span>
             </div>
           )}
 

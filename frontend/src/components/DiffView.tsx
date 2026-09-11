@@ -1,13 +1,13 @@
 /**
  * A unified diff, rendered red/green.
  *
- * The contract sends `patch` as one string, so this parses it rather than
+ * The contract sends `diff` as one string, so this parses it rather than
  * taking a pre-split array — about thirty lines, which is less than the cost
  * of a dependency and enough for a patch that has to be legible on a
  * projector.
  */
-export default function DiffView({ patch }: { patch: string }) {
-  const lines = patch.split('\n')
+export default function DiffView({ diff }: { diff: string }) {
+  const lines = diff.split('\n')
 
   return (
     <pre className="overflow-x-auto rounded-lg border border-gray-200 bg-gray-50 py-2 font-mono text-[12px] leading-6">

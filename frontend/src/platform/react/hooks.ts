@@ -179,24 +179,31 @@ export function useTicketDetail(ticketRef: string | undefined) {
     ticketRef ? { kind: 'ticket', ticketRef } : undefined,
     useCallback(
       (message: StreamMessage) => {
-        if (message.type !== 'activity' || !message.activityId) return
-        if (seen.current.has(message.activityId)) return
-        seen.current.add(message.activityId)
+        if (message.type !== 'activity') return
+
+        const row = message.activity
+        // Dedupe on the id, order on the seq. Both travel on the row itself,
+        // which is what makes the history/stream boundary safe: the entry
+        // that arrives on the stream and the one already fetched are the
+        // same object, so it cannot render twice.
+        if (seen.current.has(row.id)) return
+        seen.current.add(row.id)
+
+        // Not ticket-scoped, by the contract's own rule. Keep it off the
+        // timeline rather than letting a seq of -1 sort it to the top.
+        if (row.type === 'agent.status') return
 
         // Events that change more than the timeline — an artifact appearing,
         // a run reaching the gate or closing — are re-read rather than
         // reconstructed, so the page and the backend cannot disagree about a
         // ticket's state.
-        if (RE_READ.has(message.name)) {
+        if (RE_READ.has(row.type)) {
           refresh()
           return
         }
 
         setResult((current) => {
           if (!current.data) return current
-
-          const row = activityFrom(message, current.data)
-          if (!row) return current
 
           return {
             ...current,
@@ -250,80 +257,12 @@ export function useTicketDetail(ticketRef: string | undefined) {
  * Events whose consequence is not just another line on the timeline. The
  * cheapest correct response to these is to re-read the ticket.
  */
-const RE_READ = new Set([
+const RE_READ = new Set<ActivityEvent['type']>([
   'artifact.created',
   'run.awaiting_approval',
   'run.completed',
   'ticket.created',
 ])
-
-/**
- * Builds a timeline row from a contract event.
- *
- * The stream carries what changed, not the stored row, so the fields the UI
- * reads are assembled here from the payload the contract defines for each
- * event name. Anything not named by the contract stays null rather than being
- * guessed at.
- */
-function activityFrom(
-  message: Extract<StreamMessage, { type: 'activity' }>,
-  detail: TicketDetail,
-): ActivityEvent | undefined {
-  const payload = message.payload as Record<string, string | number | null | undefined>
-  const seq = Number(payload.seq)
-  if (!message.activityId || Number.isNaN(seq)) return undefined
-
-  const base: ActivityEvent = {
-    id: message.activityId,
-    ticketId: detail.ticket.reference,
-    runId: (payload.runId as string) ?? null,
-    seq,
-    type: message.name as ActivityEvent['type'],
-    fromAgent: null,
-    toAgent: null,
-    title: '',
-    body: null,
-    level: 'info',
-    taskId: (payload.taskId as string) ?? null,
-    durationMs: null,
-    createdAt: new Date().toISOString(),
-  }
-
-  switch (message.name) {
-    case 'brain.thought':
-      return { ...base, fromAgent: 'brain', title: String(payload.text ?? '') }
-
-    case 'run.started':
-      return { ...base, fromAgent: 'brain', title: 'Investigation started' }
-
-    case 'run.state':
-      return { ...base, fromAgent: 'brain', title: String(payload.state ?? '') }
-
-    case 'a2a.request':
-      return {
-        ...base,
-        fromAgent: String(payload.from ?? 'brain'),
-        toAgent: String(payload.to ?? ''),
-        title: String(payload.summary ?? payload.type ?? ''),
-      }
-
-    case 'a2a.response':
-      return {
-        ...base,
-        fromAgent: String(payload.from ?? ''),
-        toAgent: String(payload.to ?? 'brain'),
-        title: String(payload.summary ?? ''),
-        durationMs: typeof payload.durationMs === 'number' ? payload.durationMs : null,
-        level: payload.status === 'failed' ? 'error' : 'success',
-      }
-
-    case 'agent.log':
-      return { ...base, fromAgent: String(payload.agent ?? ''), title: String(payload.line ?? '') }
-
-    default:
-      return undefined
-  }
-}
 
 export function useMemory(): AsyncState<MemoryEntry[]> {
   const { workspace } = useWorkspace()

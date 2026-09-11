@@ -1,4 +1,11 @@
 import type {
+  ConfigFixData,
+  ImpactData,
+  PrData,
+  RootCauseData,
+  TestResultData,
+} from '../contract.js'
+import type {
   ArtifactKind,
   Category,
   ResolutionPath,
@@ -85,19 +92,16 @@ export interface Playbook {
     durationMs: number
     confidence: number
     tool: { server: string; call: string }
-    /** contract ROOT_CAUSE, plus `evidence` as an additive extra. */
-    rootCause: { summary: string; detail: string; confidence: number; evidence: string[] }
-    /** contract PR: `patch` is a unified diff the UI renders red/green. */
-    pr: {
-      number: number
-      title: string
-      url: string
-      branch: string
-      files: string[]
-      additions: number
-      deletions: number
-      patch: string
-    }
+    /**
+     * The contract's ROOT_CAUSE payload, plus `evidence`.
+     *
+     * `attempt` is not here: it belongs to the run, not to the script, so the
+     * agent stamps it from the task context. A scripted 1 would be a lie the
+     * second time round the dev↔QA loop.
+     */
+    rootCause: Omit<RootCauseData, 'attempt'> & { evidence: string[] }
+    /** The contract's PR payload, plus the diff stat the UI puts on the header. */
+    pr: Omit<PrData, 'real'> & { additions: number; deletions: number }
   }
 
   /** The validation agent's answer. */
@@ -107,32 +111,28 @@ export interface Playbook {
     logs: string[]
     durationMs: number
     tool: { server: string; call: string }
-    /** contract TEST_RESULT, plus `cases` as an additive extra. */
-    suites: string[]
-    total: number
-    passed: number
-    failed: number
-    cases: string[]
+    /** The contract's TEST_RESULT payload, plus the named cases. */
+    result: Omit<TestResultData, 'branch' | 'attempt' | 'durationMs'> & { cases: string[] }
   }
 
   /** Blast radius, when the analytics copilot has something to say. */
-  impact?: {
+  impact?: ImpactData & {
     summary: string
     detail: string[]
     logs: string[]
     durationMs: number
-    affectedTenants: number
-    affectedRecords: number
+    /** What one record is called here — "invoices", "sessions". */
     recordLabel: string
-    firstSeen: string
-    trend: { date: string; count: number }[]
   }
 
-  /** The remediation Brain drafts when the product is behaving correctly. */
-  /** contract CONFIG_FIX, plus `change` as an additive extra. */
-  configFix?: {
-    summary: string
-    steps: string[]
+  /**
+   * The remediation Brain drafts when the product is behaving correctly.
+   *
+   * `requiresCodeChange` and `customer` are filled in by the run: the first
+   * is what this branch means, the second is on the ticket.
+   */
+  configFix?: Omit<ConfigFixData, 'requiresCodeChange' | 'customer'> & {
+    /** Additive: the system the change is made in, and what it changes. */
     system: string
     change: string
   }
@@ -146,6 +146,8 @@ export interface Playbook {
   reply: {
     subject: string
     body: string[]
+    /** What the answer rests on. Shown under the draft at the gate. */
+    citations: string[]
   }
 
   memory: {
@@ -239,9 +241,9 @@ const INVOICE_TAX: Playbook = {
     confidence: 0.94,
     tool: { server: 'github', call: 'read_file + create_branch + create_pr' },
     rootCause: {
-      summary: 'Tenant context is never passed into the GST calculator.',
-      detail:
+      rootCause:
         'calculateInvoice() applies the module-level DEFAULT_GST_RATE constant instead of the tenant’s configured gstPercent, so every tenant falls back to the default 12% slab regardless of their settings.',
+      file: 'src/invoiceCalculator.js',
       confidence: 0.94,
       evidence: [
         'src/invoiceCalculator.js:7 — const gst = taxable * (DEFAULT_GST_RATE / 100)',
@@ -254,10 +256,12 @@ const INVOICE_TAX: Playbook = {
       title: 'Use the tenant’s configured GST rate in calculateInvoice',
       url: 'https://github.com/procol-hack/demo-repo/pull/452',
       branch: 'fix/gst-tenant-rate',
-      files: ['src/invoiceCalculator.js'],
+      body: 'calculateInvoice() ignored tenantConfig.gstPercent and always applied DEFAULT_GST_RATE. This reads the tenant’s rate and falls back to the default only when it is unset.',
+      state: 'mock',
+      filesChanged: ['src/invoiceCalculator.js'],
       additions: 7,
       deletions: 3,
-      patch: [
+      diff: [
         '--- a/src/invoiceCalculator.js',
         '+++ b/src/invoiceCalculator.js',
         '@@ -4,7 +4,8 @@ function calculateInvoice(lineItems, tenantConfig) {',
@@ -280,17 +284,22 @@ const INVOICE_TAX: Playbook = {
     ],
     durationMs: 1830,
     tool: { server: 'test-runner', call: 'run_tests' },
-    suites: ['invoice', 'tax', 'discount'],
-    total: 47,
-    passed: 47,
-    failed: 0,
-    cases: [
-      'GST applied at the tenant’s configured rate',
-      'Discount applied before tax',
-      'Default rate used when the tenant has no override',
-      'Multi-currency rounding unchanged',
-      'Credit notes unchanged',
-    ],
+    result: {
+      status: 'passed',
+      suites: ['invoice', 'tax', 'discount'],
+      total: 47,
+      passed: 47,
+      failed: 0,
+      failures: [],
+      message: '47 of 47 passed across invoice, tax and discount.',
+      cases: [
+        'GST applied at the tenant’s configured rate',
+        'Discount applied before tax',
+        'Default rate used when the tenant has no override',
+        'Multi-currency rounding unchanged',
+        'Credit notes unchanged',
+      ],
+    },
   },
 
   impact: {
@@ -315,6 +324,15 @@ const INVOICE_TAX: Playbook = {
       { date: '23 Mar', count: 71 },
       { date: '30 Mar', count: 94 },
     ],
+    source: 'procurement-db',
+    sql: [
+      'SELECT COUNT(DISTINCT i.tenant_id) AS tenants,',
+      '       COUNT(*)                    AS invoices',
+      'FROM invoices i',
+      'JOIN tenant_config c ON c.tenant_id = i.tenant_id',
+      "WHERE i.issued_at >= '2026-03-02'",
+      '  AND i.gst_rate <> c.gst_percent;',
+    ].join('\n'),
   },
 
   reply: {
@@ -324,6 +342,7 @@ const INVOICE_TAX: Playbook = {
       'The fix has passed our full invoice regression suite and has been approved for release. Your affected invoices are being re-issued — you do not need to raise them again.',
       'If anything still looks wrong on your next invoice, reply to this ticket and it will come straight back to us.',
     ],
+    citations: ['PR #452', 'Invoice regression suite — 47/47', 'Tenant configuration · ABC Corp'],
   },
 
   memory: {
@@ -397,7 +416,7 @@ const VENDOR_ACCESS: Playbook = {
   },
 
   configFix: {
-    summary: 'Add the vendor to the auction participant list.',
+    title: 'Add the vendor to the auction participant list.',
     system: 'Procol sourcing console',
     change: 'Auction → Participants → add the invited vendor',
     steps: [
@@ -406,6 +425,9 @@ const VENDOR_ACCESS: Playbook = {
       'Confirm the invitation email is queued to their registered contact',
       'The auction appears on their dashboard within one minute',
     ],
+    rationale:
+      'Auction visibility is driven by the participant list, not by vendor registration. The vendor is registered and active, so nothing in the product is behaving incorrectly — they were simply never invited to this auction.',
+    citations: ['auctions.md#participants'],
   },
 
   reply: {
@@ -415,6 +437,7 @@ const VENDOR_ACCESS: Playbook = {
       'We have added them under Auction → Participants and their invitation is on its way. The auction will show on their dashboard within a minute of them signing in.',
       'No product change was needed here, so nothing else on your account is affected.',
     ],
+    citations: ['auctions.md#participants', 'Vendor record · active on this tenant'],
   },
 
   memory: {
@@ -505,10 +528,10 @@ const AUTH_401: Playbook = {
     confidence: 0.97,
     tool: { server: 'github', call: 'read_file + create_branch + create_pr' },
     rootCause: {
-      summary: 'JWT_ISSUER was changed to the API host during deployment.',
+      rootCause:
+        'JWT_ISSUER was changed to the API host during deployment. Tokens are minted with issuer auth.acmecloud.com, but the deployed auth service validates against api.acmecloud.com — every token fails the issuer check, so the service returns 401 for every user on every tenant.',
+      file: 'deploy/production.yaml',
       confidence: 0.97,
-      detail:
-        'Tokens are minted with issuer auth.acmecloud.com, but the deployed auth service validates against api.acmecloud.com. Every token fails the issuer check, so the service returns 401 for every user on every tenant.',
       evidence: [
         'deploy/production.yaml — JWT_ISSUER: api.acmecloud.com',
         'services/auth/jwt.js:34 — issuer compared strictly against process.env.JWT_ISSUER',
@@ -520,10 +543,12 @@ const AUTH_401: Playbook = {
       title: 'Fix JWT issuer configuration',
       url: 'https://github.com/acmecloud/platform/pull/892',
       branch: 'fix/jwt-issuer',
-      files: ['deploy/production.yaml', 'services/auth/jwt.js'],
+      body: 'The deployed auth service validated tokens against api.acmecloud.com while they are minted with auth.acmecloud.com. This restores the issuer and fails loudly at boot when it is unset, so the same deployment cannot silently 401 every user again.',
+      state: 'mock',
+      filesChanged: ['deploy/production.yaml', 'services/auth/jwt.js'],
       additions: 6,
       deletions: 2,
-      patch: [
+      diff: [
         '--- a/deploy/production.yaml',
         '+++ b/deploy/production.yaml',
         '@@ -18,7 +18,7 @@ services:',
@@ -552,18 +577,23 @@ const AUTH_401: Playbook = {
     ],
     durationMs: 2240,
     tool: { server: 'test-runner', call: 'run_tests' },
-    suites: ['login', 'tokens', 'multi-tenant'],
-    total: 32,
-    passed: 32,
-    failed: 0,
-    cases: [
-      'Login',
-      'Logout',
-      'Token refresh',
-      'Invalid token rejected',
-      'Expired token rejected',
-      'Multi-tenant authentication',
-    ],
+    result: {
+      status: 'passed',
+      suites: ['login', 'tokens', 'multi-tenant'],
+      total: 32,
+      passed: 32,
+      failed: 0,
+      failures: [],
+      message: '32 of 32 passed across login, tokens and multi-tenant.',
+      cases: [
+        'Login',
+        'Logout',
+        'Token refresh',
+        'Invalid token rejected',
+        'Expired token rejected',
+        'Multi-tenant authentication',
+      ],
+    },
   },
 
   reply: {
@@ -573,6 +603,7 @@ const AUTH_401: Playbook = {
       'The fix has passed our full authentication regression suite and has been approved for deployment.',
       'Please try logging in again. If you continue to experience any issues, reply to this ticket.',
     ],
+    citations: ['PR #892', 'Authentication regression suite — 32/32', 'Incident INC-382'],
   },
 
   memory: {
@@ -654,6 +685,7 @@ const AUCTION_HOWTO: Playbook = {
       'You can extend a live auction from Sourcing → Auctions: open the auction, choose Extend on the header, and set the new closing time.',
       'Participants are notified automatically, and the change is recorded on the auction’s audit trail. An auction that has already closed cannot be extended — clone it into a new round instead.',
     ],
+    citations: ['auctions.md#extending-a-live-auction'],
   },
 
   memory: {
@@ -726,7 +758,7 @@ const WEBHOOK_RETRY: Playbook = {
   },
 
   configFix: {
-    summary: 'Raise the tenant’s webhook retry budget from 3s to 10s.',
+    title: 'Raise the tenant’s webhook retry budget from 3s to 10s.',
     system: 'AcmeCloud admin console',
     change: 'Tenant settings → Integrations → retry budget: 3s → 10s',
     steps: [
@@ -735,6 +767,9 @@ const WEBHOOK_RETRY: Playbook = {
       'Replay the 212 abandoned deliveries from the delivery log',
       'Add an alert when the abandon rate for a tenant crosses 1%',
     ],
+    rationale:
+      'The delivery pipeline is working exactly as configured: it abandons a delivery that exceeds the tenant’s retry budget. The endpoint’s p99 is 6.2s against a 3s budget, so healthy-but-slow deliveries were being dropped. Nothing in the product needs changing — the budget does.',
+    citations: ['webhooks.md#retry-budget', 'Delivery log · 212 abandoned since 4 September'],
   },
 
   reply: {
@@ -744,6 +779,7 @@ const WEBHOOK_RETRY: Playbook = {
       'We have raised the budget on your tenant and replayed the deliveries that were abandoned, so nothing is lost. We have also added an alert so this surfaces to us next time instead of to you.',
       'No change to your integration is needed on your side.',
     ],
+    citations: ['webhooks.md#retry-budget', 'Delivery log · 212 replayed'],
   },
 
   memory: {
@@ -825,6 +861,7 @@ const UNRECOGNISED: Playbook = {
       'Thanks for reporting this. We have not seen this particular symptom before, so rather than guess we have put it in front of a person on our team.',
       'You will hear from us directly once we know what is happening.',
     ],
+    citations: [],
   },
 
   memory: {

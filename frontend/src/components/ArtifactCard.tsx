@@ -21,28 +21,43 @@ export default function ArtifactCard({ artifact }: { artifact: Artifact }) {
 
 function Summary({ artifact }: { artifact: Artifact }) {
   if (isArtifact(artifact, 'ROOT_CAUSE')) {
-    return <>{artifact.data.summary}</>
+    return <>{artifact.data.rootCause}</>
   }
 
   if (isArtifact(artifact, 'PR')) {
-    const { number, url, files, additions, deletions, state } = artifact.data
+    const { number, url, real, branch, filesChanged, state } = artifact.data
+    const stat = artifact.data as { additions?: number; deletions?: number }
+
     return (
       <>
-        <a
-          href={url}
-          target="_blank"
-          rel="noreferrer"
-          className="inline-flex items-center gap-1 font-mono text-blue-600 hover:underline"
-        >
-          #{number}
-          <ExternalLink className="h-3 w-3" />
-        </a>
-        {/* 'mock' is the contract's own word for a pull request that was not
-            really opened. Saying so is better than implying a merge. */}
-        {state === 'mock' && <span className="ml-1.5 text-gray-400">mock</span>}
-        <span className="ml-1.5 font-mono">{files[0]}</span>
-        <span className="ml-1.5 text-green-600">+{additions}</span>
-        <span className="ml-1 text-red-500">−{deletions}</span>
+        {/* The contract's `real` flag is the whole point of this branch: a
+            link that cannot be opened must not look like one that can. When
+            the PR was not really opened the reader is shown the branch the
+            patch is on, which is the thing that does exist. */}
+        {real ? (
+          <a
+            href={url}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1 font-mono text-blue-600 hover:underline"
+          >
+            #{number}
+            <ExternalLink className="h-3 w-3" />
+          </a>
+        ) : (
+          <>
+            <span className="font-mono text-gray-600">#{number}</span>
+            <span className="ml-1.5 text-gray-400">{state}</span>
+            <span className="ml-1.5 font-mono text-gray-400">{branch}</span>
+          </>
+        )}
+        <span className="ml-1.5 font-mono">{filesChanged[0]}</span>
+        {stat.additions !== undefined && (
+          <span className="ml-1.5 text-green-600">+{stat.additions}</span>
+        )}
+        {stat.deletions !== undefined && (
+          <span className="ml-1 text-red-500">−{stat.deletions}</span>
+        )}
       </>
     )
   }
@@ -57,7 +72,7 @@ function Summary({ artifact }: { artifact: Artifact }) {
     )
   }
 
-  if (isArtifact(artifact, 'CONFIG_FIX')) return <>{artifact.data.summary}</>
+  if (isArtifact(artifact, 'CONFIG_FIX')) return <>{artifact.data.title}</>
 
   if (isArtifact(artifact, 'IMPACT')) {
     const { affectedTenants, affectedRecords } = artifact.data
@@ -69,16 +84,24 @@ function Summary({ artifact }: { artifact: Artifact }) {
   }
 
   if (isArtifact(artifact, 'CUSTOMER_REPLY')) {
+    // `sentTo` is additive; without it the subject stands on its own.
+    const to = (artifact.data as { sentTo?: string }).sentTo
     return (
       <>
         {artifact.data.subject}
-        <span className="ml-1.5 text-gray-400">→ {artifact.data.sentTo}</span>
+        {to && <span className="ml-1.5 text-gray-400">→ {to}</span>}
       </>
     )
   }
 
   if (isArtifact(artifact, 'PROCESS_RESULT')) {
-    return <>{artifact.data.stepsCompleted.length} steps completed</>
+    const { completed, pending } = artifact.data
+    return (
+      <>
+        {completed.length} steps completed
+        {pending.length > 0 && <span className="ml-1.5 text-amber-600">{pending.length} pending</span>}
+      </>
+    )
   }
 
   return null

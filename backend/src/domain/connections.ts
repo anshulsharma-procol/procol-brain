@@ -1,4 +1,4 @@
-import type { Connector } from '../contract.js'
+import type { ConnectorDto } from '../contract.js'
 
 /**
  * ============================================================================
@@ -23,7 +23,7 @@ export type ConnectionCategory = 'agent' | 'mcp' | 'database' | 'saas' | 'knowle
 
 export type ConnectionStatus = 'connected' | 'action_required' | 'not_connected'
 
-export interface ConnectionDef extends Connector {
+export interface ConnectionDef extends ConnectorDto {
   name: string
   description: string
   category: ConnectionCategory
@@ -50,7 +50,7 @@ export interface ConnectionDef extends Connector {
  * additive precisely because the contract's vocabulary does not have a word
  * for "another company's agent".
  */
-const KIND: Record<ConnectionCategory, Connector['kind']> = {
+const KIND: Record<ConnectionCategory, ConnectorDto['kind']> = {
   agent: 'saas-api',
   mcp: 'mcp',
   database: 'database',

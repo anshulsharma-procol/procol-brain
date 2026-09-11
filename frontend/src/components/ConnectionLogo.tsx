@@ -130,6 +130,16 @@ const CATEGORY_TINT: Record<string, { background: string; color: string }> = {
   knowledge: { background: '#FDECEC', color: '#DC2626' },
 }
 
+/**
+ * The mark, when we have no SVG for a brand.
+ *
+ * A brand's own colours are used as the brand publishes them — SAP's white on
+ * #0FAAFF measures 2.56:1, below AA, and is left alone deliberately: WCAG
+ * exempts text that is part of a logo, the element is `aria-hidden` so no
+ * reader announces it, and the connection's name sits beside it at 17:1.
+ * Repainting a company's mark to pass a contrast check misrepresents it and
+ * helps nobody. The category tints below are ours and do meet AA.
+ */
 function Monogram({ logo, name, category, size }: Props & { size: number }) {
   const brand = MONOGRAM[logo]
   const tint = CATEGORY_TINT[category ?? ''] ?? { background: '#F1F1F0', color: '#4B5563' }
@@ -156,9 +166,17 @@ function Monogram({ logo, name, category, size }: Props & { size: number }) {
   )
 }
 
+/**
+ * A monogram for a brand we have no mark for.
+ *
+ * Spread into characters before slicing, never `slice(0, 2)`: that cuts UTF-16
+ * code units, so a name like "A🚀" splits the surrogate pair and renders a
+ * lone half as tofu. Companies name connections in their own scripts and with
+ * emoji, and a broken glyph is the first thing anyone notices.
+ */
 function initials(name: string): string {
   const words = name.trim().split(/\s+/).filter(Boolean)
   if (words.length === 0) return '?'
-  if (words.length === 1) return words[0]!.slice(0, 2).toUpperCase()
-  return (words[0]![0]! + words[1]![0]!).toUpperCase()
+  if (words.length === 1) return [...words[0]!].slice(0, 2).join('').toUpperCase()
+  return ([...words[0]!][0]! + [...words[1]!][0]!).toUpperCase()
 }

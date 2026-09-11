@@ -1,6 +1,7 @@
 import { ArrowLeft, Bot, ChevronRight, Cloud, Database, FileText, Plug, Sparkles, X } from 'lucide-react'
 import { useState } from 'react'
 import type { ConnectionCategory, ConnectionType } from '../platform/types'
+import { usePanelFocus } from '../hooks/usePanelFocus'
 
 /**
  * "What would you like to connect?"
@@ -43,6 +44,7 @@ const ACCENTS: Record<ConnectionType['accent'], { bg: string; fg: string }> = {
 export default function AddConnectionDrawer({ types, busy, error, onClose, onSubmit }: Props) {
   const [chosen, setChosen] = useState<ConnectionType | null>(null)
   const [values, setValues] = useState<Record<string, string>>({})
+  const panel = usePanelFocus(onClose)
 
   const set = (key: string, value: string) => setValues((current) => ({ ...current, [key]: value }))
 
@@ -63,7 +65,8 @@ export default function AddConnectionDrawer({ types, busy, error, onClose, onSub
 
   return (
     <aside
-      className="flex h-full w-[380px] shrink-0 flex-col border-l border-gray-200 bg-white"
+      {...panel}
+      className="flex h-full w-[380px] shrink-0 flex-col border-l border-gray-200 bg-white focus:outline-none"
       aria-label="Add connection"
     >
       <div className="flex items-start justify-between gap-3 px-6 pb-4 pt-6">
@@ -79,7 +82,7 @@ export default function AddConnectionDrawer({ types, busy, error, onClose, onSub
           type="button"
           onClick={onClose}
           aria-label="Close"
-          className="shrink-0 rounded p-1 text-gray-400 hover:bg-gray-50 hover:text-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
+          className="shrink-0 rounded p-1 text-gray-500 hover:bg-gray-50 hover:text-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
         >
           <X className="h-5 w-5" />
         </button>
@@ -156,7 +159,7 @@ export default function AddConnectionDrawer({ types, busy, error, onClose, onSub
                   className="block text-sm font-medium text-gray-700"
                 >
                   {field.label}
-                  {!field.required && <span className="ml-1 text-gray-400">optional</span>}
+                  {!field.required && <span className="ml-1 text-gray-500">optional</span>}
                 </label>
                 <input
                   id={`connect-${field.key}`}
@@ -165,7 +168,7 @@ export default function AddConnectionDrawer({ types, busy, error, onClose, onSub
                   onChange={(event) => set(field.key, event.target.value)}
                   placeholder={field.placeholder}
                   autoComplete="off"
-                  className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-800 placeholder:text-gray-400 focus:border-violet-300 focus:outline-none"
+                  className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-800 placeholder:text-gray-500 focus:border-violet-300 focus:outline-none"
                 />
               </div>
             ))}

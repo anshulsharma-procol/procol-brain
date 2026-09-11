@@ -13,9 +13,20 @@ import type { AskAnswer } from '../contract.js'
  * Here the answers are seeded, so the three demo questions work with the wifi
  * off. The shapes are exactly what a live connector would return.
  */
+/**
+ * The contract's answer, plus two things the panel shows and it has no field
+ * for: how long the query took, and the change against the previous period.
+ * Both are additive — a client that reads only the contract renders the
+ * number and the SQL, and never knows they were sent.
+ */
+type Answer = AskAnswer & {
+  tookMs?: number
+  delta?: { value: number; label: string }
+}
+
 interface SeededAnswer {
   match: string[]
-  answer: AskAnswer
+  answer: Answer
 }
 
 const ANSWERS: SeededAnswer[] = [
@@ -104,7 +115,19 @@ const ANSWERS: SeededAnswer[] = [
  * one. Validating the entity and every field name against the schema before
  * compiling is what turns an unknown field into an error instead of a query.
  */
-export function answerQuestion(question: string): AskAnswer {
+/**
+ * What to put in front of someone facing an empty Lens box.
+ *
+ * These are the three the seeded connector can answer, which is deliberate: a
+ * suggestion that returns nothing teaches the reader the feature is broken.
+ */
+export const ASK_EXAMPLES: string[] = [
+  'Which category managers saved the most last quarter?',
+  'What is the average TAT from RFQ created to PO issued?',
+  'How many tickets did Brain resolve without a person this month?',
+]
+
+export function answerQuestion(question: string): Answer {
   const haystack = question.toLowerCase()
   const hit = ANSWERS.find((candidate) => candidate.match.some((term) => haystack.includes(term)))
 

@@ -100,33 +100,46 @@ export function widgetProgress(detail: TicketDetail) {
  * reason the widget is worth having.
  */
 function widgetActivity(row: TicketDetail['activity'][number]) {
+  const text = (value: unknown) => (typeof value === 'string' ? value : '')
+  const line = {
+    id: row.id,
+    from: 'brain',
+    to: 'brain',
+    via: 'A2A' as 'A2A' | 'MCP',
+    taskId: text(row.taskId) || undefined,
+    at: row.at,
+  }
+
   // The widget's feed shows the conversation, not the machinery: a run.state
   // line or an artifact row is noise to a customer watching their own ticket.
-  if (row.type === 'run.state' || row.type === 'artifact.created') return []
+  switch (row.type) {
+    case 'brain.thought':
+      return [{ ...line, text: text(row.text), kind: 'response' }]
 
-  const kind =
-    row.type === 'a2a.request'
-      ? 'request'
-      : row.type === 'agent.log'
-        ? 'tool'
-        : 'response'
+    case 'a2a.request':
+      return [
+        { ...line, from: 'brain', to: text(row.to), text: text(row.summary), kind: 'request' },
+      ]
 
-  // The request row's body is the raw envelope; the customer gets the title.
-  const text = row.type === 'a2a.request' ? row.title : [row.title, row.body].filter(Boolean).join(' ')
-  if (!text.trim()) return []
+    case 'a2a.response':
+      return [
+        {
+          ...line,
+          from: text(row.from),
+          to: 'brain',
+          text: [text(row.summary), text(row.detail)].filter(Boolean).join(' '),
+          kind: 'response',
+        },
+      ]
 
-  return [
-    {
-      id: row.id,
-      from: row.fromAgent ?? 'brain',
-      to: row.toAgent ?? 'brain',
-      text,
-      via: row.type === 'agent.log' ? 'MCP' : 'A2A',
-      kind,
-      taskId: row.taskId ?? undefined,
-      at: row.createdAt,
-    },
-  ]
+    case 'agent.log':
+      return [
+        { ...line, from: text(row.agent), text: text(row.line), via: 'MCP', kind: 'tool' },
+      ]
+
+    default:
+      return []
+  }
 }
 
 function widgetResolution(detail: TicketDetail) {
@@ -160,15 +173,31 @@ function widgetResolution(detail: TicketDetail) {
       ticket.status === 'RESOLVED'
         ? String(reply?.data.subject ?? 'Your issue has been resolved.')
         : 'A fix is ready and waiting for a human to approve it.',
-    rootCause: rootCause ? String(rootCause.data.headline) : config ? String(config.data.summary) : undefined,
+    rootCause: rootCause
+      ? String(rootCause.data.rootCause)
+      : config
+        ? String(config.data.title)
+        : undefined,
     checks,
     tests: tests ? { passed: Number(tests.data.passed), total: Number(tests.data.total) } : undefined,
     pr: pr
       ? {
           number: Number(String(pr.data.number).replace('#', '')),
-          status: ticket.status === 'RESOLVED' ? 'merged' : 'open',
+          // Only a pull request that was really opened can be called merged.
+          // A consumer that reads `status` without checking `real` must still
+          // be told something true, so an unopened one stays 'created' — a
+          // fix exists, nothing has been merged — however the run ended.
+          status: !pr.data.real
+            ? 'created'
+            : ticket.status === 'RESOLVED'
+              ? 'merged'
+              : 'open',
           title: String(pr.data.title),
           url: String(pr.data.url ?? ''),
+          // `state: 'mock'` is our internal word and does not belong in a
+          // customer's view. What they need is only whether the link goes
+          // anywhere, which is what this says.
+          real: pr.data.real === true,
         }
       : undefined,
     filesChanged: pr ? (pr.data.filesChanged as string[]) : undefined,

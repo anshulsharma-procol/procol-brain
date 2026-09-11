@@ -13,11 +13,19 @@ import { durationLabel } from '../utils/format'
 
 const APPROVER = 'Anshul Sharma'
 
-/** The contract's three PR states. 'mock' says plainly it was not real. */
-const PR_STATE: Record<string, string> = {
-  created: 'Open',
-  merged: 'Merged',
-  mock: 'Mock PR',
+/**
+ * How to label a pull request.
+ *
+ * `state` is a free string in the contract, so this reads `real` first: a PR
+ * that was not opened is labelled as a patch on a branch, whatever the state
+ * happens to say. Showing "Merged" over a link that 404s is the one thing on
+ * this page that would be worth a judge's time to disprove.
+ */
+function prLabel(data: { state: string; real: boolean }): { label: string; merged: boolean } {
+  if (!data.real) return { label: 'Patch on a branch', merged: false }
+
+  const known: Record<string, string> = { created: 'Open', open: 'Open', merged: 'Merged' }
+  return { label: known[data.state] ?? data.state, merged: data.state === 'merged' }
 }
 
 /**
@@ -27,6 +35,11 @@ const PR_STATE: Record<string, string> = {
 function evidenceOf(data: unknown): string[] | undefined {
   const evidence = (data as { evidence?: unknown }).evidence
   return Array.isArray(evidence) ? (evidence as string[]) : undefined
+}
+
+function sentToOf(data: unknown): string | undefined {
+  const to = (data as { sentTo?: unknown }).sentTo
+  return typeof to === 'string' ? to : undefined
 }
 
 function casesOf(data: { suites: string[] }): string[] {
@@ -120,11 +133,17 @@ export default function Resolution() {
           {rootCause && (
             <Card className="p-6">
               <p className="text-xs uppercase tracking-wide text-gray-400">Root cause</p>
-              <p className="mt-2 text-lg font-semibold leading-snug text-gray-900">
-                {rootCause.data.summary}
+              <p className="mt-2 max-w-[70ch] text-base leading-relaxed text-gray-900">
+                {rootCause.data.rootCause}
               </p>
-              <p className="mt-2 max-w-[70ch] text-sm leading-relaxed text-gray-600">
-                {rootCause.data.detail}
+              <p className="mt-2 font-mono text-xs text-gray-500">
+                {rootCause.data.file}
+                <span className="ml-2 text-gray-400">
+                  {Math.round(rootCause.data.confidence * 100)}% confidence
+                </span>
+                {rootCause.data.attempt > 1 && (
+                  <span className="ml-2 text-amber-600">attempt {rootCause.data.attempt}</span>
+                )}
               </p>
               {evidenceOf(rootCause.data) && (
                 <ul className="mt-3 space-y-1">
@@ -144,25 +163,35 @@ export default function Resolution() {
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="text-sm text-gray-500">
                   The fix ·{' '}
-                  <a
-                    href={pr.data.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1 font-mono text-blue-600 hover:underline"
-                  >
-                    #{pr.data.number}
-                    <ExternalLink className="h-3 w-3" />
-                  </a>{' '}
-                  · <span className="font-mono">{pr.data.files.join(', ')}</span>
+                  {pr.data.real ? (
+                    <a
+                      href={pr.data.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1 font-mono text-blue-600 hover:underline"
+                    >
+                      #{pr.data.number}
+                      <ExternalLink className="h-3 w-3" />
+                    </a>
+                  ) : (
+                    <span className="font-mono text-gray-600">
+                      #{pr.data.number} · {pr.data.branch}
+                    </span>
+                  )}{' '}
+                  · <span className="font-mono">{pr.data.filesChanged.join(', ')}</span>
                 </p>
                 <StatusPill
-                  label={PR_STATE[pr.data.state]}
-                  tone={pr.data.state === 'merged' ? 'success' : 'info'}
+                  label={prLabel(pr.data).label}
+                  tone={prLabel(pr.data).merged ? 'success' : 'info'}
                 />
               </div>
-              <p className="mt-1 text-sm font-medium text-gray-900">{pr.title}</p>
+              <p className="mt-1 text-sm font-medium text-gray-900">{pr.data.title}</p>
+              <p className="mt-1 max-w-[70ch] text-sm leading-relaxed text-gray-600">
+                {pr.data.body}
+              </p>
+              {pr.data.note && <p className="mt-1 text-xs text-gray-400">{pr.data.note}</p>}
               <div className="mt-3">
-                <DiffView patch={pr.data.patch} />
+                <DiffView diff={pr.data.diff} />
               </div>
             </Card>
           )}
@@ -170,8 +199,10 @@ export default function Resolution() {
           {configFix && (
             <Card className="p-6">
               <p className="text-xs uppercase tracking-wide text-gray-400">The change</p>
-              <p className="mt-2 text-base font-semibold text-gray-900">{configFix.data.summary}</p>
-              <p className="mt-1 font-mono text-xs text-gray-600">{configFix.data.system}</p>
+              <p className="mt-2 text-base font-semibold text-gray-900">{configFix.data.title}</p>
+              <p className="mt-1 max-w-[70ch] text-sm leading-relaxed text-gray-600">
+                {configFix.data.rationale}
+              </p>
               <ol className="mt-3 space-y-1.5">
                 {configFix.data.steps.map((step, index) => (
                   <li key={step} className="flex gap-2 text-sm text-gray-600">
@@ -251,7 +282,9 @@ export default function Resolution() {
                 {reply.data.body.split('\n\n').map((line: string) => (
                   <p key={line}>{line}</p>
                 ))}
-                <p className="text-gray-500">Sent to {reply.data.sentTo}</p>
+                {sentToOf(reply.data) && (
+                  <p className="text-gray-500">Sent to {sentToOf(reply.data)}</p>
+                )}
               </div>
             </Card>
           )}

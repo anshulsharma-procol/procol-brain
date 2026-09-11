@@ -21,18 +21,13 @@ export default function TranscriptEntry({ exchange }: { exchange: Exchange }) {
   const { workspace } = useWorkspace()
   const [showPayload, setShowPayload] = useState(false)
 
-  const { head, response, logs } = exchange
-  const speaker = response ?? head
-  const from = agentVisual(workspace, speaker.fromAgent ?? undefined)
-  const to = head.toAgent ? agentVisual(workspace, head.toAgent) : undefined
-  const color = colorClasses[from.color]
-
-  const level = response?.level ?? head.level
-  const body = response?.body ?? (head.type === 'a2a.request' ? null : head.body)
-  const title = response?.title ?? head.title
-  const durationMs = response?.durationMs ?? head.durationMs
-  // Only a request carries its envelope; a thought has nothing to disclose.
-  const payload = head.type === 'a2a.request' ? head.body : null
+  const { title, body, level, label, logs, durationMs, payload } = exchange
+  const from = agentVisual(workspace, exchange.from)
+  const to = exchange.to ? agentVisual(workspace, exchange.to) : undefined
+  // The rule takes the colour of whoever did the work — on a delegation that
+  // is the agent asked, not the Brain that asked it, so a run reads as a
+  // column of the agents involved.
+  const color = colorClasses[(to ?? from).color]
 
   return (
     <li className="transcript-entry relative flex gap-3 pb-5 last:pb-0">
@@ -40,12 +35,12 @@ export default function TranscriptEntry({ exchange }: { exchange: Exchange }) {
 
       <div className="min-w-0 flex-1 pl-4">
         <p className="flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[11px] text-gray-400">
-          <span>{timeOf(head.createdAt)}</span>
+          <span>{timeOf(exchange.at)}</span>
           <span className="text-gray-600">
             {from.name}
             {to && <span className="text-gray-400"> → {to.name}</span>}
           </span>
-          {head.taskId && <span className={`font-medium ${color.text}`}>{head.title}</span>}
+          {label && <span className={`font-medium ${color.text}`}>{label}</span>}
           {durationMs !== null && durationMs !== undefined && (
             <span className="text-gray-400">{durationLabel(durationMs)}</span>
           )}
@@ -60,7 +55,7 @@ export default function TranscriptEntry({ exchange }: { exchange: Exchange }) {
                 : 'text-gray-900'
           }`}
         >
-          {head.taskId ? title : head.title}
+          {title}
         </p>
 
         {body && <p className="mt-1 max-w-[68ch] text-sm leading-relaxed text-gray-600">{body}</p>}
@@ -70,13 +65,13 @@ export default function TranscriptEntry({ exchange }: { exchange: Exchange }) {
             {logs.map((log) => (
               <li key={log.id} className="pl-3 text-xs text-gray-400">
                 <span className="mr-1.5 text-gray-300">›</span>
-                {log.title}
+                {log.line}
               </li>
             ))}
           </ul>
         )}
 
-        {payload && (
+        {payload !== undefined && payload !== null && (
           <div className="mt-2">
             <button
               type="button"
@@ -103,14 +98,17 @@ export default function TranscriptEntry({ exchange }: { exchange: Exchange }) {
 }
 
 /**
- * The contract keeps `body` a string precisely so the frontend never parses a
- * response field. This is the one place it is treated as JSON, and only to
- * indent it for display — if it is not JSON, it is shown as written.
+ * The envelope, indented for display.
+ *
+ * It arrives parsed — the contract sends objects, never JSON strings — so
+ * this only formats. A backend that sends a string still renders: it is shown
+ * as written rather than as `[object Object]`.
  */
-function pretty(body: string): string {
+function pretty(payload: unknown): string {
+  if (typeof payload === 'string') return payload
   try {
-    return JSON.stringify(JSON.parse(body), null, 2)
+    return JSON.stringify(payload, null, 2)
   } catch {
-    return body
+    return String(payload)
   }
 }

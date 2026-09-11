@@ -1,4 +1,5 @@
 import type {
+  ActivityEvent,
   Connection,
   ConnectionCategory,
   ConnectionType,
@@ -120,14 +121,13 @@ export type StreamTarget =
  * render twice, which is the commonest bug in a timeline like this one.
  */
 export type StreamMessage =
-  | {
-      type: 'activity'
-      /** The contract event name, e.g. 'a2a.response'. */
-      name: string
-      ticketRef: string | undefined
-      activityId: string | undefined
-      payload: Record<string, unknown>
-    }
+  /**
+   * One activity row, exactly as `GET /tickets/:id/activities` would return
+   * it. The contract makes the SSE payload and the stored row the same
+   * object, so there is nothing to reassemble here: dedupe on `activity.id`,
+   * order on `activity.seq`, append.
+   */
+  | { type: 'activity'; activity: ActivityEvent }
   | { type: 'board.updated'; workspaceId: string }
 
 export type StreamListener = (message: StreamMessage) => void

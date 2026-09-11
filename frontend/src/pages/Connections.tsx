@@ -31,8 +31,16 @@ const EMPTY: Connection[] = []
 
 export default function Connections() {
   const { workspace } = useWorkspace()
-  /** Keyed by workspace, so a tower switch never shows the previous one's rows. */
-  const [loaded, setLoaded] = useState<{ id: string; connections: Connection[] } | null>(null)
+  /**
+   * Keyed by workspace and attempt, so a tower switch never shows the
+   * previous one's rows and a retry reads as loading rather than as a result
+   * that has not changed.
+   */
+  const [loaded, setLoaded] = useState<{
+    key: string
+    connections: Connection[]
+    error?: string
+  } | null>(null)
   const [types, setTypes] = useState<ConnectionType[]>([])
   const [filter, setFilter] = useState<'all' | ConnectionCategory>('all')
   const [adding, setAdding] = useState(false)
@@ -40,15 +48,35 @@ export default function Connections() {
   const [busyId, setBusyId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | undefined>()
+  /**
+   * Set when the list could not be read at all.
+   *
+   * Kept separate from "there are none", because collapsing the two is the
+   * worst thing this screen can do: a company with eight live connections
+   * told they have none may start re-adding things that already exist. An
+   * empty state is a statement of fact and has to be earned.
+   */
+  /** Bumped to retry, which is the only affordance a failed load needs. */
+  const [attempt, setAttempt] = useState(0)
+  /**
+   * What just happened, for a screen reader.
+   *
+   * Connecting and removing both rewrite the card and unmount the button that
+   * was pressed — so without this the only feedback is visual, and a
+   * screen-reader user presses Enter, hears nothing, and finds focus gone.
+   */
+  const [announcement, setAnnouncement] = useState('')
+
+  const key = `${workspace.id}:${attempt}`
 
   const load = useCallback(async () => {
-    const [rows, available] = await Promise.all([
-      consoleApi.listConnections(workspace.id),
-      consoleApi.listConnectionTypes(),
-    ])
-    setLoaded({ id: workspace.id, connections: rows })
+    const rows = await consoleApi.listConnections(workspace.id)
+    // The type list is an extension endpoint; without it the drawer has
+    // nothing to offer, but the connections themselves still render.
+    const available = await consoleApi.listConnectionTypes().catch(() => [])
+    setLoaded({ key: `${workspace.id}:${attempt}`, connections: rows })
     setTypes(available)
-  }, [workspace.id])
+  }, [workspace.id, attempt])
 
   useEffect(() => {
     let live = true
@@ -56,27 +84,33 @@ export default function Connections() {
     void consoleApi
       .listConnections(workspace.id)
       .then(async (rows) => {
-        const available = await consoleApi.listConnectionTypes()
+        const available = await consoleApi.listConnectionTypes().catch(() => [])
         if (!live) return
-        setLoaded({ id: workspace.id, connections: rows })
+        setLoaded({ key, connections: rows })
         setTypes(available)
       })
-      .catch(() => {
-        if (live) setLoaded({ id: workspace.id, connections: [] })
+      .catch((cause: unknown) => {
+        if (!live) return
+        setLoaded({
+          key,
+          connections: [],
+          error: cause instanceof Error ? cause.message : 'Lost connection to Brain.',
+        })
       })
 
     return () => {
       live = false
     }
-  }, [workspace.id])
+  }, [workspace.id, key])
 
   // Anything belonging to another workspace is stale, not content. Memoised
   // so the empty fallback is not a fresh array on every render.
   const connections = useMemo(
-    () => (loaded?.id === workspace.id ? loaded.connections : EMPTY),
-    [loaded, workspace.id],
+    () => (loaded?.key === key ? loaded.connections : EMPTY),
+    [loaded, key],
   )
-  const loading = loaded?.id !== workspace.id
+  const loading = loaded?.key !== key
+  const loadError = loaded?.key === key ? loaded.error : undefined
 
   const counts = useMemo(() => {
     const byCategory = new Map<string, number>()
@@ -99,12 +133,24 @@ export default function Connections() {
 
   const connect = async (connection: Connection) => {
     setBusyId(connection.id)
+    setAnnouncement(`Connecting ${connection.name}…`)
     try {
-      await consoleApi.reconnect(workspace.id, connection.id)
+      const next = await consoleApi.reconnect(workspace.id, connection.id)
       await load()
-    } catch {
-      // A connection that will not come up is not an error worth a dialog;
-      // the card keeps its state and the person can try again.
+      // The card rewrites itself on success and the button it was pressed
+      // with unmounts, so without this a screen-reader user hears nothing
+      // and finds focus gone.
+      setAnnouncement(
+        next.status === 'connected'
+          ? `${connection.name} connected.`
+          : `${connection.name} is still not connected.`,
+      )
+    } catch (cause) {
+      setAnnouncement(
+        `Could not connect ${connection.name}. ${
+          cause instanceof Error ? cause.message : 'Try again.'
+        }`,
+      )
     } finally {
       setBusyId(null)
     }
@@ -118,6 +164,7 @@ export default function Connections() {
       await load()
       setAdding(false)
       setSelected(created.id)
+      setAnnouncement(`${created.name} added.`)
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Could not add the connection.')
     } finally {
@@ -128,11 +175,17 @@ export default function Connections() {
   const remove = async (connection: Connection) => {
     await consoleApi.removeConnection(workspace.id, connection.id).catch(() => {})
     setSelected(null)
+    setAnnouncement(`${connection.name} removed.`)
     await load()
   }
 
   return (
     <PageShell tip="Connect your tools. Unleash your agents. Make real work happen.">
+      {/* Polite, so it waits for the reader to finish rather than cutting in. */}
+      <p className="sr-only" role="status" aria-live="polite">
+        {announcement}
+      </p>
+
       <div className="flex min-h-screen">
         <div className="min-w-0 flex-1">
           <TopBar />
@@ -147,13 +200,23 @@ export default function Connections() {
               </p>
             </div>
 
+            {/* Disabled while the list could not be read: the drawer's first
+                step is choosing a type, and with no types it opens onto
+                nothing. Offering a button that leads nowhere is worse than
+                one that says why it is unavailable. */}
             <button
               type="button"
+              disabled={Boolean(loadError) || types.length === 0}
+              title={
+                loadError || types.length === 0
+                  ? 'Unavailable while the console cannot reach Brain'
+                  : undefined
+              }
               onClick={() => {
                 setAdding(true)
                 setSelected(null)
               }}
-              className="flex shrink-0 items-center gap-1.5 rounded-lg bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-violet-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
+              className="flex shrink-0 items-center gap-1.5 rounded-lg bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-violet-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 disabled:cursor-not-allowed disabled:bg-gray-300"
             >
               <Plus className="h-4 w-4" strokeWidth={2.5} />
               Add connection
@@ -186,7 +249,27 @@ export default function Connections() {
 
           <div className="px-8 py-6">
             {loading ? (
-              <p className="py-10 text-center text-sm text-gray-400">Loading connections…</p>
+              <p className="py-10 text-center text-sm text-gray-500">Loading connections…</p>
+            ) : loadError ? (
+              <div
+                role="alert"
+                className="rounded-xl border border-dashed border-amber-300 bg-amber-50 py-14 text-center"
+              >
+                <p className="text-sm font-medium text-amber-900">
+                  Could not read this control tower&apos;s connections.
+                </p>
+                <p className="mx-auto mt-1 max-w-md text-sm text-amber-800">
+                  {loadError} Nothing has been changed — this is what the console can see, not
+                  what is connected.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setAttempt((count) => count + 1)}
+                  className="mt-4 rounded-lg bg-amber-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-amber-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
+                >
+                  Try again
+                </button>
+              </div>
             ) : visible.length === 0 ? (
               <div className="rounded-xl border border-dashed border-gray-200 py-14 text-center">
                 <p className="text-sm text-gray-500">

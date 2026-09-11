@@ -96,6 +96,10 @@ export function engineeringHandler(agentId: string): AgentHandler {
 
     await work(engineering.durationMs, options?.speed)
 
+    // Which pass round the dev↔QA loop this is. It belongs to the run, so it
+    // comes off the task rather than out of the script.
+    const attempt = Number(task.context.attempt ?? 1)
+
     return {
       taskId: task.taskId,
       status: 'completed',
@@ -106,23 +110,28 @@ export function engineeringHandler(agentId: string): AgentHandler {
         summary: engineering.summary,
         detail: engineering.detail,
         confidence: engineering.confidence,
-        filesChanged: engineering.pr.files,
+        filesChanged: engineering.pr.filesChanged,
+        branch: engineering.pr.branch,
         tool: engineering.tool,
       },
       artifacts: [
         {
           kind: 'ROOT_CAUSE',
           title: 'Root cause',
-          data: { ...engineering.rootCause },
+          data: { ...engineering.rootCause, attempt },
         },
         {
           kind: 'PR',
           title: `PR #${engineering.pr.number}`,
-          // 'mock' is the contract's word for a pull request this deployment
-          // did not really open, and it is the honest one while CODE_HOST is
-          // a mock. Calling it 'created' or flipping it to 'merged' after an
-          // approval would claim a merge that never happened.
-          data: { ...engineering.pr, state: 'mock' },
+          // `real: false` is the honest flag while CODE_HOST is a mock: the
+          // patch and the branch are what exist, and a client is told not to
+          // render the url as a live link. Claiming a PR that was never
+          // opened is the one thing on this timeline a judge could check.
+          data: {
+            ...engineering.pr,
+            real: false,
+            note: 'Opened against a mock code host. The patch on this branch is what exists.',
+          },
         },
       ],
     }
@@ -151,9 +160,12 @@ export function validationHandler(agentId: string): AgentHandler {
 
     await work(validation.durationMs, options?.speed)
 
+    const failed = validation.result.failed > 0
+    const attempt = Number(task.context.attempt ?? 1)
+
     return {
       taskId: task.taskId,
-      status: validation.failed > 0 ? 'failed' : 'completed',
+      status: failed ? 'failed' : 'completed',
       agent: agentId,
       durationMs: validation.durationMs,
       log: validation.logs,
@@ -161,21 +173,19 @@ export function validationHandler(agentId: string): AgentHandler {
         summary: validation.summary,
         detail: validation.detail,
         tool: validation.tool,
-        status: validation.failed > 0 ? 'failed' : 'passed',
+        status: validation.result.status,
       },
       artifacts: [
         {
           kind: 'TEST_RESULT',
           title: 'Test results',
           data: {
-            status: validation.failed > 0 ? 'failed' : 'passed',
-            suites: validation.suites,
-            total: validation.total,
-            passed: validation.passed,
-            failed: validation.failed,
+            ...validation.result,
             durationMs: validation.durationMs,
-            cases: validation.cases,
-            failures: [],
+            // The branch under test and which pass this is: both belong to
+            // the run, so both come off the task.
+            branch: String(task.context.branch ?? playbook.engineering?.pr.branch ?? 'main'),
+            attempt,
           },
         },
       ],

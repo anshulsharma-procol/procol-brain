@@ -87,7 +87,10 @@ export default function ConnectionCard({ connection, onOpen, onConnect, busy }: 
                 </li>
               ))}
               {overflow > 0 && (
-                <li className="px-1 font-mono text-[11px] text-gray-400">+{overflow}</li>
+                <li className="px-1 font-mono text-[11px] text-gray-500">
+                  <span aria-hidden="true">+{overflow}</span>
+                  <span className="sr-only">and {overflow} more</span>
+                </li>
               )}
             </ul>
           )}
@@ -99,14 +102,14 @@ export default function ConnectionCard({ connection, onOpen, onConnect, busy }: 
         </div>
       </div>
 
-      <button
-        type="button"
-        onClick={onOpen}
-        aria-label={`Open ${name}`}
-        className="absolute right-4 top-1/2 -translate-y-1/2 rounded p-1 text-gray-300 transition-colors hover:text-gray-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
-      >
-        <ChevronRight className="h-4 w-4" />
-      </button>
+      {/* Decoration, not a control: the name above is already the way in, and
+          a second stop that does the identical thing means a screen-reader
+          user hears every connection offered twice and a keyboard user
+          crosses the grid in sixteen stops instead of eight. */}
+      <ChevronRight
+        aria-hidden="true"
+        className="pointer-events-none absolute right-5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-300 transition-colors group-hover:text-gray-500"
+      />
     </div>
   )
 }
@@ -131,8 +134,8 @@ export function StatusPill({ status }: { status: NonNullable<Connection['status'
   }
 
   return (
-    <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-500">
-      <span className="h-1.5 w-1.5 rounded-full bg-gray-400" />
+    <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600">
+      <span className="h-1.5 w-1.5 rounded-full bg-gray-500" />
       Not connected
     </span>
   )

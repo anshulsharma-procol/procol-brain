@@ -1,12 +1,13 @@
 import { Router } from 'express'
+import type { ActivityType, ArtifactKind, RunState } from '../contract.js'
 import { z } from 'zod'
 import { createTicket, decide, startRun } from '../brain/orchestrator.js'
 import {
-  activityView,
   agentView,
   artifactView,
   connectorView,
   runView,
+  stageView,
   taskView,
   ticketRowView,
   ticketView,
@@ -15,10 +16,11 @@ import { agentCard } from '../agents/server.js'
 import { describeRegistry } from '../brain/registry.js'
 import { store } from '../store.js'
 import { PROCESSES } from '../domain/processes.js'
-import { answerQuestion } from '../domain/analytics.js'
+import { ASK_EXAMPLES, answerQuestion } from '../domain/analytics.js'
 import { getPlaybook } from '../domain/playbooks.js'
 import { CONNECTION_TYPES } from '../domain/connectionTypes.js'
 import { WORKSPACES, findAgent, getWorkspace } from '../domain/workspaces.js'
+import * as timeline from '../brain/timeline.js'
 import { openStream } from './stream.js'
 import { fail } from './errors.js'
 
@@ -37,6 +39,38 @@ import { fail } from './errors.js'
  * the promise that pointing the console at another compliant backend is a URL
  * change and nothing more.
  */
+/**
+ * The enums, as values.
+ *
+ * `satisfies Record<...>` is what makes these honest: add a member to the
+ * contract's union and this stops compiling until it is listed here, so
+ * `GET /api/contract` cannot quietly describe a server that has moved on.
+ */
+const ACTIVITY_TYPES = Object.keys({
+  'ticket.created': 0,
+  'run.started': 0,
+  'run.state': 0,
+  'brain.thought': 0,
+  'a2a.request': 0,
+  'a2a.response': 0,
+  'agent.log': 0,
+  'artifact.created': 0,
+  'run.awaiting_approval': 0,
+  'run.completed': 0,
+  'agent.status': 0,
+  'signal.raised': 0,
+} satisfies Record<ActivityType, 0>) as ActivityType[]
+
+const ARTIFACT_KINDS = Object.keys({
+  ROOT_CAUSE: 0,
+  PR: 0,
+  TEST_RESULT: 0,
+  CONFIG_FIX: 0,
+  CUSTOMER_REPLY: 0,
+  IMPACT: 0,
+  PROCESS_RESULT: 0,
+} satisfies Record<ArtifactKind, 0>) as ArtifactKind[]
+
 /** Names the field actually at fault rather than one generic sentence. */
 function describeIssue(error: z.ZodError): string {
   const issue = error.issues[0]
@@ -104,19 +138,31 @@ export function consoleRouter(): Router {
     const ticket = store.getTicket(request.params.id)
     if (!ticket) return fail(response, 404, 'NOT_FOUND', `Ticket ${request.params.id} does not exist`)
 
-    const artifacts = store.getArtifacts(ticket.id)
-    const impact = artifacts.find((artifact) => artifact.kind === 'IMPACT')
+    const run = store.runForTicket(ticket.id)
+    const control = store.getRun(ticket.id)
+    const policy = getWorkspace(ticket.workspaceId).approvalPolicies.find(
+      (candidate) => candidate.id === control?.approvalPolicyId,
+    )
 
     response.json({
       ticket: ticketView(ticket),
-      run: runView(store.runForTicket(ticket.id)),
-      artifacts: artifacts.map(artifactView),
-      insight: impact
+      run: runView(run),
+      artifacts: store.getArtifacts(ticket.id).map(artifactView),
+      // `required` is false once the decision is in, but the policy stays on
+      // the response: the page still has to say which rule stopped this run
+      // after it has been approved.
+      approval: policy
         ? {
-            affectedTenants: Number(impact.data.affectedTenants),
-            affectedRecords: Number(impact.data.affectedRecords),
+            required: ticket.status === 'AWAITING_APPROVAL',
+            policyId: policy.id,
+            reason: policy.reason,
           }
         : null,
+      signal: store.signalForTicket(ticket.id) ?? null,
+
+      // additive: the stage rail and the person who decided.
+      stage: stageView(ticket.stages),
+      decision: store.getDecision(ticket.id) ?? null,
     })
   })
 
@@ -124,8 +170,10 @@ export function consoleRouter(): Router {
     if (!store.getTicket(request.params.id)) {
       return fail(response, 404, 'NOT_FOUND', `Ticket ${request.params.id} does not exist`)
     }
-    // Already in seq order: the store appends, and seq is allocated on insert.
-    response.json({ data: store.getActivity(request.params.id).map(activityView) })
+    // The stored rows are the payloads, already in seq order — the store
+    // appends and allocates seq on insert. Nothing is reshaped on the way
+    // out, which is precisely why this and the stream cannot disagree.
+    response.json({ data: store.getActivity(request.params.id) })
   })
 
   router.get('/tickets/:id/tasks', (request, response) => {
@@ -143,10 +191,15 @@ export function consoleRouter(): Router {
     }
 
     // 202 for a new run; 200 when joining the one already in flight, so a
-    // double-click on stage is safe and cannot fork a second run.
-    response
-      .status(started.joined ? 200 : 202)
-      .json({ runId: started.run.id, state: started.run.state })
+    // double-click on stage is safe and cannot fork a second run. `started`
+    // is how the caller tells the two apart without reading the status code.
+    response.status(started.joined ? 200 : 202).json({
+      runId: started.run.id,
+      started: !started.joined,
+
+      // additive
+      state: started.run.state,
+    })
   })
 
   const decisionSchema = z.object({
@@ -173,14 +226,76 @@ export function consoleRouter(): Router {
     if (!result.ok) return fail(response, 409, 'CONFLICT', result.error)
 
     const after = store.getTicket(request.params.id)!
+    const artifacts = store.getArtifacts(after.id)
+    const reply = artifacts.find((artifact) => artifact.kind === 'CUSTOMER_REPLY')
+
     response.json({
+      decision: parsed.data.decision,
+      ticketStatus: after.status,
+      runState: store.runForTicket(after.id)?.state ?? 'RESOLVED',
+      // The reply as it actually went out — stamped with when and by whom, so
+      // the caller can show the sent message rather than the draft.
+      reply: reply ? artifactView(reply) : undefined,
+
+      // additive: the whole record after the decision, so a console repaints
+      // the page from this response instead of refetching it.
       ticket: ticketView(after),
       run: runView(store.runForTicket(after.id)),
-      artifacts: store.getArtifacts(after.id).map(artifactView),
+      artifacts: artifacts.map(artifactView),
+    })
+  })
+
+  // -- runs ---------------------------------------------------------------
+
+  /**
+   * One run, with the tasks it delegated and the states it passed through.
+   *
+   * `steps` is read back off the audit trail rather than kept as a second
+   * list, so the state history and the timeline are the same record and
+   * cannot contradict each other.
+   */
+  router.get('/runs/:runId', (request, response) => {
+    const run = store.getRunRecord(request.params.runId)
+    if (!run) return fail(response, 404, 'NOT_FOUND', `No run ${request.params.runId}`)
+
+    const steps = store
+      .getActivity(run.ticketId)
+      .filter((row) => row.type === 'run.state' && row.runId === run.id)
+      .map((row) => ({ id: row.id, state: row.state as RunState, at: row.at }))
+
+    response.json({
+      run: runView(run)!,
+      tasks: store.listTasks(run.ticketId).map(taskView),
+      steps,
     })
   })
 
   // -- the registry -------------------------------------------------------
+
+  /**
+   * Who can do what.
+   *
+   * This is the routing table the orchestrator actually consults: it asks the
+   * registry which agent declares a capability, never which agent it knows by
+   * name. Serving it is what lets a reader check that claim.
+   */
+  router.get('/agents/capabilities', (request, response) => {
+    const scope = scopeOf(request.query.workspace)
+    const byCapability = new Map<string, string[]>()
+
+    for (const agent of describeRegistry()) {
+      if (scope && agent.workspaceId !== scope) continue
+      for (const capability of agent.capabilities) {
+        byCapability.set(capability, [...(byCapability.get(capability) ?? []), agent.id])
+      }
+    }
+
+    response.json({
+      data: [...byCapability.entries()]
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([capability, agentIds]) => ({ capability, agentIds })),
+    })
+  })
 
   router.get('/agents', (request, response) => {
     const scope = scopeOf(request.query.workspace)
@@ -197,11 +312,14 @@ export function consoleRouter(): Router {
       if (!agent) continue
 
       return response.json({
-        agent: agentView(agent, store.tasksTodayFor(agent.id)),
         // Served verbatim, exactly as the agent published it. Normalising it
         // would defeat the point of the screen that shows it.
         card: agentCard(agent, workspace),
         recentTasks: store.recentTasksFor(agent.id).map(taskView),
+
+        // additive: the registry's own view, which carries the role and the
+        // task count the card does not.
+        agent: agentView(agent, store.tasksTodayFor(agent.id)),
       })
     }
 
@@ -241,7 +359,16 @@ export function consoleRouter(): Router {
       affectedRecords: Number(impact.data.affectedRecords),
       firstSeen: String(impact.data.firstSeen),
       trend,
+      // The query the number came from. A figure with its SQL attached is
+      // evidence; the same figure on its own is something a reader assumes
+      // was invented.
+      sql: String(impact.data.sql ?? ''),
     })
+  })
+
+  /** Questions this deployment can answer, for an empty Lens screen. */
+  router.get('/ask/examples', (_request, response) => {
+    response.json({ data: ASK_EXAMPLES })
   })
 
   const askSchema = z.object({ question: z.string().min(1) })
@@ -261,6 +388,11 @@ export function consoleRouter(): Router {
     metrics: z.record(z.unknown()).default({}),
     escalate: z.boolean().optional(),
     workspaceId: z.string().optional(),
+  })
+
+  /** Everything monitoring has raised, newest first. */
+  router.get('/signals', (_request, response) => {
+    response.json({ data: store.listSignals() })
   })
 
   router.post('/signals', (request, response) => {
@@ -289,9 +421,97 @@ export function consoleRouter(): Router {
     })
 
     store.attachSignal(signal.id, ticket.id)
+    timeline.signalRaised(ticket.id, { ...signal, ticketId: ticket.id })
     startRun(ticket.id)
 
     response.status(201).json({ signal: { ...signal, ticketId: ticket.id }, ticket: ticketView(ticket) })
+  })
+
+  // -- policies -----------------------------------------------------------
+
+  /**
+   * The approval rules, in the words they are rendered in above the buttons.
+   *
+   * A rule nobody can read is not governance, which is the whole argument for
+   * serving these rather than hard-coding the gate.
+   */
+  router.get('/policies', (request, response) => {
+    const scope = scopeOf(request.query.workspace)
+    const workspaces = scope ? [getWorkspace(scope)] : WORKSPACES
+
+    response.json({
+      data: workspaces.flatMap((workspace) =>
+        workspace.approvalPolicies.map((policy) => ({
+          id: policy.id,
+          reason: policy.reason,
+
+          // additive
+          workspaceId: workspace.id,
+          appliesTo: policy.appliesTo,
+          risk: policy.risk,
+        })),
+      ),
+    })
+  })
+
+  // -- the contract itself ------------------------------------------------
+
+  /**
+   * What this server actually serves.
+   *
+   * The contract names `GET /api/contract` as the authority when a written
+   * document and a running server disagree, and the reason is worth stating:
+   * a frontend integrating against a backend it cannot read needs one request
+   * that answers "which endpoints exist here, and what does this deployment
+   * add". The `extensions` list is the honest half — those are ours, a
+   * compliant backend serves none of them, and a client that depends on one
+   * has quietly stopped being portable.
+   */
+  router.get('/contract', (_request, response) => {
+    response.json({
+      version: '1.0.0',
+      endpoints: [
+        'GET    /api/tickets',
+        'POST   /api/tickets',
+        'GET    /api/tickets/:id',
+        'GET    /api/tickets/:id/activities',
+        'GET    /api/tickets/:id/tasks',
+        'POST   /api/tickets/:id/investigate',
+        'POST   /api/tickets/:id/decision',
+        'GET    /api/tickets/:id/stream',
+        'GET    /api/runs/:runId',
+        'GET    /api/agents',
+        'GET    /api/agents/capabilities',
+        'GET    /api/agents/:id',
+        'GET    /api/connectors',
+        'GET    /api/stats',
+        'GET    /api/insights?ticketId=',
+        'POST   /api/ask',
+        'GET    /api/ask/examples',
+        'GET    /api/signals',
+        'POST   /api/signals',
+        'GET    /api/policies',
+        'GET    /api/processes',
+        'POST   /api/processes/:key/run',
+        'GET    /api/stream',
+      ],
+      extensions: [
+        'GET    /api/workspaces',
+        'GET    /api/memory',
+        'POST   /api/memory/search',
+        'GET    /api/knowledge',
+        'GET    /api/connection-types',
+        'POST   /api/connectors',
+        'POST   /api/connectors/:id/reconnect',
+        'DELETE /api/connectors/:id',
+        'POST   /api/demo/reset',
+        'POST   /api/demo/simulate',
+      ],
+      activityTypes: ACTIVITY_TYPES,
+      artifactKinds: ARTIFACT_KINDS,
+      /** Query parameter accepted on every list endpoint. Ignored if absent. */
+      tenancy: { query: 'workspace', workspaces: WORKSPACES.map((w) => w.id) },
+    })
   })
 
   // -- processes ----------------------------------------------------------
@@ -319,6 +539,8 @@ export function consoleRouter(): Router {
     response.status(202).json({
       ticketId: ticket.id,
       runId: 'error' in started ? '' : started.run.id,
+      started: !('error' in started),
+      processKey: definition.key,
     })
   })
 
@@ -326,7 +548,7 @@ export function consoleRouter(): Router {
 
   router.get('/stream', (request, response) => {
     const scope = scopeOf(request.query.workspace)
-    openStream(response, (event) => !scope || event.workspaceId === scope)
+    openStream(response, (event) => !scope || !event.workspaceId || event.workspaceId === scope)
   })
 
   router.get('/tickets/:id/stream', (request, response) => {

@@ -1,24 +1,13 @@
 import type {
-  Activity,
-  Agent as ContractAgent,
-  Artifact as ContractArtifact,
-  Connector as ContractConnector,
-  Run as ContractRun,
-  Stage as ContractStage,
-  Ticket as ContractTicket,
-  TicketListRow,
-  Task as ContractTask,
+  AgentDto,
+  ArtifactDto,
+  ConnectorDto,
+  RunDto,
+  TaskDto,
+  TicketDto,
 } from '../contract.js'
 import type { ConnectionDef } from '../domain/connections.js'
-import type {
-  ActivityEvent,
-  AgentDef,
-  Artifact,
-  Run,
-  Stage,
-  TaskRecord,
-  Ticket,
-} from '../domain/types.js'
+import type { AgentDef, Artifact, Run, Stage, TaskRecord, Ticket } from '../domain/types.js'
 import { baseUrlFor } from './registry.js'
 
 /**
@@ -31,11 +20,19 @@ import { baseUrlFor } from './registry.js'
  * except where it is explicitly additive, which is marked at each site.
  *
  * Keeping the projection in one module is what makes conformance checkable:
- * there is a single place to read when asking "does this match the contract",
- * and a single place to change when the contract does.
+ * one place to read when asking "does this match", one place to change when
+ * the contract does.
  */
 
-/** Additive fields this deployment sends. A contract client ignores them. */
+/**
+ * Additive fields this deployment sends on a ticket.
+ *
+ * `stage` and `run` are the ones worth knowing about: the contract's ticket
+ * list is bare `TicketDto[]`, so a board reading a compliant backend has only
+ * the status to work from. Sending these lets our board draw the four-dot
+ * rail without a request per row — and a client that does not see them falls
+ * back to the status, which is why they are safe to add.
+ */
 interface TicketExtras {
   categoryLabel?: string
   workspaceId?: string
@@ -43,12 +40,13 @@ interface TicketExtras {
   impact?: string
   issueQuote?: string[]
   attachment?: string
-  /** Who holds the work right now. Derivable from run.state without it. */
   currentAgentId?: string
   currentAgentAction?: string
+  run?: Pick<RunDto, 'id' | 'state' | 'path' | 'attempt' | 'startedAt'> | null
+  stage?: Record<Stage['id'], string | null>
 }
 
-export function ticketView(ticket: Ticket): ContractTicket & TicketExtras {
+export function ticketView(ticket: Ticket): TicketDto & TicketExtras {
   return {
     id: ticket.id,
     customer: ticket.customer,
@@ -74,7 +72,7 @@ export function ticketView(ticket: Ticket): ContractTicket & TicketExtras {
   }
 }
 
-export function runView(run: Run | undefined): ContractRun | null {
+export function runView(run: Run | undefined): RunDto | null {
   if (!run) return null
   return {
     id: run.id,
@@ -83,7 +81,6 @@ export function runView(run: Run | undefined): ContractRun | null {
     path: run.path,
     attempt: run.attempt,
     summary: run.summary,
-    policyReason: run.policyReason,
     startedAt: run.startedAt,
     endedAt: run.endedAt,
   }
@@ -92,11 +89,11 @@ export function runView(run: Run | undefined): ContractRun | null {
 /**
  * Which agent completed each stage, or null if it has not been reached.
  *
- * A stage this path skips is also null: the contract has one way to say "no
- * dot here yet", and a consumer distinguishes skipped from pending by reading
+ * A stage the chosen path skips is also null: there is one way to say "no dot
+ * here yet", and a consumer separates skipped from pending by reading
  * `run.path` — a CONFIG_FIX never had an investigate stage to reach.
  */
-export function stageView(stages: Stage[]): ContractStage {
+export function stageView(stages: Stage[]): Record<Stage['id'], string | null> {
   const agentFor = (id: Stage['id']) => {
     const stage = stages.find((candidate) => candidate.id === id)
     return stage?.status === 'complete' ? (stage.agentId ?? null) : null
@@ -110,56 +107,33 @@ export function stageView(stages: Stage[]): ContractStage {
   }
 }
 
-export function ticketRowView(ticket: Ticket, run: Run | undefined): TicketListRow & TicketExtras {
+/** A list row: the contract's ticket, with the run and rail added. */
+export function ticketRowView(ticket: Ticket, run: Run | undefined): TicketDto & TicketExtras {
   const view = runView(run)
 
   return {
     ...ticketView(ticket),
     run: view
-      ? {
-          id: view.id,
-          state: view.state,
-          path: view.path,
-          attempt: view.attempt,
-          startedAt: view.startedAt,
-        }
+      ? { id: view.id, state: view.state, path: view.path, attempt: view.attempt, startedAt: view.startedAt }
       : null,
     stage: stageView(ticket.stages),
   }
 }
 
-export function activityView(row: ActivityEvent): Activity {
-  return {
-    id: row.id,
-    ticketId: row.ticketId,
-    runId: row.runId,
-    seq: row.seq,
-    type: row.type,
-    fromAgent: row.fromAgent,
-    toAgent: row.toAgent,
-    title: row.title,
-    body: row.body,
-    level: row.level,
-    taskId: row.taskId,
-    durationMs: row.durationMs,
-    createdAt: row.createdAt,
-  }
-}
-
 /** Additive: which agent produced it. */
-export function artifactView(artifact: Artifact): ContractArtifact & { createdBy?: string } {
+export function artifactView(artifact: Artifact): ArtifactDto & { createdBy?: string } {
   return {
     id: artifact.id,
     ticketId: artifact.ticketId,
     kind: artifact.kind,
     title: artifact.title,
-    data: artifact.data as unknown as ContractArtifact['data'],
+    data: artifact.data as unknown as ArtifactDto['data'],
     createdAt: artifact.createdAt,
     createdBy: artifact.createdBy,
   }
 }
 
-export function taskView(record: TaskRecord): ContractTask {
+export function taskView(record: TaskRecord): TaskDto {
   const failed = record.response?.status === 'failed'
 
   return {
@@ -180,11 +154,12 @@ export function taskView(record: TaskRecord): ContractTask {
 }
 
 /**
- * The contract's four agent kinds. Roles this deployment uses that the
- * contract has no word for — the orchestrator itself, the human gate, the
- * analytics copilot — are all "ops", which is what that value is for.
+ * The contract has four agent kinds and they describe what an agent is for.
+ * Roles this deployment uses that it has no word for — the orchestrator, the
+ * human gate, the analytics copilot — are all "ops", which is what that value
+ * exists for.
  */
-const KIND_BY_ROLE: Record<AgentDef['role'], ContractAgent['kind']> = {
+const KIND_BY_ROLE: Record<AgentDef['role'], AgentDto['kind']> = {
   knowledge: 'knowledge',
   engineering: 'engineering',
   validation: 'validation',
@@ -194,7 +169,7 @@ const KIND_BY_ROLE: Record<AgentDef['role'], ContractAgent['kind']> = {
   process: 'ops',
 }
 
-const STATUS: Record<AgentDef['status'], ContractAgent['status']> = {
+const STATUS: Record<AgentDef['status'], AgentDto['status']> = {
   connected: 'ONLINE',
   offline: 'OFFLINE',
   degraded: 'UNKNOWN',
@@ -204,7 +179,7 @@ const STATUS: Record<AgentDef['status'], ContractAgent['status']> = {
 export function agentView(
   agent: AgentDef,
   tasksToday: number,
-): ContractAgent & { role: AgentDef['role']; workspaceId?: string; ownership?: string } {
+): AgentDto & { role: AgentDef['role']; workspaceId?: string; ownership?: string } {
   return {
     id: agent.id,
     name: agent.name,
@@ -230,12 +205,10 @@ export function agentView(
 /**
  * A connection, in the contract's four fields plus everything the Connections
  * screen reads. All of the latter is additive: a client that knows only the
- * contract gets id, kind, capabilities and health, and renders a card from
- * them.
+ * contract gets id, kind, capabilities and health, and renders a card.
  */
-export function connectorView(connection: ConnectionDef): ContractConnector & Partial<ConnectionDef> {
+export function connectorView(connection: ConnectionDef): ConnectorDto & Partial<ConnectionDef> {
   return {
-    // contract
     id: connection.id,
     kind: connection.kind,
     capabilities: connection.capabilities,

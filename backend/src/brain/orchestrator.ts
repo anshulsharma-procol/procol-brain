@@ -2,7 +2,6 @@ import { env } from '../env.js'
 import { store } from '../store.js'
 import { getPlaybook, type Playbook } from '../domain/playbooks.js'
 import type {
-  ActivityEvent,
   Decision,
   MemoryEntry,
   Run,
@@ -11,11 +10,11 @@ import type {
   Ticket,
 } from '../domain/types.js'
 import type {
+  ArtifactData,
   ArtifactKind,
   Channel,
-  Level,
   Priority,
-  RunPath,
+  ResolutionPath,
   RunState,
   TaskType,
 } from '../contract.js'
@@ -24,6 +23,8 @@ import { createTask, sendTask } from './a2aClient.js'
 import { classify } from './classify.js'
 import { policyFor } from './policy.js'
 import { resolve } from './registry.js'
+import * as timeline from './timeline.js'
+import { artifactView, ticketView } from './contractView.js'
 
 /**
  * ============================================================================
@@ -124,25 +125,15 @@ export function createTicket(input: CreateTicketInput): Ticket {
   store.putTicket(ticket)
   store.setRun(id, { playbookId: playbook.id, active: false })
 
-  say(id, {
-    type: 'ticket.created',
-    fromAgent: 'customer',
-    title: `${id} raised via ${channelLabel(ticket.channel)}`,
-    body: input.message,
-    level: 'info',
-  }, { ticket })
+  timeline.ticketCreated(id, ticketView(ticket), channelLabel(ticket.channel))
 
-  say(id, {
-    type: 'brain.thought',
-    fromAgent: 'brain',
-    title: recognised
-      ? `Recognised as “${playbook.ticket.title}”`
-      : 'I do not recognise this symptom',
-    body: recognised
+  timeline.thought(
+    id,
+    recognised ? `Recognised as “${playbook.ticket.title}”` : 'I do not recognise this symptom',
+    recognised
       ? `Matched on ${matched.slice(0, 4).join(', ')} with ${Math.round(confidence * 100)}% confidence. I will confirm it against product context before acting on it.`
       : 'Nothing in this control tower matches these symptoms, so I am working from the customer’s description alone and will say plainly what I am unsure about.',
-    level: recognised ? 'info' : 'warn',
-  })
+  )
 
   return ticket
 }
@@ -215,25 +206,18 @@ async function walk(reference: string, runId: string, options: RunOptions): Prom
   store.setRun(reference, { ...state, active: true })
   store.patchTicket(reference, { status: 'RUNNING' }, { silent: true })
 
-  say(reference, {
-    type: 'run.started',
-    fromAgent: 'brain',
-    title: 'Investigation started',
-    body: playbook.narration.received.join(' '),
-    level: 'info',
-  }, { runId })
+  timeline.runStarted(reference, runId)
+  timeline.thought(reference, 'Investigation started', playbook.narration.received.join(' '))
 
   transition(reference, runId, 'CLASSIFYING', 'Classifying')
   await pause(600)
 
   // -- context ------------------------------------------------------------
-  say(reference, {
-    type: 'brain.thought',
-    fromAgent: 'brain',
-    title: 'Looking for an agent that can answer product questions',
-    body: playbook.narration.routing.join(' '),
-    level: 'info',
-  })
+  timeline.thought(
+    reference,
+    'Looking for an agent that can answer product questions',
+    playbook.narration.routing.join(' '),
+  )
   await pause(400)
 
   const knowledge = resolve(workspace, 'product_knowledge')
@@ -275,16 +259,10 @@ async function walk(reference: string, runId: string, options: RunOptions): Prom
   }
 
   // -- decide -------------------------------------------------------------
-  const path: RunPath = isQuestion ? 'ANSWER_ONLY' : isProductDefect ? 'CODE_FIX' : 'CONFIG_FIX'
+  const path: ResolutionPath = isQuestion ? 'ANSWER_ONLY' : isProductDefect ? 'CODE_FIX' : 'CONFIG_FIX'
 
   transition(reference, runId, 'DECIDING', 'Deciding')
-  say(reference, {
-    type: 'brain.thought',
-    fromAgent: 'brain',
-    title: decisionTitle(path),
-    body: playbook.narration.decision.join(' '),
-    level: 'info',
-  })
+  timeline.thought(reference, decisionTitle(path), playbook.narration.decision.join(' '))
   store.patchRun(runId, { path })
   await pause(500)
 
@@ -335,18 +313,14 @@ async function walk(reference: string, runId: string, options: RunOptions): Prom
     // the connector layer, so there is no A2A hop to make here.
     if (playbook.impact) {
       const lens = workspace.agents.find((agent) => agent.role === 'analytics')
-      say(reference, {
-        type: 'brain.thought',
-        fromAgent: lens?.id ?? 'brain',
-        title: playbook.impact.summary,
-        body: playbook.impact.detail.join(' '),
-        level: 'warn',
-        durationMs: playbook.impact.durationMs,
-      })
+      timeline.thought(reference, playbook.impact.summary, playbook.impact.detail.join(' '))
       artifact(reference, 'IMPACT', 'Blast radius', lens?.id ?? 'brain', {
         affectedTenants: playbook.impact.affectedTenants,
         affectedRecords: playbook.impact.affectedRecords,
         firstSeen: playbook.impact.firstSeen,
+        trend: playbook.impact.trend,
+        sql: playbook.impact.sql,
+        source: playbook.impact.source,
       })
       await pause(400)
     }
@@ -355,22 +329,20 @@ async function walk(reference: string, runId: string, options: RunOptions): Prom
   if (path === 'CONFIG_FIX' && playbook.configFix) {
     transition(reference, runId, 'DRAFTING_REMEDIATION', 'Drafting the remediation')
     artifact(reference, 'CONFIG_FIX', 'Configuration remediation', 'brain', {
-      summary: playbook.configFix.summary,
+      title: playbook.configFix.title,
       steps: playbook.configFix.steps,
-      system: playbook.configFix.system,
+      rationale: playbook.configFix.rationale,
+      // The point of this branch: Brain decided engineering was not needed.
+      requiresCodeChange: false,
+      citations: playbook.configFix.citations,
+      customer: ticket.customer ?? 'the customer',
     })
     await pause(400)
   }
 
   if (path === 'ANSWER_ONLY' && playbook.answer) {
     transition(reference, runId, 'DRAFTING_REPLY', 'Drafting the answer')
-    say(reference, {
-      type: 'brain.thought',
-      fromAgent: 'brain',
-      title: playbook.answer.summary,
-      body: playbook.answer.detail.join(' '),
-      level: 'success',
-    })
+    timeline.thought(reference, playbook.answer.summary, playbook.answer.detail.join(' '))
     await pause(300)
   }
 
@@ -378,6 +350,9 @@ async function walk(reference: string, runId: string, options: RunOptions): Prom
   artifact(reference, 'CUSTOMER_REPLY', 'Customer reply', 'brain', {
     subject: `${playbook.reply.subject} — ${reference}`,
     body: [`Hi ${ticket.customer ?? 'there'},`, ...playbook.reply.body].join('\n\n'),
+    citations: playbook.reply.citations,
+    // additive: who it goes to. Filled in at the gate; `sentAt` and
+    // `approvedBy` are added by finish(), once it has actually gone.
     sentTo: contactFor(ticket, workspace.supportEmailDomain),
   })
 
@@ -409,13 +384,16 @@ async function walk(reference: string, runId: string, options: RunOptions): Prom
   })
   store.setRunState(runId, 'AWAITING_APPROVAL')
 
-  say(reference, {
-    type: 'run.awaiting_approval',
-    fromAgent: 'brain',
-    title: 'Stopping for human approval',
-    body: (playbook.narration.gate.length ? playbook.narration.gate : [policy.reason]).join(' '),
-    level: 'warn',
-  }, { runId, policyReason: policy.reason })
+  timeline.thought(
+    reference,
+    'Stopping for human approval',
+    (playbook.narration.gate.length ? playbook.narration.gate : [policy.reason]).join(' '),
+  )
+  timeline.awaitingApproval(reference, {
+    runId,
+    policyId: policy.id,
+    policyReason: policy.reason,
+  })
 }
 
 // ---------------------------------------------------------------------------
@@ -447,20 +425,18 @@ export function decide(
 
   // The person's action lands on the same record as the agents', in the same
   // vocabulary. That peer status is the closing argument of the product.
-  say(reference, {
-    type: 'run.state',
-    fromAgent: 'human',
-    title:
-      input.decision === 'APPROVE'
-        ? `${input.by} approved the fix`
-        : `${input.by} sent this back for a human`,
-    body: input.note ?? null,
-    level: input.decision === 'APPROVE' ? 'success' : 'warn',
-  }, {
+  const verdict =
+    input.decision === 'APPROVE'
+      ? `${input.by} approved the fix`
+      : `${input.by} sent this back for a human`
+
+  timeline.thought(reference, verdict, input.note ?? null)
+  timeline.runState(reference, {
     runId: run.id,
     state: input.decision === 'APPROVE' ? 'RESOLVED' : 'NEEDS_HUMAN',
     path: run.path,
     attempt: run.attempt,
+    action: verdict,
   })
 
   if (input.decision === 'REJECT') {
@@ -470,13 +446,11 @@ export function decide(
       currentAgentId: undefined,
       currentAgentAction: 'Waiting on a person',
     })
-    say(reference, {
-      type: 'run.completed',
-      fromAgent: 'brain',
-      title: 'Returned to a person',
-      body: 'The proposed fix was rejected. Nothing has been released.',
-      level: 'warn',
-    }, { runId: run.id, outcome: 'NEEDS_HUMAN' })
+    timeline.runCompleted(reference, {
+      runId: run.id,
+      outcome: 'NEEDS_HUMAN',
+      summary: 'The proposed fix was rejected. Nothing has been released.',
+    })
     return { ok: true }
   }
 
@@ -497,15 +471,21 @@ function finish(
 
   store.setDecision(reference, decision)
 
+  // The reply drafted at the gate goes out unchanged, and the artifact is
+  // stamped with when and by whom — so the record shows the approval and the
+  // send as one act rather than two unrelated events.
   const reply = store.getArtifacts(reference).find((row) => row.kind === 'CUSTOMER_REPLY')
   if (reply) {
-    say(reference, {
-      type: 'run.state',
-      fromAgent: 'brain',
-      title: `Customer notified — ${String(reply.data.subject)}`,
-      body: `Sent to ${String(reply.data.sentTo)}. The reply drafted at the gate has gone out unchanged.`,
-      level: 'success',
-    }, { runId, state: 'RESOLVED', path: store.getRunRecord(runId)?.path ?? null, attempt: 1 })
+    store.patchArtifact(reference, reply.id, {
+      sentAt: decision.at,
+      approvedBy: decision.by,
+    })
+
+    timeline.thought(
+      reference,
+      `Customer notified — ${String(reply.data.subject)}`,
+      `Sent to ${String(reply.data.sentTo)}. The reply drafted at the gate has gone out unchanged.`,
+    )
   }
 
   const memory = rememberRun(reference, playbook)
@@ -520,17 +500,15 @@ function finish(
     progress: 100,
   })
 
-  say(reference, {
-    type: 'run.completed',
-    fromAgent: 'brain',
-    title: 'Ticket closed, and what we learned is kept',
-    body:
+  timeline.runCompleted(reference, {
+    runId,
+    outcome: 'RESOLVED',
+    summary:
       options.closingNote ??
       (memory
         ? `Written to institutional memory as “${memory.title}”. The next ticket with this symptom starts from the answer instead of the beginning.`
         : 'Run archived on the audit trail.'),
-    level: 'success',
-  }, { runId, outcome: 'RESOLVED' })
+  })
 }
 
 function rememberRun(reference: string, playbook: Playbook): MemoryEntry | undefined {
@@ -579,22 +557,14 @@ async function hop(
   // that goes over the wire, rather than one patched in afterwards.
   const task = createTask({ from: 'brain', to: input.to, type: input.type, context: input.context })
 
-  say(reference, {
-    type: 'a2a.request',
-    fromAgent: 'brain',
-    toAgent: input.to,
-    title: input.requestTitle,
-    // Prose or a JSON payload, per the contract — here, the envelope itself,
-    // which is what the "show payload" disclosure reveals.
-    body: JSON.stringify(task, null, 2),
-    level: 'info',
+  timeline.request(reference, {
     taskId: task.taskId,
-  }, {
-    taskId: task.taskId,
-    from: 'brain',
     to: input.to,
-    type: input.type,
+    taskType: input.type,
     summary: input.requestTitle,
+    // The envelope itself, which is what the "show payload" disclosure
+    // reveals — the exact bytes that went over the wire, not a retelling.
+    payload: task,
   })
 
   const { response, durationMs, error } = await sendTask({
@@ -607,65 +577,52 @@ async function hop(
 
   if (error || !response || response.status === 'failed') {
     const message = error ?? response?.error ?? `${input.to} could not complete the task`
-    say(reference, {
-      type: 'a2a.response',
-      fromAgent: input.to,
-      toAgent: 'brain',
-      title: message,
-      body: 'I could not get what I needed, so I am handing this to a person rather than guessing.',
-      level: 'error',
-      durationMs,
-      taskId: task.taskId,
-    }, {
+    timeline.response(reference, {
       taskId: task.taskId,
       from: input.to,
-      to: 'brain',
       status: 'failed',
       summary: message,
       durationMs,
+      detail:
+        'I could not get what I needed, so I am handing this to a person rather than guessing.',
     })
     return { ok: false, error: message }
   }
 
   // The agent's working notes, each its own row carrying the parent task id.
   for (const line of response.log ?? []) {
-    say(reference, {
-      type: 'agent.log',
-      fromAgent: input.to,
-      title: line,
-      level: 'info',
-      taskId: task.taskId,
-    }, { taskId: task.taskId, agent: input.to, line })
+    timeline.log(reference, task.taskId, input.to, line)
   }
 
   const summary = String(response.result?.summary ?? `${input.to} responded`)
   const detail = (response.result?.detail as string[] | undefined)?.join(' ') ?? null
 
-  say(reference, {
-    type: 'a2a.response',
-    fromAgent: input.to,
-    toAgent: 'brain',
-    title: summary,
-    body: detail,
-    level: 'success',
+  timeline.response(reference, {
+    taskId: task.taskId,
+    from: input.to,
+    status: 'completed',
+    summary,
+    detail,
     // Normally the measured round trip — that is what makes the latency on
     // screen worth trusting. A fast-forwarded run (the boot seed) records the
     // agent's own declared work time instead, because a seeded ticket stands
     // for a run that happened at full speed, and putting 1ms against it would
     // be the one number on the timeline that is not true.
     durationMs: input.speed === 0 ? (response.durationMs ?? durationMs) : durationMs,
-    taskId: task.taskId,
-  }, {
-    taskId: task.taskId,
-    from: input.to,
-    to: 'brain',
-    status: 'completed',
-    summary,
-    durationMs: input.speed === 0 ? (response.durationMs ?? durationMs) : durationMs,
   })
 
   for (const produced of response.artifacts ?? []) {
-    artifact(reference, produced.kind, produced.title, input.to, produced.data)
+    // An agent is a separate service, so what it sends back is unknown until
+    // it is checked. The conformance checker (tools/conform.ts) is where the
+    // payloads are validated against the contract; here the cast is the
+    // boundary being named rather than hidden.
+    artifact(
+      reference,
+      produced.kind,
+      produced.title,
+      input.to,
+      produced.data as ArtifactData & Record<string, unknown>,
+    )
   }
 
   return { ok: true, result: response.result }
@@ -678,15 +635,12 @@ function stall(
   reason: string | undefined,
   copy?: { title: string; body: string },
 ): void {
-  say(reference, {
-    type: 'brain.thought',
-    fromAgent: 'brain',
-    title: copy?.title ?? 'Handing this to a person',
-    body:
-      copy?.body ??
+  timeline.thought(
+    reference,
+    copy?.title ?? 'Handing this to a person',
+    copy?.body ??
       `${reason ?? 'A step could not be completed.'} The run has stopped here rather than guessing. Everything gathered so far is on this timeline.`,
-    level: copy ? 'warn' : 'error',
-  })
+  )
 
   store.setRunState(runId, 'NEEDS_HUMAN')
   store.patchTicket(reference, {
@@ -695,41 +649,12 @@ function stall(
     currentAgentAction: 'Waiting on a person',
   })
 
-  say(reference, {
-    type: 'run.completed',
-    fromAgent: 'brain',
-    title: 'Handed to a person',
-    body: reason ?? null,
-    level: 'warn',
-  }, { runId, outcome: 'NEEDS_HUMAN' })
+  timeline.runCompleted(reference, { runId, outcome: 'NEEDS_HUMAN', summary: reason ?? null })
 }
 
 // ---------------------------------------------------------------------------
 // Small helpers over the store
 // ---------------------------------------------------------------------------
-
-type SayInput = Omit<ActivityEvent, 'id' | 'seq' | 'ticketId' | 'createdAt' | 'runId'> &
-  Partial<Pick<ActivityEvent, 'runId'>>
-
-function say(
-  reference: string,
-  event: Partial<SayInput> & Pick<SayInput, 'type' | 'title'>,
-  wire?: Record<string, unknown>,
-): ActivityEvent | undefined {
-  return store.appendActivity(
-    reference,
-    {
-      fromAgent: null,
-      toAgent: null,
-      body: null,
-      level: 'info' as Level,
-      taskId: null,
-      durationMs: null,
-      ...event,
-    },
-    wire,
-  )
-}
 
 /** Moves the run to a new state and says so, in one step. */
 function transition(
@@ -746,30 +671,31 @@ function transition(
     { silent: true },
   )
 
-  say(reference, {
-    type: 'run.state',
-    fromAgent: 'brain',
-    title: action,
-    level: 'info',
-  }, { runId, state, path: run?.path ?? null, attempt: run?.attempt ?? 1 })
+  timeline.runState(reference, {
+    runId,
+    state,
+    path: run?.path ?? null,
+    attempt: run?.attempt ?? 1,
+    action,
+  })
 }
 
+/**
+ * Records an artifact and puts it on the timeline carrying its whole payload,
+ * so a client watching the stream renders the PR or the test run without a
+ * second request.
+ */
 function artifact(
   reference: string,
   kind: ArtifactKind,
   title: string,
   createdBy: string,
-  data: Record<string, unknown>,
+  data: ArtifactData & Record<string, unknown>,
 ): void {
   const row = store.addArtifact(reference, { kind, title, createdBy, data })
   if (!row) return
 
-  say(reference, {
-    type: 'artifact.created',
-    fromAgent: createdBy,
-    title: `${title} recorded`,
-    level: kind === 'IMPACT' ? 'warn' : 'success',
-  }, { artifact: row })
+  timeline.artifactCreated(reference, artifactView(row))
 }
 
 function completeStage(reference: string, id: StageId, agentId: string): void {
@@ -852,7 +778,7 @@ function questionFor(playbook: Playbook): string {
   }
 }
 
-function decisionTitle(path: RunPath): string {
+function decisionTitle(path: ResolutionPath): string {
   switch (path) {
     case 'CODE_FIX':
       return 'Decision: this is a code fix, not a configuration change'

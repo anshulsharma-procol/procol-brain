@@ -2,6 +2,7 @@ import { ExternalLink, Trash2, X } from 'lucide-react'
 import ConnectionLogo from './ConnectionLogo'
 import { StatusPill } from './ConnectionCard'
 import type { Connection } from '../platform/types'
+import { usePanelFocus } from '../hooks/usePanelFocus'
 
 /**
  * One connection, in full.
@@ -28,10 +29,12 @@ interface Props {
 export default function ConnectionDetail({ connection, busy, onClose, onConnect, onRemove }: Props) {
   const name = connection.name ?? connection.id
   const status = connection.status ?? (connection.health.ok ? 'connected' : 'not_connected')
+  const panel = usePanelFocus(onClose)
 
   return (
     <aside
-      className="flex h-full w-[380px] shrink-0 flex-col border-l border-gray-200 bg-white"
+      {...panel}
+      className="flex h-full w-[380px] shrink-0 flex-col border-l border-gray-200 bg-white focus:outline-none"
       aria-label={`${name} connection`}
     >
       <div className="flex items-start justify-between gap-3 px-6 pb-4 pt-6">
@@ -51,7 +54,7 @@ export default function ConnectionDetail({ connection, busy, onClose, onConnect,
           type="button"
           onClick={onClose}
           aria-label="Close"
-          className="shrink-0 rounded p-1 text-gray-400 hover:bg-gray-50 hover:text-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
+          className="shrink-0 rounded p-1 text-gray-500 hover:bg-gray-50 hover:text-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
         >
           <X className="h-5 w-5" />
         </button>
@@ -61,7 +64,7 @@ export default function ConnectionDetail({ connection, busy, onClose, onConnect,
         <div className="flex flex-wrap items-center gap-2">
           <StatusPill status={status} />
           {status === 'connected' && connection.health.latencyMs > 0 && (
-            <span className="font-mono text-[11px] text-gray-400">
+            <span className="font-mono text-[11px] text-gray-500">
               {connection.health.latencyMs}ms
             </span>
           )}
@@ -77,13 +80,13 @@ export default function ConnectionDetail({ connection, busy, onClose, onConnect,
 
         {connection.endpoint && (
           <div>
-            <p className="text-xs uppercase tracking-wide text-gray-400">Endpoint</p>
+            <p className="text-xs uppercase tracking-wide text-gray-500">Endpoint</p>
             <p className="mt-1 break-all font-mono text-xs text-gray-700">{connection.endpoint}</p>
           </div>
         )}
 
         <div>
-          <p className="text-xs uppercase tracking-wide text-gray-400">
+          <p className="text-xs uppercase tracking-wide text-gray-500">
             Capabilities ({connection.capabilities.length})
           </p>
           <p className="mt-1 text-xs leading-relaxed text-gray-500">
@@ -103,7 +106,7 @@ export default function ConnectionDetail({ connection, busy, onClose, onConnect,
         </div>
 
         <div>
-          <p className="text-xs uppercase tracking-wide text-gray-400">Used by</p>
+          <p className="text-xs uppercase tracking-wide text-gray-500">Used by</p>
           {connection.usedBy && connection.usedBy.length > 0 ? (
             <ul className="mt-2 space-y-1">
               {connection.usedBy.map((agent) => (
@@ -113,7 +116,7 @@ export default function ConnectionDetail({ connection, busy, onClose, onConnect,
               ))}
             </ul>
           ) : (
-            <p className="mt-1 text-sm text-gray-400">
+            <p className="mt-1 text-sm text-gray-500">
               No agent is using it yet. It becomes available the moment one needs a capability it
               declares.
             </p>
@@ -122,7 +125,7 @@ export default function ConnectionDetail({ connection, busy, onClose, onConnect,
 
         {connection.dataMode && (
           <div>
-            <p className="text-xs uppercase tracking-wide text-gray-400">What crosses the boundary</p>
+            <p className="text-xs uppercase tracking-wide text-gray-500">What crosses the boundary</p>
             <p className="mt-1 text-sm leading-relaxed text-gray-600">
               {DATA_MODE[connection.dataMode] ?? connection.dataMode}
             </p>
@@ -141,17 +144,29 @@ export default function ConnectionDetail({ connection, busy, onClose, onConnect,
             {busy ? 'Connecting…' : status === 'action_required' ? 'Reconnect' : 'Connect'}
           </button>
         ) : (
-          connection.endpoint && (
+          /*
+           * Only an endpoint a browser can open gets a link. A postgres:// or
+           * mcp:// address is most of what a company connects, and rendering
+           * those as an identical full-width "Open ↗" produces a button that
+           * is inert, unfocusable and does not even change the cursor — which
+           * reads as broken rather than as not-applicable.
+           */
+          connection.endpoint &&
+          (connection.endpoint.startsWith('http') ? (
             <a
-              href={connection.endpoint.startsWith('http') ? connection.endpoint : undefined}
+              href={connection.endpoint}
               target="_blank"
               rel="noreferrer"
-              className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
             >
               Open
               <ExternalLink className="h-3.5 w-3.5" />
             </a>
-          )
+          ) : (
+            <p className="flex-1 self-center truncate font-mono text-xs text-gray-500">
+              {connection.endpoint}
+            </p>
+          ))
         )}
 
         <button

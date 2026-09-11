@@ -179,9 +179,10 @@ export interface Workspace {
  * invents a second spelling of a value the backend owns.
  */
 export type {
-  Activity as ActivityEvent,
+  ActivityDto as ActivityEvent,
+  ActivityOf,
   ActivityType,
-  Artifact,
+  ArtifactDto as Artifact,
   ArtifactKind,
   Channel as TicketChannel,
   ConfigFixData,
@@ -189,21 +190,21 @@ export type {
   ImpactData,
   Priority as TicketPriority,
   PrData,
+  ResolutionPath,
   RootCauseData,
-  RunPath as ResolutionPath,
   RunState,
   TestResultData,
   TicketStatus,
 } from './contract'
 
 import type {
-  Activity,
-  Artifact,
+  ActivityDto,
+  ArtifactDto,
   ArtifactKind,
   ArtifactOf,
   Channel,
   Priority,
-  RunPath,
+  ResolutionPath,
   TicketStatus,
 } from './contract'
 
@@ -213,7 +214,7 @@ import type {
  * beats a cast per call site.
  */
 export function isArtifact<K extends ArtifactKind>(
-  artifact: Artifact,
+  artifact: ArtifactDto,
   kind: K,
 ): artifact is ArtifactOf<K> {
   return artifact.kind === kind
@@ -221,7 +222,7 @@ export function isArtifact<K extends ArtifactKind>(
 
 /** The first artifact of a kind, already narrowed. */
 export function findArtifact<K extends ArtifactKind>(
-  artifacts: Artifact[],
+  artifacts: ArtifactDto[],
   kind: K,
 ): ArtifactOf<K> | undefined {
   return artifacts.find((artifact): artifact is ArtifactOf<K> => artifact.kind === kind)
@@ -247,7 +248,7 @@ export interface Ticket {
   createdAt: string
   updatedAt: string
   /** Null until Brain decides. */
-  path?: RunPath
+  path?: ResolutionPath
   /** id of the agent currently holding the work. */
   currentAgentId?: string
   currentAgentAction?: string
@@ -304,7 +305,7 @@ export interface MemoryEntry {
   symptom: string
   rootCause: string
   resolution: string
-  path: RunPath
+  path: ResolutionPath
   /** Free-text tags used by the mock matcher and by real embeddings later. */
   tags: string[]
   /** How many times this memory has been reused to shortcut a ticket. */
@@ -363,8 +364,8 @@ export interface WorkspaceStats {
 export interface TicketDetail {
   ticket: Ticket
   stages: Stage[]
-  activity: Activity[]
-  artifacts: Artifact[]
+  activity: ActivityDto[]
+  artifacts: ArtifactDto[]
   memoryMatches: MemoryMatch[]
   /** Policy that required a human, once the run reaches the gate. */
   approvalPolicy?: ApprovalPolicy

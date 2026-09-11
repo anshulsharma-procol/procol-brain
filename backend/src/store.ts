@@ -26,7 +26,7 @@ import type {
   TicketDetail,
   WorkspaceStats,
 } from './domain/types.js'
-import type { RunState } from './contract.js'
+import type { ActivityType, RunState } from './contract.js'
 import { getWorkspace, WORKSPACES } from './domain/workspaces.js'
 
 /**
@@ -63,7 +63,7 @@ interface StoredSignal {
 }
 
 interface Snapshot {
-  version: 2
+  version: 3
   tickets: Ticket[]
   runs2: Run[]
   activity: [string, ActivityEvent[]][]
@@ -72,6 +72,7 @@ interface Snapshot {
   runs: [string, RunControl][]
   tasks: [string, TaskRecord][]
   signals: [string, StoredSignal][]
+  connections: [string, ConnectionDef[]][]
   memory: MemoryEntry[]
   counters: [string, number][]
 }
@@ -123,7 +124,7 @@ class Store {
 
     try {
       const snapshot = JSON.parse(readFileSync(env.stateFile, 'utf8')) as Snapshot
-      if (snapshot.version !== 2) return false
+      if (snapshot.version !== 3) return false
 
       this.reset()
       for (const ticket of snapshot.tickets) this.tickets.set(ticket.id, ticket)
@@ -135,6 +136,10 @@ class Store {
       this.runs = new Map(snapshot.runs.map(([ref, run]) => [ref, { ...run, active: false }]))
       this.tasks = new Map(snapshot.tasks ?? [])
       this.signals = new Map(snapshot.signals ?? [])
+      // A connection someone added through the drawer is theirs, not ours.
+      // Restoring the seed list over it would silently undo their work and
+      // leave them re-adding something that already existed.
+      if (snapshot.connections?.length) this.connections = new Map(snapshot.connections)
       this.memory = snapshot.memory
       this.counters = new Map(snapshot.counters)
       return this.tickets.size > 0
@@ -150,7 +155,7 @@ class Store {
     clearTimeout(this.persistTimer)
     this.persistTimer = setTimeout(() => {
       const snapshot: Snapshot = {
-        version: 2,
+        version: 3,
         tickets: [...this.tickets.values()],
         runs2: [...this.runRecords.values()],
         activity: [...this.activity.entries()],
@@ -162,6 +167,7 @@ class Store {
         // for every ticket that predated the process.
         tasks: [...this.tasks.entries()],
         signals: [...this.signals.entries()],
+        connections: [...this.connections.entries()],
         memory: this.memory,
         counters: [...this.counters.entries()],
       }
@@ -278,47 +284,43 @@ class Store {
   // -- activity ------------------------------------------------------------
 
   /**
-   * Appends one row to the audit trail. `seq` is allocated here, in the same
-   * step as the insert, and travels in the event as well as the row — so the
-   * client can order and dedupe from a single field, and a refresh mid-run
-   * rebuilds an identical timeline.
+   * Appends one row to the audit trail — which is also one SSE payload.
+   *
+   * The envelope is allocated here, in the same step as the insert, so `seq`
+   * travels with the row rather than being recomputed per subscriber: a
+   * client can order and dedupe on a single field, and a refresh mid-run
+   * rebuilds a timeline identical to the one that was streamed.
+   *
+   * `fields` is whatever that event type carries. The store does not know or
+   * check them — `ActivityType` and its payload are defined in the contract,
+   * and the callers in brain/events.ts are what make them type-safe.
    */
   appendActivity(
     reference: string,
-    event: Omit<ActivityEvent, 'id' | 'seq' | 'ticketId' | 'createdAt' | 'runId'> &
-      Partial<Pick<ActivityEvent, 'runId' | 'createdAt'>>,
-    /**
-     * Fields the contract's SSE payload carries that the stored row does not
-     * — the task type on a request, the artifact on a creation, the outcome
-     * on a completion. Passed through opaquely so the stream layer does not
-     * have to guess them back out of a title.
-     */
-    wire?: Record<string, unknown>,
+    type: ActivityType,
+    fields: Record<string, unknown> = {},
   ): ActivityEvent | undefined {
     const ticket = this.tickets.get(reference)
     if (!ticket) return undefined
 
     const rows = this.activity.get(reference) ?? []
     const row: ActivityEvent = {
-      runId: ticket.runId ?? null,
-      ...event,
       id: cuid('act'),
-      ticketId: reference,
       seq: rows.length + 1,
-      createdAt: event.createdAt ?? new Date().toISOString(),
+      type,
+      ticketId: reference,
+      at: new Date().toISOString(),
+      ...fields,
     }
 
     rows.push(row)
     this.activity.set(reference, rows)
     this.persist()
-    // The wire event is built by the caller that knows the payload; the store
-    // only announces that one exists.
     bus.emit({
       type: 'activity',
       ticketRef: reference,
       workspaceId: ticket.workspaceId,
       activity: row,
-      wire: wire ?? {},
     })
     return row
   }
@@ -352,6 +354,29 @@ class Store {
     else rows.push(row)
 
     this.artifacts.set(reference, rows)
+    this.persist()
+    return row
+  }
+
+  /**
+   * Merges fields into an artifact's payload.
+   *
+   * Used when something becomes true after the artifact was written — the
+   * reply that was drafted at the gate is the case that matters: it gets its
+   * `sentAt` and `approvedBy` when it actually goes out, so the record shows
+   * one draft that was approved and sent rather than two unrelated rows.
+   */
+  patchArtifact(
+    reference: string,
+    id: string,
+    fields: Record<string, unknown>,
+  ): Artifact | undefined {
+    const rows = this.artifacts.get(reference)
+    const existing = rows?.find((candidate) => candidate.id === id)
+    if (!rows || !existing) return undefined
+
+    const row: Artifact = { ...existing, data: { ...existing.data, ...fields } }
+    rows[rows.indexOf(existing)] = row
     this.persist()
     return row
   }
@@ -406,6 +431,11 @@ class Store {
     this.signals.set(signal.id, signal)
     this.persist()
     return signal
+  }
+
+  /** The signal that raised a ticket, if monitoring raised it rather than a person. */
+  signalForTicket(ticketId: string): StoredSignal | undefined {
+    return [...this.signals.values()].find((signal) => signal.ticketId === ticketId)
   }
 
   attachSignal(signalId: string, ticketId: string): void {
@@ -606,8 +636,10 @@ class Store {
     const responsesByAgent = new Map<string, number>()
     for (const ticket of tickets) {
       for (const row of this.getActivity(ticket.id)) {
-        if (row.type !== 'a2a.response' || !row.fromAgent) continue
-        responsesByAgent.set(row.fromAgent, (responsesByAgent.get(row.fromAgent) ?? 0) + 1)
+        if (row.type !== 'a2a.response') continue
+        const from = typeof row.from === 'string' ? row.from : null
+        if (!from) continue
+        responsesByAgent.set(from, (responsesByAgent.get(from) ?? 0) + 1)
       }
     }
 

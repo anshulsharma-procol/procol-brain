@@ -1,4 +1,4 @@
-import type { ProcessDefinition } from '../contract.js'
+import type { ProcessDefinitionDto } from '../contract.js'
 
 /**
  * Flow: the same orchestrator with a different trigger.
@@ -8,7 +8,7 @@ import type { ProcessDefinition } from '../contract.js'
  * creates a ticket and starts the same walk, which is why a business process
  * renders in a screen built for support tickets without looking out of place.
  */
-export const PROCESSES: ProcessDefinition[] = [
+export const PROCESSES: ProcessDefinitionDto[] = [
   {
     key: 'vendor-onboarding',
     name: 'Onboard vendor',

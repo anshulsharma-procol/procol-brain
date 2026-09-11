@@ -88,9 +88,8 @@ export interface Workspace {
 export type {
   Category,
   Channel as TicketChannel,
-  Level,
   Priority as TicketPriority,
-  RunPath as ResolutionPath,
+  ResolutionPath,
   RunState,
   TaskType as A2ATaskType,
   TicketStatus,
@@ -100,7 +99,7 @@ import type {
   Category,
   Channel,
   Priority,
-  RunPath,
+  ResolutionPath,
   RunState,
   TaskType,
   TicketStatus,
@@ -161,7 +160,7 @@ export interface Run {
   id: string
   ticketId: string
   state: RunState
-  path: RunPath | null
+  path: ResolutionPath | null
   attempt: number
   summary: string | null
   policyReason: string | null
@@ -170,34 +169,26 @@ export interface Run {
 }
 
 export type { ActivityType, ArtifactKind } from '../contract.js'
-import type { ActivityType, ArtifactKind, Level } from '../contract.js'
+import type { ActivityType, ArtifactData, ArtifactKind } from '../contract.js'
 
 /**
- * One row of the audit trail, in the contract's shape.
+ * One row of the audit trail — and one SSE payload. They are the same object,
+ * which is what makes a mid-run refresh rebuild an identical timeline.
  *
- * `body` is a string and stays one: it is either prose or a JSON payload the
- * UI shows verbatim, and making the frontend parse a response field is how
- * two codebases end up disagreeing about what a payload is.
- *
- * An agent's working notes are their own `agent.log` rows carrying the parent
- * `taskId`, rather than an array nested inside the response — which is what
- * lets the UI render them as sub-lines under the exchange they belong to.
+ * The five envelope fields are fixed; everything else depends on the type,
+ * so a row is the envelope plus whatever that event carries. Display text is
+ * derived by the reader from those fields rather than baked in here: a
+ * backend that sends `text` has said everything it needs to, and a client is
+ * free to render it however suits its screen.
  */
 export interface ActivityEvent {
   id: string
-  ticketId: string
-  runId: string | null
-  /** Monotonic per ticket, allocated server-side. Order by this, not by time. */
   seq: number
   type: ActivityType
-  fromAgent: string | null
-  toAgent: string | null
-  title: string
-  body: string | null
-  level: Level
-  taskId: string | null
-  durationMs: number | null
-  createdAt: string
+  ticketId: string
+  at: string
+  /** Per-type fields — see contract.ActivityDto. */
+  [field: string]: unknown
 }
 
 export interface Artifact {
@@ -205,8 +196,12 @@ export interface Artifact {
   ticketId: string
   kind: ArtifactKind
   title: string
-  /** Contract shape per kind — see contract.ArtifactData. */
-  data: Record<string, unknown>
+  /**
+   * The contract's payload for this kind, plus whatever this deployment adds.
+   * The union is what keeps a typo out of a field a client renders; the index
+   * signature is what lets us carry an extra one it can ignore.
+   */
+  data: ArtifactData & Record<string, unknown>
   createdAt: string
   /** Additive: which agent produced it. */
   createdBy?: string
@@ -220,7 +215,7 @@ export interface MemoryEntry {
   symptom: string
   rootCause: string
   resolution: string
-  path: RunPath
+  path: ResolutionPath
   tags: string[]
   reuseCount: number
   minutesSavedPerReuse: number

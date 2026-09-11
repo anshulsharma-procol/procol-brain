@@ -1,6 +1,6 @@
 import type { Response } from 'express'
 import { bus, type BrainEvent } from '../events.js'
-import type { StreamEventName } from '../contract.js'
+import type { ActivityType as StreamEventName } from '../contract.js'
 
 /**
  * ============================================================================
@@ -15,23 +15,6 @@ import type { StreamEventName } from '../contract.js'
  * history/stream boundary renders twice, which is the commonest bug in this
  * kind of UI and the hardest to notice in a demo.
  */
-/**
- * Payload fields the contract names that fall straight out of the stored row,
- * so the orchestrator does not have to repeat them at every call site.
- */
-function derived(event: Extract<BrainEvent, { type: 'activity' }>): Record<string, unknown> {
-  const { activity } = event
-
-  switch (activity.type) {
-    case 'brain.thought':
-      return { text: [activity.title, activity.body].filter(Boolean).join(' — ') }
-    case 'agent.log':
-      return { agent: activity.fromAgent, line: activity.title }
-    default:
-      return {}
-  }
-}
-
 export function openStream(response: Response, filter: (event: BrainEvent) => boolean): void {
   response.writeHead(200, {
     'Content-Type': 'text/event-stream',
@@ -45,7 +28,13 @@ export function openStream(response: Response, filter: (event: BrainEvent) => bo
   response.write(': connected\n\n')
 
   const send = (event: StreamEventName | 'board.updated', data: unknown) => {
-    response.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`)
+    // `id:` lets EventSource replay what a dropped connection missed via
+    // Last-Event-ID, which is the difference between a reconnect that heals
+    // and one that leaves a hole in the timeline.
+    const activityId = (data as { id?: string } | undefined)?.id
+    response.write(
+      `${activityId ? `id: ${activityId}\n` : ''}event: ${event}\ndata: ${JSON.stringify(data)}\n\n`,
+    )
   }
 
   const unsubscribe = bus.subscribe((event) => {
@@ -58,14 +47,9 @@ export function openStream(response: Response, filter: (event: BrainEvent) => bo
       return
     }
 
-    const { activity, wire } = event
-    send(activity.type, {
-      ticketId: activity.ticketId,
-      seq: activity.seq,
-      activityId: activity.id,
-      ...derived(event),
-      ...wire,
-    })
+    // The stored row *is* the payload. Nothing is assembled here, which is
+    // why `/activities` and the stream cannot disagree.
+    send(event.activity.type as StreamEventName, event.activity)
   })
 
   // A comment every 20s keeps intermediaries from closing an idle stream.
