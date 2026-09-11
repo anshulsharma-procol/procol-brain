@@ -1,3 +1,4 @@
+import type { AgentActivity } from './a2a'
 import type {
   BrainTicket,
   InvestigationStep,
@@ -55,6 +56,12 @@ export interface InvestigationMessage extends BaseMessage {
   steps: InvestigationStep[]
 }
 
+/** Rendered as the live Brain <-> agent communication feed. */
+export interface AgentActivityMessage extends BaseMessage {
+  kind: 'agent-activity'
+  entries: AgentActivity[]
+}
+
 /** Rendered as a ResolutionCard. */
 export interface ResolutionMessage extends BaseMessage {
   kind: 'resolution'
@@ -74,6 +81,7 @@ export type BrainMessage =
   | StatusMessage
   | SimilarIssueMessage
   | InvestigationMessage
+  | AgentActivityMessage
   | ResolutionMessage
   | ResolvedMessage
 

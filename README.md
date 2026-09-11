@@ -27,9 +27,39 @@ Customer reports issue
         -> Brain searches previously resolved issues
         -> similar issue found?
              yes -> show solution -> "Did this help?" -> resolve ticket
-             no  -> create ticket -> agent investigation (Clara, Dev, QA, Manager)
-                                  -> resolution ready for approval
+             no  -> create ticket -> agent investigation -> resolution -> approval
 ```
+
+The investigation is Brain delegating to a team, and the customer watches it
+happen:
+
+```
+                          PROCOL BRAIN
+                               |  A2A
+              +----------------+----------------+
+              v                v                v
+           CLARA           DEV AGENT         QA AGENT
+        product           root cause        validation
+        knowledge         + pull request    + tests
+              |                |                |
+              |               MCP              MCP
+              v                v                v
+         product-db         github         test-runner
+                               |
+                               v
+                         MANAGER APPROVAL
+                               |
+                               v
+                           CUSTOMER
+```
+
+**A2A** is agent-to-agent: Brain sends a task envelope and reads a response
+envelope, never touching an agent's internals. **MCP** is agent-to-tool: the
+Dev Agent reading a file or opening a PR on GitHub. Both appear in the
+conversation, tagged, because that distinction is the architecture.
+
+The SDK implements neither protocol — it renders them and speaks the contract.
+Orchestration belongs to the backend.
 
 ## Architecture
 
@@ -60,6 +90,26 @@ INITIAL -> USER_MESSAGE -> SEARCHING_SIMILAR_ISSUES -> SIMILAR_ISSUE_FOUND
                                     \-> INVESTIGATING -> AGENTS_WORKING
                                        -> RESOLUTION_READY -> RESOLVED
 ```
+
+## Running the demo with no backend
+
+`A2ABrainApi` is the default when no `apiBaseUrl` is given: a scripted
+orchestrator that plays the full Clara -> Dev -> QA -> Manager run from
+[`src/data/demoScenario.ts`](src/data/demoScenario.ts). That file is the single
+place demo data lives - change the customer, the PR number or the test count
+there and the whole flow follows.
+
+The envelopes are real, not decoration:
+
+```ts
+const brain = new A2ABrainApi()
+brain.getTasks(ticketId)   // -> [{ task: A2ATask, response: A2AResponse }, ...]
+```
+
+When the backend is ready, pass `apiBaseUrl` and the same UI runs against it -
+see [docs/BACKEND_API_CONTRACT.md](docs/BACKEND_API_CONTRACT.md) for every
+endpoint and payload, and [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md) for the
+five-minute walkthrough.
 
 ## Install
 
@@ -227,6 +277,7 @@ function SupportWidget() {
 | `launcherLabel` | `string` | `'Help & Support'` | |
 | `greeting` | `string` | generated | First assistant message |
 | `footer` | `string \| false` | `Powered by <assistantName>` | |
+| `showAgentActivity` | `boolean` | `true` | Show the Brain↔agent feed (A2A + MCP) |
 | `context` | `BrainContext` | — | Where the widget was opened from |
 | `onTicketCreated` | `(ticket) => void` | — | |
 | `onTicketResolved` | `(ticket) => void` | — | |

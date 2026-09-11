@@ -131,7 +131,11 @@ export function useProcolBrain(options: UseProcolBrainOptions): UseProcolBrainRe
           signal: run.signal,
           onProgress: (update) => {
             if (!run.isCurrent()) return
-            dispatch({ type: 'investigation_progress', steps: update.steps })
+            dispatch({
+              type: 'investigation_progress',
+              steps: update.steps,
+              activity: update.activity,
+            })
           },
         },
       )

@@ -1,5 +1,6 @@
-import { MockBrainApi } from '../../src'
+import { A2ABrainApi } from '../../src'
 import type {
+  AgentActivity,
   BrainApi,
   InvestigationStep,
   Resolution,
@@ -43,19 +44,62 @@ const RESOLUTION: Resolution = {
   ticketId: 'showcase',
   summary: 'Your issue has been fixed and is ready for approval.',
   rootCause:
-    'Tenant GST configuration was not forwarded to the invoice calculator, so the default 12% slab was applied.',
+    'Tenant context was not passed to the GST calculator, so the default 12% slab was applied.',
   checks: [
     { label: 'Root cause identified', status: 'complete' },
     { label: 'Fix implemented', status: 'complete' },
     { label: 'QA validation', status: 'complete' },
   ],
+  pr: {
+    number: 452,
+    status: 'created',
+    title: 'fix: pass tenant GST config to invoice calculator',
+  },
+  filesChanged: ['invoiceCalculator.ts'],
   tests: { passed: 47, total: 47 },
 }
 
 /** A promise that never settles - freezes the UI in its loading state. */
 const pending = <T,>(): Promise<T> => new Promise<T>(() => {})
 
-function delegate(base: MockBrainApi): BrainApi {
+/** The A2A hops visible while the Dev Agent is still working. */
+const MID_ACTIVITY: AgentActivity[] = [
+  {
+    id: 'a1',
+    from: 'procol-brain',
+    to: 'clara',
+    via: 'A2A',
+    kind: 'request',
+    text: 'What should GST be for ABC Corp?',
+  },
+  {
+    id: 'a2',
+    from: 'clara',
+    to: 'procol-brain',
+    via: 'A2A',
+    kind: 'response',
+    text: 'Expected GST = 18%. ABC Corp: GST 18%, Discount 10%. Formula: Base - Discount + GST.',
+  },
+  {
+    id: 'a3',
+    from: 'procol-brain',
+    to: 'dev-agent',
+    via: 'A2A',
+    kind: 'request',
+    text: 'Investigate the invoice calculation. Expected GST is 18%.',
+  },
+  {
+    id: 'a4',
+    from: 'dev-agent',
+    to: 'github',
+    via: 'MCP',
+    kind: 'tool',
+    text: 'Read invoiceCalculator.ts, opened branch fix/gst-tenant-context',
+    tool: { server: 'github', call: 'read_file + create_branch' },
+  },
+]
+
+function delegate(base: A2ABrainApi): BrainApi {
   return {
     searchSimilarIssues: (request) => base.searchSimilarIssues(request),
     createTicket: (request) => base.createTicket(request),
@@ -66,7 +110,7 @@ function delegate(base: MockBrainApi): BrainApi {
 }
 
 export function createShowcaseApi(stage: ShowcaseStage): BrainApi {
-  const base = delegate(new MockBrainApi({ speed: 0 }))
+  const base = delegate(new A2ABrainApi({ speed: 0 }))
 
   switch (stage) {
     case 'searching':
@@ -77,7 +121,11 @@ export function createShowcaseApi(stage: ShowcaseStage): BrainApi {
         ...base,
         searchSimilarIssues: async () => [],
         startInvestigation: (request, options) => {
-          options?.onProgress?.({ ticketId: request.ticketId, steps: MID_INVESTIGATION })
+          options?.onProgress?.({
+            ticketId: request.ticketId,
+            steps: MID_INVESTIGATION,
+            activity: MID_ACTIVITY,
+          })
           return pending<Resolution>()
         },
       }

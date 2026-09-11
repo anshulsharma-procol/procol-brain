@@ -48,14 +48,16 @@ const PANELS: Panel[] = [
   },
   {
     stage: 'investigating',
-    title: '4. Agents investigating',
-    caption: 'Clara, Development Agent, QA Agent and Manager pipeline. AGENTS_WORKING.',
+    title: '4. Agents collaborating (A2A + MCP)',
+    caption:
+      'Brain delegates to Clara and the Dev Agent over A2A; the Dev Agent reaches GitHub over MCP. Scroll the card to see the whole exchange. AGENTS_WORKING.',
     seed: true,
   },
   {
     stage: 'resolution',
     title: '5. Resolution ready',
-    caption: 'Root cause, 47/47 tests, awaiting approval. RESOLUTION_READY.',
+    caption:
+      'Root cause, PR #452 with the files it touched, QA 47/47, and the manager approval gate. RESOLUTION_READY.',
     seed: true,
   },
   {

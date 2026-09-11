@@ -1,3 +1,4 @@
+import type { AgentActivity } from '../types/a2a'
 import type {
   BrainTicket,
   InvestigationStep,
@@ -36,7 +37,7 @@ export type BrainEvent =
   | { type: 'awaiting_confirmation' }
   | { type: 'ticket_created'; ticket: BrainTicket }
   | { type: 'investigation_started'; ticket: BrainTicket; steps: InvestigationStep[] }
-  | { type: 'investigation_progress'; steps: InvestigationStep[] }
+  | { type: 'investigation_progress'; steps: InvestigationStep[]; activity?: AgentActivity[] }
   | { type: 'resolution_ready'; resolution: Resolution }
   | { type: 'resolved'; ticket: BrainTicket; headline: string; checks: string[] }
   | { type: 'error'; message: string }
@@ -123,14 +124,36 @@ export function brainReducer(state: BrainState, event: BrainEvent): BrainState {
         ],
       }
 
-    case 'investigation_progress':
+    case 'investigation_progress': {
+      const messages = state.messages.map((message) =>
+        message.kind === 'investigation' ? { ...message, steps: event.steps } : message,
+      )
+
+      // The activity feed is one live message that grows as agents talk.
+      const entries = event.activity ?? []
+      const hasFeed = messages.some((message) => message.kind === 'agent-activity')
+
       return {
         ...state,
         workflow: 'AGENTS_WORKING',
-        messages: state.messages.map((message) =>
-          message.kind === 'investigation' ? { ...message, steps: event.steps } : message,
-        ),
+        messages:
+          entries.length === 0
+            ? messages
+            : hasFeed
+              ? messages.map((message) =>
+                  message.kind === 'agent-activity' ? { ...message, entries } : message,
+                )
+              : [
+                  ...messages,
+                  {
+                    id: createId('msg'),
+                    createdAt: Date.now(),
+                    kind: 'agent-activity',
+                    entries,
+                  },
+                ],
       }
+    }
 
     case 'resolution_ready':
       return {

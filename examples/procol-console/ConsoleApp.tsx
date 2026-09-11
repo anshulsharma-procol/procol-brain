@@ -151,7 +151,9 @@ export function ConsoleApp() {
         <section className="console__hint">
           <strong>Demo script</strong>
           <p>
-            Open <em>Help &amp; Support</em>, choose <em>Report a problem</em>, then paste:
+            Open <em>Help &amp; Support</em>, paste the line below, then choose{' '}
+            <em>No, investigate further</em> to watch Brain delegate to Clara, the Dev Agent,
+            QA and the Manager:
           </p>
           <code>{DEMO_MESSAGE}</code>
           <button

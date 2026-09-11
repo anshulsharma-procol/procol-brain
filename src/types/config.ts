@@ -87,6 +87,13 @@ export interface ProcolBrainProps {
    */
   footer?: string | false
 
+  /**
+   * Show the Brain <-> agent communication feed (A2A hops and MCP tool calls)
+   * inside the conversation. Defaults to true - it is the clearest way to
+   * show that a team of agents, not a chatbot, is doing the work.
+   */
+  showAgentActivity?: boolean
+
   /** Where in the host app the widget was opened from. */
   context?: BrainContext
 

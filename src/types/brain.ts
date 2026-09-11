@@ -1,3 +1,5 @@
+import type { AgentActivity } from './a2a'
+
 /**
  * Domain entities exchanged between the widget and the Brain backend.
  * These types are pure data - they contain no React or DOM concepts.
@@ -62,6 +64,8 @@ export interface InvestigationStep {
 export interface InvestigationProgressUpdate {
   ticketId: string
   steps: InvestigationStep[]
+  /** Agent-to-agent hops and MCP tool calls revealed so far. */
+  activity?: AgentActivity[]
   /** Present once the agents have produced a resolution. */
   resolution?: Resolution
 }
@@ -80,8 +84,19 @@ export interface Resolution {
     passed: number
     total: number
   }
+  /** Pull request produced by the Dev Agent. */
+  pr?: {
+    number: number
+    status: 'created' | 'open' | 'merged'
+    title?: string
+    url?: string
+  }
+  /** Files the fix touched. */
+  filesChanged?: string[]
   /** True once a human approver has signed off. */
   approved?: boolean
+  /** Who approved, when `approved` is true. */
+  approver?: string
 }
 
 /** Free-form assistant reply for question-style messages. */

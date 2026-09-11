@@ -19,6 +19,8 @@ export interface ChatWindowProps {
   actions: SuggestedAction[]
   busy: boolean
   showControls?: boolean
+  /** When false, Brain <-> agent hops are hidden from the transcript. */
+  showAgentActivity?: boolean
   footnote?: string
   inputRef?: RefObject<HTMLTextAreaElement | null>
   onSend: (text: string) => void
@@ -39,6 +41,7 @@ export function ChatWindow({
   actions,
   busy,
   showControls,
+  showAgentActivity = true,
   footnote,
   inputRef,
   onSend,
@@ -89,9 +92,11 @@ export function ChatWindow({
         aria-relevant="additions text"
       >
         {contextLabel && <div className={styles.contextChip}>{contextLabel}</div>}
-        {messages.map((message) => (
-          <ChatMessage key={message.id} message={message} />
-        ))}
+        {messages
+          .filter((message) => showAgentActivity || message.kind !== 'agent-activity')
+          .map((message) => (
+            <ChatMessage key={message.id} message={message} />
+          ))}
       </div>
 
       <SuggestedActions actions={actions} disabled={busy} onSelect={onAction} />

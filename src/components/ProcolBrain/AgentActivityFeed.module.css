@@ -1,0 +1,184 @@
+/*
+ * Styles for the agent communication feed only. Every class here is new; the
+ * shared card, title and screen-reader helpers are reused from
+ * ProcolBrain.module.css rather than redefined, so a themed widget keeps one
+ * visual language. Colours come exclusively from the widget's custom
+ * properties, which means a host theme restyles this feed for free.
+ */
+
+.count {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--pb-muted);
+  white-space: nowrap;
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+/*
+ * A hairline rail instead of a card per row: nine of these stack inside a
+ * 400px panel, so anything heavier turns the transcript into a wall.
+ */
+.row {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding-left: 10px;
+  border-left: 2px solid var(--pb-border);
+  min-width: 0;
+}
+
+.rowTool {
+  border-left-color: var(--pb-ai);
+}
+
+.rowNew {
+  animation: pbActivityIn 200ms ease-out;
+}
+
+@keyframes pbActivityIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Wraps rather than truncates: agent names must stay readable at 400px. */
+.hop {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 3px 6px;
+  min-width: 0;
+}
+
+.party {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  border-radius: var(--pb-radius-sm);
+  background: var(--pb-surface);
+  color: var(--pb-muted);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  overflow: hidden;
+}
+
+.avatarImage {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.partyName {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--pb-text);
+  overflow-wrap: anywhere;
+}
+
+.partyTool .avatar {
+  background: var(--pb-ai-soft);
+  color: var(--pb-ai);
+}
+
+.partyTool .partyName {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-weight: 500;
+  color: var(--pb-ai);
+}
+
+.arrow {
+  flex: 0 0 auto;
+  color: var(--pb-muted);
+}
+
+.tag {
+  margin-left: auto;
+  padding: 1px 6px;
+  border: 1px solid var(--pb-border);
+  border-radius: 999px;
+  background: var(--pb-surface);
+  color: var(--pb-muted);
+  font-size: 9.5px;
+  font-weight: 700;
+  line-height: 1.6;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+.tagTool {
+  border-color: transparent;
+  background: var(--pb-ai-soft);
+  color: var(--pb-ai);
+}
+
+.time {
+  font-size: 10.5px;
+  color: var(--pb-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.toolLine {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 2px 6px;
+  min-width: 0;
+}
+
+.toolLabel {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--pb-ai);
+}
+
+.toolCall {
+  padding: 0 5px;
+  border-radius: var(--pb-radius-sm);
+  background: var(--pb-ai-soft);
+  color: var(--pb-ai);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+
+.text {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--pb-text);
+  overflow-wrap: anywhere;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rowNew {
+    animation: none;
+  }
+}

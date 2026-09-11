@@ -1,7 +1,8 @@
 import type { BrainMessage } from '../../types/messages'
 import styles from './ProcolBrain.module.css'
+import { AgentActivityFeed } from './AgentActivityFeed'
 import { InvestigationProgress } from './InvestigationProgress'
-import { ResolutionCard } from './ResolutionCard'
+import { ResolutionDetails } from './ResolutionDetails'
 import { SimilarIssueCard } from './SimilarIssueCard'
 import { CheckIcon, SearchIcon } from './icons'
 
@@ -52,8 +53,11 @@ export function ChatMessage({ message }: ChatMessageProps) {
         />
       )
 
+    case 'agent-activity':
+      return <AgentActivityFeed entries={message.entries} />
+
     case 'resolution':
-      return <ResolutionCard resolution={message.resolution} />
+      return <ResolutionDetails resolution={message.resolution} />
 
     case 'resolved':
       return (

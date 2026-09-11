@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { BrainApi } from '../../services/brainApi'
-import { createBrainClient } from '../../services/brainApi'
-import { MockBrainApi } from '../../services/mockBrainApi'
+import { createRestBrainClient } from '../../services/restBrainApi'
+import { A2ABrainApi } from '../../services/a2aBrainApi'
 import type { ProcolBrainProps } from '../../types/config'
 import { themeToCssVariables } from '../../theme/themeVariables'
 import { useProcolBrain } from '../../hooks/useProcolBrain'
@@ -38,6 +38,7 @@ export function ProcolBrain({
   launcherLabel = 'Help & Support',
   greeting,
   footer,
+  showAgentActivity = true,
   context,
   onTicketCreated,
   onTicketResolved,
@@ -59,8 +60,9 @@ export function ProcolBrain({
 
   const brain: BrainApi = useMemo(() => {
     if (api) return api
-    if (apiBaseUrl) return createBrainClient({ baseUrl: apiBaseUrl })
-    return new MockBrainApi()
+    if (apiBaseUrl) return createRestBrainClient({ baseUrl: apiBaseUrl })
+    // No backend yet: the scripted A2A orchestrator drives the full demo.
+    return new A2ABrainApi()
   }, [api, apiBaseUrl])
 
   const identity = useMemo(() => ({ companyId, userId }), [companyId, userId])
@@ -149,6 +151,7 @@ export function ProcolBrain({
           actions={suggestedActions}
           busy={busy}
           showControls={!inline}
+          showAgentActivity={showAgentActivity}
           footnote={footer === false ? undefined : (footer ?? `Powered by ${assistantName}`)}
           inputRef={inputRef}
           onSend={sendMessage}
