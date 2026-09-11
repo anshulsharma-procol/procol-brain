@@ -1,75 +1,57 @@
-# React + TypeScript + Vite
+# Procol Brain — console
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+The internal control tower: the board, the live agent transcript, the approval
+gate, the agent registry, institutional memory, and the knowledge base.
 
-Currently, two official plugins are available:
-
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+```bash
+npm install
+npm run dev          # http://localhost:5173
+npm run build        # typecheck + production build
+npm run lint
+npm run build:sdk    # rebuild the embeddable chat widget in src/brain-chat/dist
 ```
 
-You can also install [eslint-plugin-react-x](https://npmx.dev/package/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://npmx.dev/package/eslint-plugin-react-dom) for React-specific lint rules:
+## Two products in here
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+| Folder | What it is |
+| --- | --- |
+| `src/pages`, `src/components`, `src/platform` | the console — internal, one screen per job |
+| `src/brain-chat` | the embeddable customer chat SDK, published as `@procol/brain-chat` |
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+They are deliberately separate and share no state. The console mounts the
+widget so the customer's side of the same run is visible while demoing.
 
+## Running on dummy data (today)
+
+No backend is required. The console is driven by scenario files under
+`src/platform/scenarios/`, replayed through an in-memory implementation of the
+`ConsoleApi` interface. Runs stream in over a timer exactly as they will stream
+in over SSE, so the screens are exercised against moving state rather than a
+pile of constants.
+
+Two control towers ship with it:
+
+- **Procol** — `PRO-1245` invoice GST defect (the full loop), `PRO-1238` vendor
+  auction access (a configuration fix that never wakes engineering).
+- **AcmeCloud** — `ACME-7821` tenant-wide 401s after a deployment. The same run
+  shape as PRO-1245, with the company's own knowledge agent in place of Clara.
+
+Switch between them in the sidebar, or deep-link with `?workspace=acmecloud`.
+
+## Running on the real backend (one variable)
+
+```bash
+# frontend/.env.local
+VITE_BRAIN_API_URL=https://brain.procol.in/api
+VITE_BRAIN_API_TOKEN=...     # optional
 ```
+
+That is the entire integration. `src/platform/api/index.ts` swaps the mock for
+the HTTP adapter; both implement `ConsoleApi`, so no screen, hook or type
+changes. The endpoints are documented in `docs/CONSOLE_API_CONTRACT.md`.
+
+## Adding a company or a case
+
+See `src/platform/README.md`. A new customer is one file in
+`platform/workspaces/`; a new end-to-end case is one file in
+`platform/scenarios/`. Neither touches a component.

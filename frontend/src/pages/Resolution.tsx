@@ -1,287 +1,361 @@
-import {
-  ArrowLeft,
-  Bell,
-  CheckCircle,
-  Code,
-  ExternalLink,
-  FileText,
-  FlaskConical,
-  GitPullRequest,
-  Mail,
-  PartyPopper,
-  RotateCw,
-  User,
-  X,
-} from 'lucide-react'
+import { ArrowLeft, CheckCircle, ExternalLink, Mail, ShieldCheck, TrendingUp } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-// Substitution note: lucide-react dropped brand/logo icons (no "Github"
-// export), so GitHub-flavored buttons use GitPullRequest instead.
 import Card from '../components/Card'
+import DiffView from '../components/DiffView'
 import PageShell from '../components/PageShell'
 import StatusPill from '../components/StatusPill'
 import TopBar from '../components/TopBar'
-import { primaryTicket } from '../data/mockData'
+import { useTicketDetail, useWorkspace } from '../platform/react'
+import type {
+  ConfigFixArtifact,
+  CustomerReplyArtifact,
+  ImpactArtifact,
+  PrArtifact,
+  RootCauseArtifact,
+  TestResultArtifact,
+  TicketDetail,
+} from '../platform/types'
+import { durationLabel } from '../utils/format'
 
-const NEXT_STEPS = [
-  { label: 'Close ticket', detail: 'Mark as resolved', icon: CheckCircle, color: 'text-green-600' },
-  { label: 'Notify customer', detail: 'Send resolution update', icon: Mail, color: 'text-green-600' },
-  { label: 'Log activity', detail: 'Update knowledge base', icon: FileText, color: 'text-green-600' },
-]
+const APPROVER = 'Anshul Sharma'
 
+/**
+ * The decision. Everything a person needs to say yes or no, in the order they
+ * need it: what broke, what changed, whether it is proven, who else it
+ * touches, and the policy that stopped the run here.
+ */
 export default function Resolution() {
-  const { id } = useParams()
-  const ticket = primaryTicket
-  const [decision, setDecision] = useState<'pending' | 'approved' | 'rejected'>('pending')
-  const notFound = id !== undefined && id !== ticket.id
+  const { id } = useParams<{ id: string }>()
+  const { workspace } = useWorkspace()
+  const { detail, loading, error, decide } = useTicketDetail(id)
+  const [note, setNote] = useState('')
+  const [submitting, setSubmitting] = useState(false)
 
-  if (notFound) {
+  if (loading && !detail) {
     return (
-      <PageShell tip="Automate. Investigate. Fix. Deliver.">
-        <TopBar />
-        <div className="px-8 py-16 text-center text-gray-500">Ticket #{id} not found in this demo.</div>
-      </PageShell>
+      <Shell>
+        <p className="px-8 py-16 text-center text-sm text-gray-400">Loading {id}…</p>
+      </Shell>
     )
   }
 
+  if (error || !detail) {
+    return (
+      <Shell>
+        <p className="px-8 py-16 text-center text-sm text-gray-500">
+          {error ?? `Ticket ${id} is not in this control tower.`}{' '}
+          <Link to="/" className="text-blue-600 hover:underline">
+            Back to the board
+          </Link>
+        </p>
+      </Shell>
+    )
+  }
+
+  const { ticket, artifacts, approvalPolicy, decision } = detail
+  const find = <T extends { kind: string }>(kind: T['kind']) =>
+    artifacts.find((artifact) => artifact.kind === kind)
+
+  const rootCause = find<RootCauseArtifact>('ROOT_CAUSE') as RootCauseArtifact | undefined
+  const pr = find<PrArtifact>('PR') as PrArtifact | undefined
+  const tests = find<TestResultArtifact>('TEST_RESULT') as TestResultArtifact | undefined
+  const impact = find<ImpactArtifact>('IMPACT') as ImpactArtifact | undefined
+  const configFix = find<ConfigFixArtifact>('CONFIG_FIX') as ConfigFixArtifact | undefined
+  const reply = find<CustomerReplyArtifact>('CUSTOMER_REPLY') as CustomerReplyArtifact | undefined
+
+  const submit = async (outcome: 'APPROVED' | 'REJECTED') => {
+    setSubmitting(true)
+    try {
+      await decide(outcome, APPROVER, note.trim() || undefined)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
   return (
-    <PageShell tip="Automate. Investigate. Fix. Deliver.">
+    <Shell decision={decision}>
+      <div className="px-8 pt-6">
+        <div className="flex items-center gap-2 text-sm text-gray-500">
+          <Link
+            to={`/tickets/${ticket.reference}`}
+            className="text-gray-400 hover:text-gray-600"
+            aria-label="Back to the ticket"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Link>
+          <Link to={`/tickets/${ticket.reference}`} className="hover:underline">
+            {ticket.title}
+          </Link>
+          <span>/</span>
+          <span className="font-mono text-gray-700">{ticket.reference}</span>
+        </div>
+
+        <h1 className="mt-2 text-3xl font-bold tracking-tight text-gray-900">
+          {decision ? (decision.outcome === 'APPROVED' ? 'Fix approved' : 'Sent back for a human') : 'Resolution ready'}
+        </h1>
+        <p className="mt-1 max-w-2xl text-sm text-gray-500">
+          {decision
+            ? decision.outcome === 'APPROVED'
+              ? `${decision.by} approved this. The customer has been notified and what the run learned is now part of ${workspace.name}'s institutional memory.`
+              : `${decision.by} rejected the proposed fix. The ticket is now waiting on a person.`
+            : 'The agents have finished. Review what they produced and decide — nothing ships until you do.'}
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 px-8 py-6 lg:grid-cols-[1fr_22rem]">
+        <div className="flex flex-col gap-4">
+          {rootCause && (
+            <Card className="p-6">
+              <p className="text-xs uppercase tracking-wide text-gray-400">Root cause</p>
+              <p className="mt-2 text-lg font-semibold leading-snug text-gray-900">
+                {rootCause.data.headline}
+              </p>
+              <p className="mt-2 max-w-[70ch] text-sm leading-relaxed text-gray-600">
+                {rootCause.data.detail}
+              </p>
+              {rootCause.data.evidence && (
+                <ul className="mt-3 space-y-1">
+                  {rootCause.data.evidence.map((line) => (
+                    <li key={line} className="font-mono text-[11px] text-gray-500">
+                      <span className="mr-1.5 text-gray-300">›</span>
+                      {line}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Card>
+          )}
+
+          {pr && (
+            <Card className="p-6">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-sm text-gray-500">
+                  The fix ·{' '}
+                  <a
+                    href={pr.data.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 font-mono text-blue-600 hover:underline"
+                  >
+                    {pr.data.number}
+                    <ExternalLink className="h-3 w-3" />
+                  </a>{' '}
+                  · <span className="font-mono">{pr.data.filesChanged.join(', ')}</span>
+                </p>
+                <StatusPill
+                  label={pr.data.state === 'merged' ? 'Merged' : 'Open'}
+                  tone={pr.data.state === 'merged' ? 'success' : 'info'}
+                />
+              </div>
+              <p className="mt-1 text-sm font-medium text-gray-900">{pr.data.title}</p>
+              <div className="mt-3">
+                <DiffView diff={pr.data.diff} />
+              </div>
+            </Card>
+          )}
+
+          {configFix && (
+            <Card className="p-6">
+              <p className="text-xs uppercase tracking-wide text-gray-400">The change</p>
+              <p className="mt-2 text-base font-semibold text-gray-900">{configFix.data.summary}</p>
+              <p className="mt-1 font-mono text-xs text-gray-600">{configFix.data.change}</p>
+              <ol className="mt-3 space-y-1.5">
+                {configFix.data.steps.map((step, index) => (
+                  <li key={step} className="flex gap-2 text-sm text-gray-600">
+                    <span className="font-mono text-xs text-gray-400">{index + 1}.</span>
+                    {step}
+                  </li>
+                ))}
+              </ol>
+              <p className="mt-3 border-t border-gray-100 pt-3 text-sm text-gray-500">
+                No code change was needed. Brain reached this without waking the engineering or
+                validation agents.
+              </p>
+            </Card>
+          )}
+
+          {tests && (
+            <Card className="border-l-4 border-l-green-600 p-6">
+              <p className="text-xs uppercase tracking-wide text-gray-400">Validation</p>
+              <div className="mt-2 flex flex-wrap items-baseline gap-3">
+                <p className="text-2xl font-bold text-gray-900">
+                  {tests.data.passed} / {tests.data.total} tests passed
+                </p>
+                <span className="font-mono text-sm text-gray-400">
+                  {durationLabel(tests.data.durationMs)}
+                </span>
+              </div>
+              <p className="mt-1 text-sm text-gray-500">{tests.data.suite}</p>
+              <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-1">
+                {tests.data.cases.map((testCase) => (
+                  <li key={testCase} className="flex items-center gap-1.5 text-xs text-gray-600">
+                    <CheckCircle className="h-3.5 w-3.5 text-green-600" />
+                    {testCase}
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          )}
+
+          {impact && (
+            <Card className="p-6">
+              <p className="flex items-center gap-1.5 text-xs uppercase tracking-wide text-gray-400">
+                <TrendingUp className="h-3.5 w-3.5" />
+                Blast radius
+              </p>
+              <div className="mt-2 flex flex-wrap items-baseline gap-8">
+                <div>
+                  <p className="text-2xl font-bold text-gray-900">{impact.data.affectedTenants}</p>
+                  <p className="text-sm text-gray-500">tenants affected</p>
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-gray-900">{impact.data.affectedRecords}</p>
+                  <p className="text-sm text-gray-500">{impact.data.recordLabel}</p>
+                </div>
+                <p className="text-sm text-gray-400">since {impact.data.firstSeen}</p>
+              </div>
+              <p className="mt-3 max-w-[70ch] text-sm text-gray-600">
+                This customer reported it. The other {impact.data.affectedTenants - 1} would have
+                found out on their own.
+              </p>
+            </Card>
+          )}
+
+          {reply && (
+            <Card className="p-6">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="flex items-center gap-1.5 text-xs uppercase tracking-wide text-gray-400">
+                  <Mail className="h-3.5 w-3.5" />
+                  Customer reply
+                </p>
+                <StatusPill
+                  label={reply.data.sent ? 'Sent' : 'Drafted — sends on approval'}
+                  tone={reply.data.sent ? 'success' : 'neutral'}
+                />
+              </div>
+              <p className="mt-2 font-medium text-gray-900">{reply.data.subject}</p>
+              <div className="mt-2 space-y-2 text-sm leading-relaxed text-gray-600">
+                {reply.data.body.map((line) => (
+                  <p key={line}>{line}</p>
+                ))}
+                <p className="text-gray-500">{reply.data.signature}</p>
+              </div>
+            </Card>
+          )}
+        </div>
+
+        {/* -- the decision -------------------------------------------------- */}
+        <div>
+          <Card className="sticky top-6 p-6 shadow-lg">
+            <h2 className="text-base font-semibold text-gray-900">
+              {decision ? 'Decision recorded' : 'Your decision'}
+            </h2>
+
+            {approvalPolicy && (
+              <div className="mt-3 flex gap-2 rounded-lg bg-gray-50 p-3">
+                <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" />
+                <div>
+                  <p className="text-sm leading-relaxed text-gray-700">{approvalPolicy.reason}</p>
+                  <p className="mt-1 font-mono text-[11px] text-gray-400">
+                    policy {approvalPolicy.id} · {approvalPolicy.risk} risk
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {decision ? (
+              <div className="mt-4">
+                <StatusPill
+                  label={decision.outcome === 'APPROVED' ? 'Fix approved' : 'Rejected'}
+                  tone={decision.outcome === 'APPROVED' ? 'success' : 'danger'}
+                  icon={<CheckCircle className="h-3.5 w-3.5" />}
+                />
+                <p className="mt-3 text-sm text-gray-600">
+                  {decision.by} · {new Date(decision.at).toLocaleString('en-GB')}
+                </p>
+                {decision.note && (
+                  <p className="mt-2 rounded-lg bg-gray-50 p-3 text-sm text-gray-600">
+                    {decision.note}
+                  </p>
+                )}
+                <Link
+                  to={`/tickets/${ticket.reference}`}
+                  className="mt-4 inline-block text-sm font-medium text-blue-600 hover:underline"
+                >
+                  See it on the timeline →
+                </Link>
+              </div>
+            ) : (
+              <>
+                <label htmlFor="decision-note" className="mt-4 block text-sm text-gray-500">
+                  Note (optional)
+                </label>
+                <textarea
+                  id="decision-note"
+                  value={note}
+                  onChange={(event) => setNote(event.target.value)}
+                  rows={3}
+                  placeholder="Anything the record should carry."
+                  className="mt-1 w-full resize-none rounded-lg border border-gray-200 p-2.5 text-sm text-gray-700 placeholder:text-gray-400 focus:border-violet-300 focus:outline-none"
+                />
+
+                <div className="mt-4 flex gap-2">
+                  <button
+                    type="button"
+                    disabled={submitting}
+                    onClick={() => void submit('REJECTED')}
+                    className="flex-1 rounded-lg border border-gray-200 px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 disabled:opacity-60"
+                  >
+                    Reject
+                  </button>
+                  <button
+                    type="button"
+                    disabled={submitting}
+                    onClick={() => void submit('APPROVED')}
+                    className="flex-1 rounded-lg bg-violet-600 px-3 py-2.5 text-sm font-semibold text-white hover:bg-violet-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 disabled:opacity-60"
+                  >
+                    {submitting ? 'Approving…' : 'Approve fix'}
+                  </button>
+                </div>
+
+                <p className="mt-3 text-xs leading-relaxed text-gray-400">
+                  Approving sends the drafted reply, closes the ticket, and writes what this run
+                  learned into {workspace.name}&apos;s institutional memory.
+                </p>
+              </>
+            )}
+          </Card>
+        </div>
+      </div>
+    </Shell>
+  )
+}
+
+function Shell({
+  children,
+  decision,
+}: {
+  children: React.ReactNode
+  decision?: TicketDetail['decision']
+}) {
+  return (
+    <PageShell tip="Nothing ships without a person, and the rule that stopped it is on screen.">
       <TopBar
         trailing={
           <StatusPill
             label={
-              decision === 'approved' ? 'Approved' : decision === 'rejected' ? 'Rejected' : 'Ready for Approval'
+              decision
+                ? decision.outcome === 'APPROVED'
+                  ? 'Approved'
+                  : 'Rejected'
+                : 'Waiting for your approval'
             }
-            tone={decision === 'rejected' ? 'danger' : 'success'}
-            icon={<CheckCircle className="h-3.5 w-3.5" />}
+            tone={decision?.outcome === 'REJECTED' ? 'danger' : decision ? 'success' : 'warning'}
           />
         }
       />
-
-      <div className="px-8 pt-6">
-        <div className="flex items-center gap-2 text-sm text-gray-500">
-          <Link to={`/tickets/${ticket.id}`} className="text-gray-400 hover:text-gray-600">
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-          <Link to="/" className="hover:underline">
-            Tickets
-          </Link>
-          <span>/</span>
-          <span className="text-gray-700">{ticket.number}</span>
-        </div>
-
-        <h1 className="mt-2 text-3xl font-bold tracking-tight text-gray-900">Resolution Ready</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          The issue has been fixed and validated by QA. Review the details and approve to close the ticket.
-        </p>
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 px-8 py-6 lg:grid-cols-[1fr_360px]">
-        <div className="flex flex-col gap-4">
-          <Card className="p-6">
-            <div className="flex flex-wrap items-center gap-3">
-              <span className="text-sm font-semibold text-gray-900">{ticket.number}</span>
-              <StatusPill label={`${ticket.priority} Priority`} tone="danger" />
-            </div>
-            <h2 className="mt-2 text-lg font-bold text-gray-900">{ticket.title}</h2>
-            <div className="mt-2 flex flex-wrap items-center gap-4 text-sm text-gray-500">
-              <span className="flex items-center gap-1.5">
-                <User className="h-4 w-4 text-gray-400" />
-                {ticket.customer}
-              </span>
-              <span className="flex items-center gap-1.5">
-                <FileText className="h-4 w-4 text-gray-400" />
-                {ticket.category}
-              </span>
-              <span className="flex items-center gap-1.5">
-                <Bell className="h-4 w-4 text-gray-400" />
-                Created {ticket.createdAt}
-              </span>
-            </div>
-          </Card>
-
-          <Card className="p-6">
-            <h2 className="flex items-center gap-2 text-base font-semibold text-gray-900">
-              <RotateCw className="h-4 w-4 text-blue-500" />
-              Root Cause
-            </h2>
-            <div className="mt-3 rounded-lg bg-gray-50 p-4">
-              <p className="text-sm font-semibold text-gray-900">{ticket.rootCause.headline}</p>
-              <p className="mt-1.5 text-sm text-gray-600">{ticket.rootCause.detail}</p>
-            </div>
-          </Card>
-
-          <Card className="p-6">
-            <h2 className="flex items-center gap-2 text-base font-semibold text-gray-900">
-              <Code className="h-4 w-4 text-blue-500" />
-              Fix Implemented
-            </h2>
-            <div className="mt-3 rounded-lg bg-gray-50 p-4">
-              <div className="flex items-center justify-between">
-                <span className="flex items-center gap-1.5 font-semibold text-blue-600">
-                  PR {ticket.fix.prNumber}
-                  <ExternalLink className="h-3.5 w-3.5" />
-                </span>
-                <StatusPill label="Merged" tone="success" withDot />
-              </div>
-              <p className="mt-2 text-sm font-medium text-gray-800">{ticket.fix.file}</p>
-              <p className="mt-1 text-sm text-gray-600">{ticket.fix.description}</p>
-              <button
-                type="button"
-                className="mt-3 flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-              >
-                <GitPullRequest className="h-4 w-4" />
-                View Pull Request
-              </button>
-            </div>
-          </Card>
-
-          <Card className="p-6">
-            <h2 className="flex items-center gap-2 text-base font-semibold text-gray-900">
-              <FlaskConical className="h-4 w-4 text-blue-500" />
-              QA Result
-            </h2>
-            <div className="mt-3 flex items-center gap-3 rounded-lg bg-green-50 p-4">
-              <CheckCircle className="h-8 w-8 shrink-0 text-green-600" />
-              <div>
-                <p className="text-base font-bold text-green-700">
-                  {ticket.testResults.passed}/{ticket.testResults.total} TESTS PASSED
-                </p>
-                <p className="text-sm text-green-700/80">All invoice regression tests passed successfully.</p>
-              </div>
-            </div>
-            <div className="mt-4 grid grid-cols-4 gap-3 text-center text-sm">
-              <StatCell label="Test Suite" value={ticket.testResults.suite} />
-              <StatCell label="Total Tests" value={ticket.testResults.total} />
-              <StatCell label="Passed" value={ticket.testResults.passed} valueColor="text-green-600" />
-              <StatCell label="Failed" value={ticket.testResults.failed} valueColor="text-red-500" />
-            </div>
-          </Card>
-
-          <div className="flex gap-3">
-            <button
-              type="button"
-              onClick={() => setDecision('rejected')}
-              className="flex flex-1 items-center justify-center gap-2 rounded-lg border-2 border-red-500 px-4 py-2.5 text-sm font-semibold text-red-500 hover:bg-red-50"
-            >
-              <X className="h-4 w-4" />
-              Reject
-            </button>
-            <button
-              type="button"
-              onClick={() => setDecision('approved')}
-              className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-green-700"
-            >
-              <CheckCircle className="h-4 w-4" />
-              Approve Fix
-            </button>
-          </div>
-          {decision !== 'pending' && (
-            <p className={`text-sm font-medium ${decision === 'approved' ? 'text-green-600' : 'text-red-500'}`}>
-              {decision === 'approved'
-                ? 'Fix approved — customer will be notified and the ticket closed.'
-                : 'Fix rejected — sent back to Dev Agent for another pass.'}
-            </p>
-          )}
-        </div>
-
-        <div className="flex flex-col gap-4">
-          <Card className="p-6">
-            <h2 className="flex items-center gap-2 text-base font-semibold text-gray-900">
-              <FileText className="h-4 w-4 text-gray-500" />
-              Ticket Timeline
-            </h2>
-            <ol className="mt-4">
-              {ticket.timeline.map((step, index) => (
-                <li key={step.label} className="relative flex gap-3 pb-6 last:pb-0">
-                  {index < ticket.timeline.length - 1 && (
-                    <span className="absolute left-[9px] top-5 h-full w-px bg-gray-200" />
-                  )}
-                  <span className="relative z-10 mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center">
-                    {step.state === 'current' ? (
-                      <CheckCircle className="h-5 w-5 text-green-600" />
-                    ) : (
-                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-500 text-[10px] font-semibold text-white">
-                        {index + 1}
-                      </span>
-                    )}
-                  </span>
-                  <div className="flex flex-1 items-start justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-semibold text-gray-900">{step.label}</p>
-                      <p className="text-xs text-gray-500">{step.detail}</p>
-                    </div>
-                    <span className="shrink-0 text-xs text-gray-400">{step.time}</span>
-                  </div>
-                </li>
-              ))}
-            </ol>
-          </Card>
-
-          <Card className="p-6">
-            <h2 className="flex items-center gap-2 text-base font-semibold text-gray-900">
-              <User className="h-4 w-4 text-gray-500" />
-              Customer Impact
-            </h2>
-            <dl className="mt-3 space-y-3 text-sm">
-              <div className="flex items-center justify-between">
-                <dt className="text-gray-500">Customer</dt>
-                <dd className="font-medium text-gray-900">{ticket.customer}</dd>
-              </div>
-              <div className="flex items-center justify-between">
-                <dt className="text-gray-500">Impact</dt>
-                <dd className="font-medium text-gray-900">{ticket.impact}</dd>
-              </div>
-              <div className="flex items-center justify-between gap-4">
-                <dt className="shrink-0 text-gray-500">Reported by</dt>
-                <dd className="text-right font-medium text-gray-900">{ticket.reportedBy}</dd>
-              </div>
-            </dl>
-          </Card>
-
-          <Card className="p-6">
-            <h2 className="text-base font-semibold text-gray-900">Next Steps (after approval)</h2>
-            <ul className="mt-3 space-y-3">
-              {NEXT_STEPS.map((step) => (
-                <li key={step.label} className="flex items-start gap-3">
-                  <step.icon className={`mt-0.5 h-4 w-4 shrink-0 ${step.color}`} />
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">{step.label}</p>
-                    <p className="text-xs text-gray-500">{step.detail}</p>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </Card>
-
-          <div className="flex items-start gap-3 rounded-xl bg-green-50 p-4">
-            <PartyPopper className="mt-0.5 h-5 w-5 shrink-0 text-green-600" />
-            <div>
-              <p className="text-sm font-semibold text-green-800">Ready to deliver value!</p>
-              <p className="text-xs text-green-700">
-                Approve the fix to resolve this ticket and notify the customer.
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
+      {children}
     </PageShell>
-  )
-}
-
-function StatCell({
-  label,
-  value,
-  valueColor = 'text-gray-900',
-}: {
-  label: string
-  value: string | number
-  valueColor?: string
-}) {
-  return (
-    <div>
-      <p className={`text-base font-bold ${valueColor}`}>{value}</p>
-      <p className="text-xs text-gray-500">{label}</p>
-    </div>
   )
 }

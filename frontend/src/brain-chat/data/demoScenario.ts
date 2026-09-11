@@ -534,6 +534,129 @@ const APPROVAL_SCENARIO: DemoScenario = {
   ],
 }
 
+/**
+ * TEST CASE 2 - a generic SaaS company.
+ *
+ * Deliberately not a Procol issue. The pipeline, the protocol and the
+ * approval gate are identical to the GST run above; the only difference is
+ * that the knowledge hop goes to the customer's own knowledge agent instead
+ * of to Clara, because Brain routes on declared capability, not on a name.
+ */
+const AUTH_SCENARIO: DemoScenario = {
+  id: 'auth',
+  match: ['401', 'unauthorized', 'unauthorised', 'log in', 'login', 'sign in', 'token', 'jwt', 'auth'],
+  ticket: {
+    reference: '7821',
+    title: 'All users receiving 401 Unauthorized after deployment',
+    customer: 'XYZ Corp',
+    priority: 'HIGH',
+  },
+  similarIssue: {
+    id: 'issue-382',
+    reference: 'INC-382',
+    title: 'Tenant-wide login failure after a release',
+    customer: 'All tenants',
+    solution: 'A deployment changed an authentication environment variable; the value was restored and asserted at boot.',
+    confidence: 0.91,
+  },
+  clara: {
+    expected: 'Tokens are issued with issuer auth.acmecloud.com',
+    customerConfig: { Mechanism: 'JWT', Issuer: 'auth.acmecloud.com' },
+    formula: 'token.issuer === JWT_ISSUER',
+    notes: "Yesterday's release changed the JWT issuer configuration. Incident INC-382 had the same signature.",
+  },
+  dev: {
+    rootCause:
+      'The deployment set JWT_ISSUER to the API host, so every token failed the issuer check and the service returned 401.',
+    filesChanged: ['deploy/production.yaml', 'services/auth/jwt.js'],
+    pr: { number: 892, status: 'created', title: 'fix: restore JWT issuer configuration' },
+  },
+  qa: {
+    status: 'passed',
+    tests: 32,
+    passed: 32,
+    failed: 0,
+    message: 'All authentication regression tests passed.',
+  },
+  approval: { approved: true, approver: 'Manager' },
+  activity: [
+    {
+      afterStep: 'understand',
+      from: 'procol-brain',
+      to: 'company-knowledge',
+      via: 'A2A',
+      kind: 'request',
+      text: "What changed in yesterday's deployment, and have we seen this before?",
+    },
+    {
+      afterStep: 'context',
+      from: 'company-knowledge',
+      to: 'procol-brain',
+      via: 'A2A',
+      kind: 'response',
+      text: 'Authentication uses JWT. The release changed the issuer configuration. Incident INC-382 was the same failure.',
+    },
+    {
+      afterStep: 'context',
+      from: 'procol-brain',
+      to: 'dev-agent',
+      via: 'A2A',
+      kind: 'request',
+      text: 'Investigate the 401s. Expected issuer is auth.acmecloud.com.',
+    },
+    {
+      afterStep: 'code',
+      from: 'dev-agent',
+      to: 'github',
+      via: 'MCP',
+      kind: 'tool',
+      text: 'Diffed deploy/production.yaml against the previous release, opened branch fix/jwt-issuer',
+      tool: { server: 'github', call: 'read_file + create_branch' },
+    },
+    {
+      afterStep: 'code',
+      from: 'dev-agent',
+      to: 'procol-brain',
+      via: 'A2A',
+      kind: 'response',
+      text: 'Root cause found: JWT_ISSUER points at the API host instead of the auth host. PR #892 created.',
+    },
+    {
+      afterStep: 'code',
+      from: 'procol-brain',
+      to: 'qa-agent',
+      via: 'A2A',
+      kind: 'request',
+      text: 'Validate PR #892 against the authentication regression suite.',
+    },
+    {
+      afterStep: 'validate',
+      from: 'qa-agent',
+      to: 'test-runner',
+      via: 'MCP',
+      kind: 'tool',
+      text: 'Ran authentication regression suite',
+      tool: { server: 'test-runner', call: 'run_tests' },
+    },
+    {
+      afterStep: 'validate',
+      from: 'qa-agent',
+      to: 'procol-brain',
+      via: 'A2A',
+      kind: 'response',
+      text: '32 / 32 tests passed. Login, refresh, expiry and multi-tenant all pass.',
+    },
+    {
+      afterStep: 'validate',
+      from: 'procol-brain',
+      to: 'manager',
+      via: 'A2A',
+      kind: 'request',
+      text: 'Fix ready for approval: PR #892, 32/32 tests passing.',
+    },
+  ],
+}
+
 /** Used when nothing matches, so any typed message still demos end to end. */
 const GENERIC_SCENARIO: DemoScenario = {
   ...GST_SCENARIO,
@@ -548,6 +671,7 @@ export const SCENARIOS: DemoScenario[] = [
   GRN_SCENARIO,
   AUCTION_SCENARIO,
   APPROVAL_SCENARIO,
+  AUTH_SCENARIO,
 ]
 
 /** Routes a customer message to a scripted run. */

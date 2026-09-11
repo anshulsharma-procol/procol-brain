@@ -1,240 +1,309 @@
-import {
-  ArrowLeft,
-  Calendar,
-  CheckCircle,
-  ChevronDown,
-  Code,
-  MessageSquare,
-  MoreHorizontal,
-  Paperclip,
-  Play,
-  Share2,
-  Tag,
-  User,
-  Zap,
-} from 'lucide-react'
-import type { ReactNode } from 'react'
+import { ArrowLeft, Brain, MessageSquare, Play, Sparkles } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import AgentAvatar from '../components/AgentAvatar'
+import ArtifactCard from '../components/ArtifactCard'
 import Card from '../components/Card'
+import { MemoryMatchCard } from '../components/MemoryCard'
 import PageShell from '../components/PageShell'
+import StageRail from '../components/StageRail'
 import StatusPill from '../components/StatusPill'
 import TopBar from '../components/TopBar'
-import { primaryTicket } from '../data/mockData'
+import TranscriptEntry from '../components/TranscriptEntry'
+import { useTicketDetail, useWorkspace } from '../platform/react'
+import type { Tone } from '../types'
+import { dateTimeOf, humaniseConstant } from '../utils/format'
 
-// Substitution note: no dedicated "network"/"timeline" icon was on the
-// approved list, so Brain Activity and Agent Communication headers reuse
-// Share2 and MessageSquare respectively — the closest available glyphs.
+const PRIORITY_TONE: Record<string, Tone> = {
+  CRITICAL: 'danger',
+  HIGH: 'danger',
+  MEDIUM: 'warning',
+  LOW: 'neutral',
+}
+
+const PATH_COPY: Record<string, string> = {
+  CODE_FIX: 'Code fix — engineering and validation are involved',
+  CONFIG_FIX: 'Configuration fix — engineering was not needed',
+  ANSWER_ONLY: 'Answer only — no change to the product',
+  PROCESS: 'Process run — executing a defined business process',
+}
+
+/**
+ * The screen the product is judged on: the live agent transcript.
+ *
+ * Three columns — the issue, the transcript, what the run produced. The
+ * transcript is built from the activity stream, so a browser refresh
+ * mid-run rebuilds an identical timeline in an identical order.
+ */
 export default function TicketDetail() {
-  const { id } = useParams()
+  const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const ticket = primaryTicket
-  const notFound = id !== undefined && id !== ticket.id
+  const { workspace } = useWorkspace()
+  const { detail, loading, error, startInvestigation } = useTicketDetail(id)
 
-  if (notFound) {
+  if (loading && !detail) {
     return (
-      <PageShell tip="Turn customer issues into resolved tasks with AI agents.">
-        <TopBar />
-        <div className="px-8 py-16 text-center text-gray-500">Ticket #{id} not found in this demo.</div>
-      </PageShell>
+      <Shell>
+        <p className="px-8 py-16 text-center text-sm text-gray-400">Loading {id}…</p>
+      </Shell>
     )
   }
 
-  return (
-    <PageShell tip="Turn customer issues into resolved tasks with AI agents.">
-      <TopBar />
+  if (error || !detail) {
+    return (
+      <Shell>
+        <p className="px-8 py-16 text-center text-sm text-gray-500">
+          {error ?? `Ticket ${id} is not in this control tower.`}{' '}
+          <Link to="/" className="text-blue-600 hover:underline">
+            Back to the board
+          </Link>
+        </p>
+      </Shell>
+    )
+  }
 
+  const { ticket, stages, activity, artifacts, memoryMatches } = detail
+  const awaitingApproval = ticket.status === 'AWAITING_APPROVAL'
+  const notStarted = activity.length <= 1 && ticket.status === 'NEW'
+
+  return (
+    <Shell>
       <div className="px-8 pt-6">
         <div className="flex items-center gap-2 text-sm text-gray-500">
-          <Link to="/" className="text-gray-400 hover:text-gray-600">
+          <Link to="/" className="text-gray-400 hover:text-gray-600" aria-label="Back to the board">
             <ArrowLeft className="h-4 w-4" />
           </Link>
           <Link to="/" className="hover:underline">
-            Tickets
+            {workspace.name}
           </Link>
           <span>/</span>
-          <span className="text-gray-700">{ticket.number}</span>
+          <span className="font-mono text-gray-700">{ticket.reference}</span>
         </div>
 
         <div className="mt-3 flex flex-wrap items-start justify-between gap-4">
-          <div>
+          <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-3">
               <h1 className="text-2xl font-bold tracking-tight text-gray-900">{ticket.title}</h1>
-              <StatusPill label={`${ticket.priority} Priority`} tone="danger" />
+              <StatusPill
+                label={`${humaniseConstant(ticket.priority)} priority`}
+                tone={PRIORITY_TONE[ticket.priority] ?? 'neutral'}
+              />
+              <StatusPill
+                label={humaniseConstant(ticket.status)}
+                tone={awaitingApproval ? 'warning' : ticket.status === 'RESOLVED' ? 'success' : 'info'}
+              />
             </div>
             <p className="mt-1.5 max-w-2xl text-sm text-gray-500">{ticket.description}</p>
           </div>
 
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => navigate(`/tickets/${ticket.id}/resolution`)}
-              className="flex items-center gap-1.5 rounded-lg bg-violet-600 px-3.5 py-2 text-sm font-semibold text-white hover:bg-violet-700"
-            >
-              <Play className="h-4 w-4" />
-              Simulate Progression
-            </button>
-            <button
-              type="button"
-              className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-            >
-              <MoreHorizontal className="h-4 w-4" />
-              More actions
-              <ChevronDown className="h-4 w-4 text-gray-400" />
-            </button>
+          <div className="flex flex-wrap items-center gap-2">
+            {notStarted ? (
+              <button
+                type="button"
+                onClick={() => void startInvestigation()}
+                className="flex items-center gap-1.5 rounded-lg bg-violet-600 px-3.5 py-2 text-sm font-semibold text-white hover:bg-violet-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
+              >
+                <Play className="h-4 w-4" />
+                Start investigation
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => void startInvestigation()}
+                className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
+                title="Rewind and stream this run from the beginning"
+              >
+                <Play className="h-4 w-4" />
+                Replay run
+              </button>
+            )}
+            {awaitingApproval && (
+              <button
+                type="button"
+                onClick={() => navigate(`/tickets/${ticket.reference}/resolution`)}
+                className="flex items-center gap-1.5 rounded-lg bg-violet-600 px-3.5 py-2 text-sm font-semibold text-white hover:bg-violet-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
+              >
+                Review and decide
+              </button>
+            )}
           </div>
-        </div>
-
-        <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-          <MetaItem label="Customer" icon={User} value={ticket.customer} />
-          <MetaItem
-            label="Status"
-            icon={Zap}
-            value={<StatusPill label={ticket.status} tone="info" />}
-          />
-          <MetaItem label="Created" icon={Calendar} value={ticket.createdAt} />
-          <MetaItem label="Priority" icon={Zap} value={ticket.priority} valueColor="text-red-500" />
-          <MetaItem label="Category" icon={Tag} value={ticket.category} />
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 px-8 py-6 lg:grid-cols-2">
-        <Card className="p-6">
-          <h2 className="flex items-center gap-2 text-base font-semibold text-gray-900">
-            <User className="h-4 w-4 text-blue-500" />
-            Customer Issue
-          </h2>
+      <div className="grid grid-cols-1 gap-4 px-8 py-6 lg:grid-cols-[20rem_1fr_18rem]">
+        {/* -- the issue ---------------------------------------------------- */}
+        <div className="flex flex-col gap-4">
+          <Card className="p-5">
+            <h2 className="text-sm font-semibold text-gray-900">The issue</h2>
+            <p className="mt-1 text-xs text-gray-500">
+              {ticket.customer} · via {ticket.channel} · {dateTimeOf(ticket.createdAt)}
+            </p>
 
-          <blockquote className="mt-4 rounded-lg bg-gray-50 p-4 text-sm leading-relaxed text-gray-700">
-            {ticket.issueQuote.map((line) => (
-              <p key={line} className="mb-2 last:mb-0">
-                {line}
+            <blockquote className="mt-3 rounded-lg bg-gray-50 p-3 text-sm leading-relaxed text-gray-700">
+              {ticket.issueQuote.map((line) => (
+                <p key={line} className="mb-2 last:mb-0">
+                  {line}
+                </p>
+              ))}
+            </blockquote>
+
+            <dl className="mt-4 space-y-2.5 text-sm">
+              <Row label="Reported by" value={ticket.reportedBy ?? '—'} />
+              <Row label="Category" value={ticket.category} />
+              <Row label="Impact" value={ticket.impact} />
+              {ticket.attachment && <Row label="Attachment" value={ticket.attachment} mono />}
+            </dl>
+          </Card>
+
+          <Card className="p-5">
+            <h2 className="text-sm font-semibold text-gray-900">Stage</h2>
+            <div className="mt-3">
+              <StageRail stages={stages} />
+            </div>
+            <p className="mt-3 text-xs text-gray-500">
+              {stages.find((stage) => stage.status === 'active')?.label ??
+                (ticket.status === 'RESOLVED' ? 'Closed' : 'Not started')}
+            </p>
+            {ticket.path && (
+              <p className="mt-3 border-t border-gray-100 pt-3 text-xs leading-relaxed text-gray-500">
+                <span className="font-mono text-[11px] text-gray-700">{ticket.path}</span>
+                <span className="mt-1 block">{PATH_COPY[ticket.path]}</span>
               </p>
-            ))}
-          </blockquote>
+            )}
+          </Card>
+        </div>
 
-          <dl className="mt-4 space-y-3 text-sm">
-            <MetaRow label="Customer" value={ticket.customer} />
-            <MetaRow label="Reported by" value={ticket.reportedBy} />
-            <MetaRow label="Impact" value={ticket.impact} />
-            <MetaRow
-              label="Attachments"
-              value={
-                <span className="flex items-center gap-1.5 text-blue-600 hover:underline">
-                  <Paperclip className="h-3.5 w-3.5" />
-                  {ticket.attachment}
-                </span>
-              }
-            />
-          </dl>
-        </Card>
-
-        <Card className="p-6">
-          <h2 className="flex items-center gap-2 text-base font-semibold text-gray-900">
-            <Share2 className="h-4 w-4 text-violet-500" />
-            Brain Activity
-          </h2>
-
-          <ol className="mt-4">
-            {ticket.brainActivity.map((step, index) => (
-              <li key={step.label} className="relative flex gap-3 pb-6 last:pb-0">
-                {index < ticket.brainActivity.length - 1 && (
-                  <span className="absolute left-[9px] top-5 h-full w-px bg-gray-200" />
-                )}
-                <span className="relative z-10 mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center">
-                  {step.state === 'done' && <CheckCircle className="h-5 w-5 text-green-600" />}
-                  {step.state === 'active' && (
-                    <span className="pulse-live block h-2.5 w-2.5 rounded-full bg-blue-500" />
-                  )}
-                  {step.state === 'pending' && <span className="block h-2.5 w-2.5 rounded-full bg-gray-300" />}
-                </span>
-                <div className="flex flex-1 items-start justify-between gap-3">
-                  <div>
-                    <p
-                      className={`text-sm font-semibold ${
-                        step.state === 'pending' ? 'text-gray-400' : 'text-gray-900'
-                      }`}
-                    >
-                      {step.label}
-                    </p>
-                    <p className="text-xs text-gray-500">{step.detail}</p>
-                  </div>
-                  {step.time && <span className="shrink-0 text-xs text-gray-400">{step.time}</span>}
-                </div>
-              </li>
-            ))}
-          </ol>
-        </Card>
-      </div>
-
-      <div className="px-8 pb-8">
-        <Card className="p-6">
+        {/* -- the transcript ----------------------------------------------- */}
+        <Card className="flex min-h-[28rem] flex-col p-5">
           <div className="flex items-center justify-between">
-            <h2 className="flex items-center gap-2 text-base font-semibold text-gray-900">
+            <h2 className="flex items-center gap-2 text-sm font-semibold text-gray-900">
               <MessageSquare className="h-4 w-4 text-violet-500" />
-              Agent Communication
+              Live transcript
             </h2>
-            <StatusPill label="Live" tone="success" withDot />
+            {ticket.status === 'INVESTIGATING' ? (
+              <StatusPill label="Streaming" tone="info" withDot />
+            ) : (
+              <span className="font-mono text-[11px] text-gray-400">{activity.length} entries</span>
+            )}
           </div>
 
-          <div className="mt-5 space-y-5">
-            {ticket.messages.map((message, index) => (
-              <div key={`${message.from}-${index}`} className="flex gap-4">
-                <span className="w-14 shrink-0 pt-2 text-right text-xs text-gray-400">{message.time}</span>
-                <AgentAvatar agentId={message.fromId} size="sm" />
-                <div
-                  className={`flex-1 rounded-xl border p-3.5 text-sm ${bubbleClasses(message.fromId)} ${
-                    message.loading ? 'animate-pulse' : ''
-                  }`}
-                >
-                  <p className="mb-1 font-semibold text-gray-800">
-                    {message.from} → {message.to}
-                  </p>
-                  {message.text.map((line) => (
-                    <p key={line} className="text-gray-600">
-                      {line}
-                    </p>
+          {activity.length === 0 ? (
+            <div className="flex flex-1 flex-col items-center justify-center gap-3 py-12 text-center">
+              <Brain className="h-8 w-8 text-gray-300" />
+              <p className="max-w-xs text-sm text-gray-500">
+                Nothing has run on this ticket yet. Start the investigation and every step the agents
+                take will appear here.
+              </p>
+            </div>
+          ) : (
+            <Transcript activity={activity} />
+          )}
+        </Card>
+
+        {/* -- what the run produced ---------------------------------------- */}
+        <div className="flex flex-col gap-4">
+          <Card className="p-5">
+            <h2 className="text-sm font-semibold text-gray-900">Artifacts</h2>
+            {artifacts.length === 0 ? (
+              <p className="mt-2 text-xs text-gray-400">Nothing produced yet.</p>
+            ) : (
+              <div className="mt-3 space-y-2">
+                {artifacts.map((artifact) => (
+                  <ArtifactCard key={artifact.id} artifact={artifact} />
+                ))}
+              </div>
+            )}
+          </Card>
+
+          <Card className="p-5">
+            <h2 className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+              <Sparkles className="h-4 w-4 text-amber-500" />
+              We have seen this before
+            </h2>
+            {memoryMatches.length === 0 ? (
+              <p className="mt-2 text-xs text-gray-400">
+                No prior run in this control tower matches these symptoms.
+              </p>
+            ) : (
+              <>
+                <p className="mt-1 text-xs text-gray-500">
+                  Recalled from {workspace.name}&apos;s institutional memory before anyone was asked.
+                </p>
+                <div className="mt-3 space-y-2">
+                  {memoryMatches.map((match) => (
+                    <MemoryMatchCard key={match.entry.id} match={match} />
                   ))}
                 </div>
-              </div>
-            ))}
-          </div>
-        </Card>
+              </>
+            )}
+          </Card>
+        </div>
       </div>
-    </PageShell>
+    </Shell>
   )
 }
 
-function bubbleClasses(fromId: string) {
-  if (fromId === 'dev') return 'bg-green-50 border-green-100'
-  if (fromId === 'clara') return 'bg-violet-50 border-violet-100'
-  return 'bg-indigo-50 border-indigo-100'
-}
+/**
+ * Auto-scrolls to the newest entry, and stops the instant the reader scrolls
+ * up. Yanking someone back to the bottom mid-sentence is the most annoying
+ * bug this screen could have.
+ */
+function Transcript({ activity }: { activity: import('../platform/types').ActivityEvent[] }) {
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const [pinned, setPinned] = useState(true)
 
-interface MetaItemProps {
-  label: string
-  icon: typeof Code
-  value: ReactNode
-  valueColor?: string
-}
+  useEffect(() => {
+    const node = scrollRef.current
+    if (!node || !pinned) return
+    node.scrollTop = node.scrollHeight
+  }, [activity.length, pinned])
 
-function MetaItem({ label, icon: Icon, value, valueColor = 'text-gray-900' }: MetaItemProps) {
   return (
-    <div>
-      <p className="text-xs text-gray-400">{label}</p>
-      <div className={`mt-1 flex items-center gap-1.5 text-sm font-medium ${valueColor}`}>
-        <Icon className="h-4 w-4 text-gray-400" />
-        {value}
+    <div className="relative mt-4 flex-1">
+      <div
+        ref={scrollRef}
+        onScroll={(event) => {
+          const node = event.currentTarget
+          const atBottom = node.scrollHeight - node.scrollTop - node.clientHeight < 48
+          setPinned(atBottom)
+        }}
+        className="max-h-[32rem] overflow-y-auto pr-1"
+      >
+        <ol aria-live="polite" className="space-y-0">
+          {activity.map((event) => (
+            <TranscriptEntry key={event.id} event={event} />
+          ))}
+        </ol>
       </div>
+
+      {!pinned && (
+        <button
+          type="button"
+          onClick={() => setPinned(true)}
+          className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-gray-900 px-3 py-1.5 text-xs font-medium text-white shadow-lg"
+        >
+          Jump to latest
+        </button>
+      )}
     </div>
   )
 }
 
-function MetaRow({ label, value }: { label: string; value: ReactNode }) {
+function Shell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex items-center justify-between border-b border-gray-50 pb-3 last:border-0 last:pb-0">
-      <dt className="text-gray-500">{label}</dt>
-      <dd className="font-medium text-gray-800">{value}</dd>
+    <PageShell tip="Every message, every tool call, every decision — on one record.">
+      <TopBar />
+      {children}
+    </PageShell>
+  )
+}
+
+function Row({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+  return (
+    <div className="flex items-start justify-between gap-3 border-b border-gray-50 pb-2 last:border-0 last:pb-0">
+      <dt className="shrink-0 text-gray-500">{label}</dt>
+      <dd className={`text-right font-medium text-gray-800 ${mono ? 'font-mono text-xs' : ''}`}>
+        {value}
+      </dd>
     </div>
   )
 }
