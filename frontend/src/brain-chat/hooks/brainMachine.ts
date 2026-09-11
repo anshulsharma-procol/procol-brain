@@ -39,6 +39,7 @@ export type BrainEvent =
   | { type: 'investigation_started'; ticket: BrainTicket; steps: InvestigationStep[] }
   | { type: 'investigation_progress'; steps: InvestigationStep[]; activity?: AgentActivity[] }
   | { type: 'resolution_ready'; resolution: Resolution }
+  | { type: 'resolution_updated'; resolution: Resolution }
   | { type: 'resolved'; ticket: BrainTicket; headline: string; checks: string[] }
   | { type: 'error'; message: string }
 
@@ -154,6 +155,20 @@ export function brainReducer(state: BrainState, event: BrainEvent): BrainState {
                 ],
       }
     }
+
+    /**
+     * The same resolution, read again after a human decided. Nothing new is
+     * appended — the card the customer is already looking at is updated in
+     * place, so "waiting for approval" becomes "approved by" under them.
+     */
+    case 'resolution_updated':
+      return {
+        ...state,
+        resolution: event.resolution,
+        messages: state.messages.map((message) =>
+          message.kind === 'resolution' ? { ...message, resolution: event.resolution } : message,
+        ),
+      }
 
     case 'resolution_ready':
       return {

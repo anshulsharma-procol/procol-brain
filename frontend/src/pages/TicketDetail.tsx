@@ -9,6 +9,7 @@ import StageRail from '../components/StageRail'
 import StatusPill from '../components/StatusPill'
 import TopBar from '../components/TopBar'
 import TranscriptEntry from '../components/TranscriptEntry'
+import { isDemoData } from '../platform/api'
 import { useTicketDetail, useWorkspace } from '../platform/react'
 import type { Tone } from '../types'
 import { dateTimeOf, humaniseConstant } from '../utils/format'
@@ -63,7 +64,10 @@ export default function TicketDetail() {
 
   const { ticket, stages, activity, artifacts, memoryMatches } = detail
   const awaitingApproval = ticket.status === 'AWAITING_APPROVAL'
-  const notStarted = activity.length <= 1 && ticket.status === 'NEW'
+  // Status is the honest signal here. Counting timeline rows is not: Brain
+  // writes its classification before a run starts, so a fresh ticket already
+  // has a couple of entries on it.
+  const notStarted = ticket.status === 'NEW' || ticket.status === 'NEEDS_HUMAN'
 
   return (
     <Shell>
@@ -103,18 +107,23 @@ export default function TicketDetail() {
                 className="flex items-center gap-1.5 rounded-lg bg-violet-600 px-3.5 py-2 text-sm font-semibold text-white hover:bg-violet-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
               >
                 <Play className="h-4 w-4" />
-                Start investigation
+                {ticket.status === 'NEEDS_HUMAN' ? 'Try again' : 'Start investigation'}
               </button>
             ) : (
-              <button
-                type="button"
-                onClick={() => void startInvestigation()}
-                className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
-                title="Rewind and stream this run from the beginning"
-              >
-                <Play className="h-4 w-4" />
-                Replay run
-              </button>
+              // Rewinding a finished run is a scripted-data affordance. The
+              // live API refuses to re-run a ticket that has already reached
+              // the gate, which is the correct thing for it to do.
+              isDemoData && (
+                <button
+                  type="button"
+                  onClick={() => void startInvestigation()}
+                  className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
+                  title="Rewind and stream this run from the beginning"
+                >
+                  <Play className="h-4 w-4" />
+                  Replay run
+                </button>
+              )
             )}
             {awaitingApproval && (
               <button

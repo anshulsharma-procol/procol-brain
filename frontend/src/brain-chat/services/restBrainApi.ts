@@ -147,6 +147,12 @@ export function createRestBrainClient(options: RestBrainClientOptions): BrainApi
       return toReply(await transport.post('/messages', request))
     },
 
+    /** `GET /tickets/:id/activity`, read for its resolution alone. */
+    async getResolution({ ticketId }) {
+      const payload = await transport.get(`/tickets/${encodeURIComponent(ticketId)}/activity`)
+      return toProgressUpdate(payload, ticketId).resolution
+    },
+
     async startInvestigation({ ticketId, identity, context }, investigation) {
       const signal = investigation?.signal
       const task: A2ATask = {

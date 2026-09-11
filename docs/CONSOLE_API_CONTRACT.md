@@ -4,9 +4,10 @@ What the **internal console** (the control tower at `frontend/src/pages`) sends
 and expects. The customer-facing chat widget has its own, narrower contract in
 `BACKEND_API_CONTRACT.md`; this is the other half.
 
-Until these endpoints exist the console runs on the scenario files in
-`frontend/src/platform/scenarios/` and behaves identically, so the frontend is
-never blocked.
+**These endpoints are implemented** — see `backend/`. The console runs against
+them as soon as `VITE_BRAIN_API_URL` is set; with the variable unset it falls
+back to the scenario files in `frontend/src/platform/scenarios/` and behaves
+identically, so the frontend still demos with the backend stopped.
 
 Switching over is one environment variable:
 

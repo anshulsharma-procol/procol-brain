@@ -58,6 +58,20 @@ const INTENT_PROMPTS: Record<BrainIntent, string> = {
  * Owns the support conversation: talks to the {@link BrainApi}, feeds the
  * state machine, and exposes exactly what the UI needs to render.
  */
+/** How long to keep watching for a human decision, and how often. */
+const APPROVAL_WATCH_MS = 5 * 60 * 1000
+const APPROVAL_POLL_MS = 3000
+
+function sleep(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(resolve, ms)
+    signal?.addEventListener('abort', () => {
+      clearTimeout(timer)
+      resolve()
+    }, { once: true })
+  })
+}
+
 export function useProcolBrain(options: UseProcolBrainOptions): UseProcolBrainResult {
   const {
     api,
@@ -110,6 +124,47 @@ export function useProcolBrain(options: UseProcolBrainOptions): UseProcolBrainRe
     [],
   )
 
+  /**
+   * Polls for the human decision after a fix has been proposed. Gives up
+   * quietly after a few minutes — a demo or a shift ends, and a widget left
+   * open overnight should not poll forever.
+   */
+  const watchForApproval = useCallback(
+    async (
+      ticketId: string,
+      proposed: Resolution,
+      run: { signal: AbortSignal; isCurrent: () => boolean },
+    ) => {
+      const { api: brain } = latest.current
+      if (!brain.getResolution || proposed.approved) return
+
+      const deadline = Date.now() + APPROVAL_WATCH_MS
+
+      while (Date.now() < deadline) {
+        await sleep(APPROVAL_POLL_MS, run.signal)
+        if (!run.isCurrent()) return
+
+        try {
+          const latestResolution = await brain.getResolution({
+            ticketId,
+            identity: latest.current.identity,
+            context: latest.current.context,
+          })
+
+          if (!run.isCurrent()) return
+          if (latestResolution?.approved) {
+            dispatch({ type: 'resolution_updated', resolution: latestResolution })
+            return
+          }
+        } catch {
+          // A failed poll is not worth telling the customer about; the next
+          // one may well succeed, and the card on screen is still correct.
+        }
+      }
+    },
+    [],
+  )
+
   const runInvestigation = useCallback(
     async (issueText: string, run: { signal: AbortSignal; isCurrent: () => boolean }) => {
       const { api: brain } = latest.current
@@ -144,8 +199,13 @@ export function useProcolBrain(options: UseProcolBrainOptions): UseProcolBrainRe
 
       dispatch({ type: 'resolution_ready', resolution })
       latest.current.onResolutionReady?.(resolution)
+
+      // The investigation is over, but the ticket is not: a person still has
+      // to approve. Watch for that so the customer sees the decision on their
+      // own screen rather than being told to check back.
+      void watchForApproval(ticket.id, resolution, run)
     },
-    [request],
+    [request, watchForApproval],
   )
 
   const guard = useCallback(async (work: () => Promise<void>) => {

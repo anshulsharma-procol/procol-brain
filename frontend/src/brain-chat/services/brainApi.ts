@@ -42,6 +42,16 @@ export interface BrainApi {
   ): Promise<Resolution>
   getTicketStatus(request: TicketRequest): Promise<TicketStatus>
   sendMessage(request: MessageRequest): Promise<BrainReply>
+  /**
+   * Optional: re-read the resolution after the human gate.
+   *
+   * The investigation ends when a fix is *proposed*; approval happens
+   * afterwards, in the support team's console. A backend that can answer this
+   * lets the customer watch their own ticket cross the gate instead of being
+   * told to check back later. Implementations without it simply do not offer
+   * that, and nothing else changes.
+   */
+  getResolution?(request: TicketRequest): Promise<Resolution | undefined>
 }
 
 export interface BrainClientOptions {

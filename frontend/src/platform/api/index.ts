@@ -29,6 +29,18 @@ export const consoleApi: ConsoleApi = baseUrl
 /** True while the console is running on scripted data. Shown in the UI. */
 export const isDemoData = !baseUrl
 
+/**
+ * Where the embedded chat widget should point.
+ *
+ * The customer-facing API keeps its own vocabulary under `/chat` on the same
+ * service, so one variable configures both surfaces — and both end up reading
+ * the same tickets, which is the whole point: a customer raising an issue in
+ * their own dashboard lands on our board immediately.
+ *
+ * Undefined leaves the widget on its bundled scripted demo.
+ */
+export const chatApiBaseUrl = baseUrl ? `${baseUrl.replace(/\/+$/, '')}/chat` : undefined
+
 export { createHttpConsoleApi, MockConsoleApi }
 export type { ConsoleApi } from './types'
 export type {

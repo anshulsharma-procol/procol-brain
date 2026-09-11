@@ -6,6 +6,7 @@ import { Navigate, Route, Routes, useLocation, useParams } from 'react-router-do
 // the source keeps the console honest about what the SDK currently does, and
 // lets Vite load its CSS modules. External consumers still get `dist`.
 import { ProcolBrain } from './brain-chat/index'
+import { chatApiBaseUrl } from './platform/api'
 import { useWorkspace, WorkspaceProvider } from './platform/react'
 
 // Route-level code splitting keeps recharts (only used on the board) out of
@@ -57,6 +58,7 @@ function SupportWidget() {
     <ProcolBrain
       key={workspace.id}
       companyId={workspace.id}
+      apiBaseUrl={chatApiBaseUrl}
       userId="anshul.sharma@procol.in"
       context={{
         currentPage: segment,
