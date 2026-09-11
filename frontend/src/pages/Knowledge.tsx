@@ -6,16 +6,19 @@ import PageShell from '../components/PageShell'
 import StatusPill from '../components/StatusPill'
 import TopBar from '../components/TopBar'
 import { knowledgeEntries } from '../data/mockData'
+import FileExplorer from '../knowledge-files/FileExplorer'
 import type { KnowledgeEntry, Tone } from '../types'
 
-const TABS = ['All', 'Product Docs', 'Customer Configs', 'Business Rules', 'FAQs'] as const
+const TABS = ['All', 'Product Docs', 'Customer Configs', 'Business Rules', 'FAQs', 'Files'] as const
+type Tab = (typeof TABS)[number]
 
-const TAB_TO_TYPE: Record<(typeof TABS)[number], KnowledgeEntry['type'] | null> = {
+const TAB_TO_TYPE: Record<Tab, KnowledgeEntry['type'] | null> = {
   All: null,
   'Product Docs': 'Product Doc',
   'Customer Configs': 'Customer Config',
   'Business Rules': 'Business Rule',
   FAQs: 'FAQ',
+  Files: null,
 }
 
 const TYPE_STYLE: Record<KnowledgeEntry['type'], { tone: Tone; iconBg: string; iconText: string }> = {
@@ -32,9 +35,10 @@ const TICKET_STATUS_TONE: Record<string, Tone> = {
 
 export default function Knowledge() {
   const [showCallout, setShowCallout] = useState(true)
-  const [activeTab, setActiveTab] = useState<(typeof TABS)[number]>('All')
+  const [activeTab, setActiveTab] = useState<Tab>('All')
   const [query, setQuery] = useState('')
   const [selectedId, setSelectedId] = useState('gst-configuration')
+  const isFilesTab = activeTab === 'Files'
 
   const activeType = TAB_TO_TYPE[activeTab]
   const filteredEntries = knowledgeEntries.filter((entry) => {
@@ -52,13 +56,15 @@ export default function Knowledge() {
     <PageShell tip="Good knowledge in means good decisions out.">
       <TopBar
         trailing={
-          <button
-            type="button"
-            className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-3.5 py-2 text-sm font-semibold text-white hover:bg-blue-700"
-          >
-            <Plus className="h-4 w-4" />
-            Add Knowledge
-          </button>
+          isFilesTab ? undefined : (
+            <button
+              type="button"
+              className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-3.5 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+            >
+              <Plus className="h-4 w-4" />
+              Add Knowledge
+            </button>
+          )
         }
       />
 
@@ -69,7 +75,7 @@ export default function Knowledge() {
         </p>
       </div>
 
-      {showCallout && (
+      {showCallout && !isFilesTab && (
         <div className="mx-8 mt-5 flex items-start gap-3 rounded-xl bg-blue-50 p-4">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-100">
             <BookOpen className="h-4.5 w-4.5 text-blue-600" />
@@ -92,25 +98,32 @@ export default function Knowledge() {
         </div>
       )}
 
+      <div className="px-8 pt-6">
+        <div className="flex flex-wrap items-center gap-1 border-b border-gray-200">
+          {TABS.map((tab) => (
+            <button
+              key={tab}
+              type="button"
+              onClick={() => setActiveTab(tab)}
+              className={`border-b-2 px-3 py-2.5 text-sm font-medium ${
+                activeTab === tab
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-800'
+              }`}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {isFilesTab ? (
+        <div className="px-8 py-6">
+          <FileExplorer />
+        </div>
+      ) : (
       <div className="grid grid-cols-1 gap-4 px-8 py-6 lg:grid-cols-[1fr_420px]">
         <div className="flex flex-col gap-4">
-          <div className="flex flex-wrap items-center gap-1 border-b border-gray-200">
-            {TABS.map((tab) => (
-              <button
-                key={tab}
-                type="button"
-                onClick={() => setActiveTab(tab)}
-                className={`border-b-2 px-3 py-2.5 text-sm font-medium ${
-                  activeTab === tab
-                    ? 'border-blue-600 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-800'
-                }`}
-              >
-                {tab}
-              </button>
-            ))}
-          </div>
-
           <div className="relative">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
             <input
@@ -265,6 +278,7 @@ export default function Knowledge() {
           </div>
         </Card>
       </div>
+      )}
     </PageShell>
   )
 }
