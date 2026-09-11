@@ -36,7 +36,7 @@
         ],
         "tools": [],
         "description": "Receives every request, decides which capabilities it needs, delegates over A2A, collects the artifacts and stops at the human gate.",
-        "lastSeenAt": "2026-09-11T19:16:51.433Z",
+        "lastSeenAt": "2026-09-11T19:54:58.918Z",
         "tasksToday": 0,
         "role": "orchestrator",
         "ownership": "procol"
@@ -60,8 +60,8 @@
           }
         ],
         "description": "Answers product and tenant configuration questions. Already deployed at Procol — Brain consumes it as an agent rather than rebuilding it.",
-        "lastSeenAt": "2026-09-11T19:16:51.433Z",
-        "tasksToday": 3,
+        "lastSeenAt": "2026-09-11T19:54:58.918Z",
+        "tasksToday": 4,
         "role": "knowledge",
         "ownership": "customer"
       },
@@ -84,7 +84,7 @@
           }
         ],
         "description": "Reads the repository, traces the defect to a root cause, produces a minimal patch and opens a pull request.",
-        "lastSeenAt": "2026-09-11T19:16:51.433Z",
+        "lastSeenAt": "2026-09-11T19:54:58.918Z",
         "tasksToday": 2,
         "role": "engineering",
         "ownership": "procol"
@@ -107,7 +107,7 @@
           }
         ],
         "description": "Executes the test suite against the patched branch and reports pass/fail. A failure sends the work back to engineering, capped at two attempts.",
-        "lastSeenAt": "2026-09-11T19:16:51.433Z",
+        "lastSeenAt": "2026-09-11T19:54:58.918Z",
         "tasksToday": 2,
         "role": "validation",
         "ownership": "procol"
@@ -130,7 +130,7 @@
           }
         ],
         "description": "Answers \"who else is affected?\" by compiling a canonical query against the connector layer. No SQL is ever written by a model.",
-        "lastSeenAt": "2026-09-11T19:16:51.433Z",
+        "lastSeenAt": "2026-09-11T19:54:58.918Z",
         "tasksToday": 0,
         "role": "analytics",
         "ownership": "procol"
@@ -148,7 +148,7 @@
         ],
         "tools": [],
         "description": "A named person approves or rejects, and their decision lands on the same timeline as the agents, in the same visual language.",
-        "lastSeenAt": "2026-09-11T19:16:51.433Z",
+        "lastSeenAt": "2026-09-11T19:54:58.918Z",
         "tasksToday": 0,
         "role": "approval",
         "ownership": "customer"
@@ -168,7 +168,7 @@
         ],
         "tools": [],
         "description": "Identical to the Procol deployment. It routes by declared capability, so it never needed to know that this company has no Clara.",
-        "lastSeenAt": "2026-09-11T19:16:51.433Z",
+        "lastSeenAt": "2026-09-11T19:54:58.918Z",
         "tasksToday": 0,
         "role": "orchestrator",
         "ownership": "procol"
@@ -197,7 +197,7 @@
           }
         ],
         "description": "Runs inside AcmeCloud. Serves internal documentation, API references, runbooks and previous incidents. Brain reaches it over A2A exactly as it reaches Clara.",
-        "lastSeenAt": "2026-09-11T19:16:51.433Z",
+        "lastSeenAt": "2026-09-11T19:54:58.918Z",
         "tasksToday": 2,
         "role": "knowledge",
         "ownership": "customer"
@@ -221,7 +221,7 @@
           }
         ],
         "description": "Same agent, pointed at AcmeCloud’s repository through their own code host credentials.",
-        "lastSeenAt": "2026-09-11T19:16:51.433Z",
+        "lastSeenAt": "2026-09-11T19:54:58.918Z",
         "tasksToday": 2,
         "role": "engineering",
         "ownership": "procol"
@@ -244,7 +244,7 @@
           }
         ],
         "description": "Executes the customer’s own test suite against the patched branch.",
-        "lastSeenAt": "2026-09-11T19:16:51.433Z",
+        "lastSeenAt": "2026-09-11T19:54:58.918Z",
         "tasksToday": 2,
         "role": "validation",
         "ownership": "procol"
@@ -262,7 +262,7 @@
         ],
         "tools": [],
         "description": "Production changes stop here. The policy that required the stop is shown above the button.",
-        "lastSeenAt": "2026-09-11T19:16:51.433Z",
+        "lastSeenAt": "2026-09-11T19:54:58.918Z",
         "tasksToday": 0,
         "role": "approval",
         "ownership": "customer"
@@ -272,9 +272,78 @@
   "GET /connectors": {
     "data": [
       {
+        "id": "github",
+        "kind": "mcp",
+        "capabilities": [
+          "create_pr",
+          "search_code",
+          "get_pr",
+          "read_file",
+          "create_branch",
+          "commit",
+          "list_repos",
+          "get_commit",
+          "review_pr",
+          "merge_pr",
+          "list_issues",
+          "create_issue"
+        ],
+        "health": {
+          "ok": true,
+          "latencyMs": 210
+        },
+        "name": "GitHub",
+        "description": "Access repositories, create PRs, review code and more.",
+        "category": "mcp",
+        "typeLabel": "MCP Server",
+        "status": "connected",
+        "usedBy": [
+          "Development Agent",
+          "QA Agent"
+        ],
+        "logo": "github",
+        "endpoint": "mcp://github.com/procol-hack",
+        "dataMode": "query-in-place",
+        "addedAt": "2026-08-01"
+      },
+      {
+        "id": "jira",
+        "kind": "saas-api",
+        "capabilities": [
+          "create_issue",
+          "update_issue",
+          "search",
+          "get_issue",
+          "transition",
+          "add_comment",
+          "list_projects",
+          "get_sprint"
+        ],
+        "health": {
+          "ok": true,
+          "latencyMs": 380
+        },
+        "name": "Jira",
+        "description": "Manage issues, projects and workflows.",
+        "category": "saas",
+        "typeLabel": "API / SaaS",
+        "status": "connected",
+        "usedBy": [
+          "Procol Brain",
+          "Development Agent"
+        ],
+        "logo": "jira",
+        "endpoint": "https://procol.atlassian.net",
+        "dataMode": "query-in-place",
+        "addedAt": "2026-08-01"
+      },
+      {
         "id": "procurement-db",
         "kind": "database",
         "capabilities": [
+          "search_po",
+          "get_vendor",
+          "get_invoice",
           "describe_schema",
           "query",
           "fetch_record"
@@ -283,81 +352,145 @@
           "ok": true,
           "latencyMs": 34
         },
-        "name": "Procurement database",
-        "dataMode": "query-in-place"
+        "name": "Procurement DB",
+        "description": "Internal procurement database for purchase orders, vendors and invoices.",
+        "category": "database",
+        "typeLabel": "Database",
+        "status": "connected",
+        "usedBy": [
+          "Lens",
+          "Procurement Agent"
+        ],
+        "logo": "postgres",
+        "endpoint": "postgres://read-only@procurement-db",
+        "dataMode": "query-in-place",
+        "addedAt": "2026-08-01"
       },
       {
-        "id": "github",
+        "id": "slack",
         "kind": "saas-api",
         "capabilities": [
-          "read_file",
-          "create_branch",
-          "commit",
-          "create_pr"
+          "send_message",
+          "read_channel",
+          "search",
+          "list_channels",
+          "upload_file"
         ],
         "health": {
           "ok": true,
-          "latencyMs": 210
+          "latencyMs": 290
         },
-        "name": "GitHub",
-        "dataMode": "query-in-place"
+        "name": "Slack",
+        "description": "Send notifications and get channel updates.",
+        "category": "saas",
+        "typeLabel": "API / SaaS",
+        "status": "connected",
+        "usedBy": [
+          "Procol Brain"
+        ],
+        "logo": "slack",
+        "endpoint": "https://slack.com/api",
+        "dataMode": "query-in-place",
+        "addedAt": "2026-08-01"
       },
       {
-        "id": "product-db",
-        "kind": "mcp",
+        "id": "acme-dev-agent",
+        "kind": "saas-api",
+        "capabilities": [
+          "code_fix",
+          "create_pr",
+          "review_code",
+          "bug_analysis"
+        ],
+        "health": {
+          "ok": true,
+          "latencyMs": 450
+        },
+        "name": "Acme Dev Agent",
+        "description": "External development agent from Acme Corp.",
+        "category": "agent",
+        "typeLabel": "A2A Agent",
+        "status": "connected",
+        "usedBy": [
+          "Development Agent"
+        ],
+        "logo": "agent",
+        "endpoint": "https://agents.acme.com/a2a",
+        "dataMode": "query-in-place",
+        "addedAt": "2026-08-01"
+      },
+      {
+        "id": "google-drive",
+        "kind": "file",
         "capabilities": [
           "search_docs",
-          "get_customer_config"
-        ],
-        "health": {
-          "ok": true,
-          "latencyMs": 58
-        },
-        "name": "Product knowledge index",
-        "dataMode": "metadata-only"
-      },
-      {
-        "id": "incident-db",
-        "kind": "database",
-        "capabilities": [
-          "describe_schema",
-          "query"
-        ],
-        "health": {
-          "ok": true,
-          "latencyMs": 41
-        },
-        "name": "Incident history",
-        "dataMode": "query-in-place"
-      },
-      {
-        "id": "github",
-        "kind": "saas-api",
-        "capabilities": [
           "read_file",
-          "create_branch",
-          "commit",
-          "create_pr"
+          "list_files",
+          "get_metadata",
+          "watch_changes"
         ],
         "health": {
-          "ok": true,
-          "latencyMs": 186
+          "ok": false,
+          "latencyMs": 0
         },
-        "name": "GitHub",
-        "dataMode": "query-in-place"
+        "name": "Google Drive",
+        "description": "Access documents, specs and design files.",
+        "category": "knowledge",
+        "typeLabel": "Knowledge Source",
+        "status": "action_required",
+        "statusDetail": "The access token expired on 9 September. Reconnect to restore document search.",
+        "usedBy": [
+          "Clara",
+          "Lens"
+        ],
+        "logo": "googledrive",
+        "endpoint": "https://www.googleapis.com/drive/v3",
+        "dataMode": "metadata-only",
+        "addedAt": "2026-08-01"
       },
       {
-        "id": "confluence",
+        "id": "sap",
         "kind": "saas-api",
         "capabilities": [
-          "search_docs"
+          "get_material",
+          "create_order",
+          "check_status"
         ],
         "health": {
-          "ok": true,
-          "latencyMs": 320
+          "ok": false,
+          "latencyMs": 0
         },
-        "name": "Internal documentation",
-        "dataMode": "metadata-only"
+        "name": "SAP",
+        "description": "Enterprise resource planning system.",
+        "category": "saas",
+        "typeLabel": "API / SaaS",
+        "status": "not_connected",
+        "usedBy": [],
+        "logo": "sap",
+        "dataMode": "query-in-place",
+        "addedAt": "2026-08-01"
+      },
+      {
+        "id": "notion",
+        "kind": "file",
+        "capabilities": [
+          "search_pages",
+          "read_page",
+          "list_spaces"
+        ],
+        "health": {
+          "ok": false,
+          "latencyMs": 0
+        },
+        "name": "Notion",
+        "description": "Access product docs, meeting notes and wikis.",
+        "category": "knowledge",
+        "typeLabel": "Knowledge Source",
+        "status": "not_connected",
+        "usedBy": [],
+        "logo": "notion",
+        "dataMode": "metadata-only",
+        "addedAt": "2026-08-01"
       }
     ]
   },
@@ -419,8 +552,146 @@
       }
     ]
   },
+  "GET /connection-types": {
+    "data": [
+      {
+        "id": "agent",
+        "name": "AI Agent",
+        "description": "Connect another AI agent using A2A (Agent-to-Agent).",
+        "accent": "violet",
+        "fields": [
+          {
+            "key": "name",
+            "label": "Agent name",
+            "placeholder": "Acme Dev Agent",
+            "required": true
+          },
+          {
+            "key": "endpoint",
+            "label": "Agent card URL",
+            "placeholder": "https://agents.acme.com/.well-known/agent-card.json",
+            "required": true
+          },
+          {
+            "key": "token",
+            "label": "Token",
+            "placeholder": "Optional",
+            "required": false,
+            "secret": true
+          }
+        ],
+        "discovering": "Reading the agent card and its declared skills"
+      },
+      {
+        "id": "mcp",
+        "name": "MCP Server",
+        "description": "Connect tools and data through MCP (Model Context Protocol).",
+        "accent": "blue",
+        "fields": [
+          {
+            "key": "name",
+            "label": "Server name",
+            "placeholder": "GitHub",
+            "required": true
+          },
+          {
+            "key": "endpoint",
+            "label": "Server URL",
+            "placeholder": "mcp://github.com/your-org",
+            "required": true
+          },
+          {
+            "key": "token",
+            "label": "Token",
+            "placeholder": "Optional",
+            "required": false,
+            "secret": true
+          }
+        ],
+        "discovering": "Listing the tools this server exposes"
+      },
+      {
+        "id": "database",
+        "name": "Database",
+        "description": "PostgreSQL, MySQL, MongoDB, SQL Server, etc.",
+        "accent": "green",
+        "fields": [
+          {
+            "key": "name",
+            "label": "Display name",
+            "placeholder": "Procurement DB",
+            "required": true
+          },
+          {
+            "key": "endpoint",
+            "label": "Connection string",
+            "placeholder": "postgres://read-only@host:5432/db",
+            "required": true,
+            "secret": true
+          }
+        ],
+        "discovering": "Describing the schema through a read-only user"
+      },
+      {
+        "id": "saas",
+        "name": "API / SaaS",
+        "description": "Jira, Salesforce, SAP, Slack, custom REST API, etc.",
+        "accent": "orange",
+        "fields": [
+          {
+            "key": "name",
+            "label": "Service name",
+            "placeholder": "Jira",
+            "required": true
+          },
+          {
+            "key": "endpoint",
+            "label": "Base URL",
+            "placeholder": "https://your-org.atlassian.net",
+            "required": true
+          },
+          {
+            "key": "token",
+            "label": "API token",
+            "placeholder": "Required by most services",
+            "required": false,
+            "secret": true
+          }
+        ],
+        "discovering": "Reading the API description and its operations"
+      },
+      {
+        "id": "knowledge",
+        "name": "Knowledge Source",
+        "description": "Google Drive, Notion, Confluence, SharePoint, etc.",
+        "accent": "red",
+        "fields": [
+          {
+            "key": "name",
+            "label": "Source name",
+            "placeholder": "Google Drive",
+            "required": true
+          },
+          {
+            "key": "endpoint",
+            "label": "Workspace or folder",
+            "placeholder": "https://drive.google.com/…",
+            "required": true
+          },
+          {
+            "key": "token",
+            "label": "Token",
+            "placeholder": "Optional",
+            "required": false,
+            "secret": true
+          }
+        ],
+        "discovering": "Indexing titles and structure — documents stay where they are"
+      }
+    ]
+  },
   "GET /stats?workspace=procol": {
-    "active": 3,
+    "active": 7,
     "aiWorking": 0,
     "needsApproval": 2,
     "resolvedToday": 1,
@@ -443,7 +714,7 @@
         ],
         "tools": [],
         "description": "Receives every request, decides which capabilities it needs, delegates over A2A, collects the artifacts and stops at the human gate.",
-        "lastSeenAt": "2026-09-11T19:16:51.433Z",
+        "lastSeenAt": "2026-09-11T19:54:58.918Z",
         "tasksToday": 0,
         "role": "orchestrator",
         "ownership": "procol"
@@ -467,8 +738,8 @@
           }
         ],
         "description": "Answers product and tenant configuration questions. Already deployed at Procol — Brain consumes it as an agent rather than rebuilding it.",
-        "lastSeenAt": "2026-09-11T19:16:51.433Z",
-        "tasksToday": 3,
+        "lastSeenAt": "2026-09-11T19:54:58.918Z",
+        "tasksToday": 4,
         "role": "knowledge",
         "ownership": "customer"
       },
@@ -491,7 +762,7 @@
           }
         ],
         "description": "Reads the repository, traces the defect to a root cause, produces a minimal patch and opens a pull request.",
-        "lastSeenAt": "2026-09-11T19:16:51.433Z",
+        "lastSeenAt": "2026-09-11T19:54:58.918Z",
         "tasksToday": 2,
         "role": "engineering",
         "ownership": "procol"
@@ -514,7 +785,7 @@
           }
         ],
         "description": "Executes the test suite against the patched branch and reports pass/fail. A failure sends the work back to engineering, capped at two attempts.",
-        "lastSeenAt": "2026-09-11T19:16:51.433Z",
+        "lastSeenAt": "2026-09-11T19:54:58.918Z",
         "tasksToday": 2,
         "role": "validation",
         "ownership": "procol"
@@ -537,7 +808,7 @@
           }
         ],
         "description": "Answers \"who else is affected?\" by compiling a canonical query against the connector layer. No SQL is ever written by a model.",
-        "lastSeenAt": "2026-09-11T19:16:51.433Z",
+        "lastSeenAt": "2026-09-11T19:54:58.918Z",
         "tasksToday": 0,
         "role": "analytics",
         "ownership": "procol"
@@ -555,7 +826,7 @@
         ],
         "tools": [],
         "description": "A named person approves or rejects, and their decision lands on the same timeline as the agents, in the same visual language.",
-        "lastSeenAt": "2026-09-11T19:16:51.433Z",
+        "lastSeenAt": "2026-09-11T19:54:58.918Z",
         "tasksToday": 0,
         "role": "approval",
         "ownership": "customer"
@@ -565,9 +836,78 @@
   "GET /connectors?workspace=procol": {
     "data": [
       {
+        "id": "github",
+        "kind": "mcp",
+        "capabilities": [
+          "create_pr",
+          "search_code",
+          "get_pr",
+          "read_file",
+          "create_branch",
+          "commit",
+          "list_repos",
+          "get_commit",
+          "review_pr",
+          "merge_pr",
+          "list_issues",
+          "create_issue"
+        ],
+        "health": {
+          "ok": true,
+          "latencyMs": 210
+        },
+        "name": "GitHub",
+        "description": "Access repositories, create PRs, review code and more.",
+        "category": "mcp",
+        "typeLabel": "MCP Server",
+        "status": "connected",
+        "usedBy": [
+          "Development Agent",
+          "QA Agent"
+        ],
+        "logo": "github",
+        "endpoint": "mcp://github.com/procol-hack",
+        "dataMode": "query-in-place",
+        "addedAt": "2026-08-01"
+      },
+      {
+        "id": "jira",
+        "kind": "saas-api",
+        "capabilities": [
+          "create_issue",
+          "update_issue",
+          "search",
+          "get_issue",
+          "transition",
+          "add_comment",
+          "list_projects",
+          "get_sprint"
+        ],
+        "health": {
+          "ok": true,
+          "latencyMs": 380
+        },
+        "name": "Jira",
+        "description": "Manage issues, projects and workflows.",
+        "category": "saas",
+        "typeLabel": "API / SaaS",
+        "status": "connected",
+        "usedBy": [
+          "Procol Brain",
+          "Development Agent"
+        ],
+        "logo": "jira",
+        "endpoint": "https://procol.atlassian.net",
+        "dataMode": "query-in-place",
+        "addedAt": "2026-08-01"
+      },
+      {
         "id": "procurement-db",
         "kind": "database",
         "capabilities": [
+          "search_po",
+          "get_vendor",
+          "get_invoice",
           "describe_schema",
           "query",
           "fetch_record"
@@ -576,38 +916,145 @@
           "ok": true,
           "latencyMs": 34
         },
-        "name": "Procurement database",
-        "dataMode": "query-in-place"
+        "name": "Procurement DB",
+        "description": "Internal procurement database for purchase orders, vendors and invoices.",
+        "category": "database",
+        "typeLabel": "Database",
+        "status": "connected",
+        "usedBy": [
+          "Lens",
+          "Procurement Agent"
+        ],
+        "logo": "postgres",
+        "endpoint": "postgres://read-only@procurement-db",
+        "dataMode": "query-in-place",
+        "addedAt": "2026-08-01"
       },
       {
-        "id": "github",
+        "id": "slack",
         "kind": "saas-api",
         "capabilities": [
-          "read_file",
-          "create_branch",
-          "commit",
-          "create_pr"
+          "send_message",
+          "read_channel",
+          "search",
+          "list_channels",
+          "upload_file"
         ],
         "health": {
           "ok": true,
-          "latencyMs": 210
+          "latencyMs": 290
         },
-        "name": "GitHub",
-        "dataMode": "query-in-place"
+        "name": "Slack",
+        "description": "Send notifications and get channel updates.",
+        "category": "saas",
+        "typeLabel": "API / SaaS",
+        "status": "connected",
+        "usedBy": [
+          "Procol Brain"
+        ],
+        "logo": "slack",
+        "endpoint": "https://slack.com/api",
+        "dataMode": "query-in-place",
+        "addedAt": "2026-08-01"
       },
       {
-        "id": "product-db",
-        "kind": "mcp",
+        "id": "acme-dev-agent",
+        "kind": "saas-api",
         "capabilities": [
-          "search_docs",
-          "get_customer_config"
+          "code_fix",
+          "create_pr",
+          "review_code",
+          "bug_analysis"
         ],
         "health": {
           "ok": true,
-          "latencyMs": 58
+          "latencyMs": 450
         },
-        "name": "Product knowledge index",
-        "dataMode": "metadata-only"
+        "name": "Acme Dev Agent",
+        "description": "External development agent from Acme Corp.",
+        "category": "agent",
+        "typeLabel": "A2A Agent",
+        "status": "connected",
+        "usedBy": [
+          "Development Agent"
+        ],
+        "logo": "agent",
+        "endpoint": "https://agents.acme.com/a2a",
+        "dataMode": "query-in-place",
+        "addedAt": "2026-08-01"
+      },
+      {
+        "id": "google-drive",
+        "kind": "file",
+        "capabilities": [
+          "search_docs",
+          "read_file",
+          "list_files",
+          "get_metadata",
+          "watch_changes"
+        ],
+        "health": {
+          "ok": false,
+          "latencyMs": 0
+        },
+        "name": "Google Drive",
+        "description": "Access documents, specs and design files.",
+        "category": "knowledge",
+        "typeLabel": "Knowledge Source",
+        "status": "action_required",
+        "statusDetail": "The access token expired on 9 September. Reconnect to restore document search.",
+        "usedBy": [
+          "Clara",
+          "Lens"
+        ],
+        "logo": "googledrive",
+        "endpoint": "https://www.googleapis.com/drive/v3",
+        "dataMode": "metadata-only",
+        "addedAt": "2026-08-01"
+      },
+      {
+        "id": "sap",
+        "kind": "saas-api",
+        "capabilities": [
+          "get_material",
+          "create_order",
+          "check_status"
+        ],
+        "health": {
+          "ok": false,
+          "latencyMs": 0
+        },
+        "name": "SAP",
+        "description": "Enterprise resource planning system.",
+        "category": "saas",
+        "typeLabel": "API / SaaS",
+        "status": "not_connected",
+        "usedBy": [],
+        "logo": "sap",
+        "dataMode": "query-in-place",
+        "addedAt": "2026-08-01"
+      },
+      {
+        "id": "notion",
+        "kind": "file",
+        "capabilities": [
+          "search_pages",
+          "read_page",
+          "list_spaces"
+        ],
+        "health": {
+          "ok": false,
+          "latencyMs": 0
+        },
+        "name": "Notion",
+        "description": "Access product docs, meeting notes and wikis.",
+        "category": "knowledge",
+        "typeLabel": "Knowledge Source",
+        "status": "not_connected",
+        "usedBy": [],
+        "logo": "notion",
+        "dataMode": "metadata-only",
+        "addedAt": "2026-08-01"
       }
     ]
   },
@@ -837,8 +1284,8 @@
         "status": "AWAITING_APPROVAL",
         "category": "CONFIG",
         "processKey": null,
-        "createdAt": "2026-09-11T19:17:15.550Z",
-        "updatedAt": "2026-09-11T19:17:15.552Z",
+        "createdAt": "2026-09-11T19:51:09.999Z",
+        "updatedAt": "2026-09-11T19:51:10.001Z",
         "categoryLabel": "Auctions",
         "workspaceId": "procol",
         "reportedBy": "Rahul Menon · Sourcing",
@@ -849,11 +1296,11 @@
         "currentAgentId": "human-approver",
         "currentAgentAction": "Waiting for your approval",
         "run": {
-          "id": "run_mtxc8jha005fd0b27721",
+          "id": "run_mtxdg59r0010c928d043",
           "state": "AWAITING_APPROVAL",
           "path": "CONFIG_FIX",
           "attempt": 1,
-          "startedAt": "2026-09-11T19:17:15.550Z"
+          "startedAt": "2026-09-11T19:51:09.999Z"
         },
         "stage": {
           "context": "clara",
@@ -872,8 +1319,8 @@
         "status": "AWAITING_APPROVAL",
         "category": "BUG",
         "processKey": null,
-        "createdAt": "2026-09-11T19:17:15.546Z",
-        "updatedAt": "2026-09-11T19:17:15.550Z",
+        "createdAt": "2026-09-11T19:51:09.979Z",
+        "updatedAt": "2026-09-11T19:51:09.999Z",
         "categoryLabel": "Billing & invoicing",
         "workspaceId": "procol",
         "reportedBy": "John Doe · Finance",
@@ -884,16 +1331,131 @@
         "currentAgentId": "human-approver",
         "currentAgentAction": "Waiting for your approval",
         "run": {
-          "id": "run_mtxc8jh6004hf334bfef",
+          "id": "run_mtxdg5980002ed3bedb7",
           "state": "AWAITING_APPROVAL",
           "path": "CODE_FIX",
           "attempt": 1,
-          "startedAt": "2026-09-11T19:17:15.546Z"
+          "startedAt": "2026-09-11T19:51:09.980Z"
         },
         "stage": {
           "context": "clara",
           "investigate": "dev-agent",
           "verify": "qa-agent",
+          "approve": null
+        }
+      },
+      {
+        "id": "PRO-1232",
+        "customer": "Conformance Co",
+        "title": "Conformance probe",
+        "description": "Raised by the contract conformance checker. Safe to ignore.",
+        "channel": "portal",
+        "priority": "LOW",
+        "status": "NEEDS_HUMAN",
+        "category": null,
+        "processKey": null,
+        "createdAt": "2026-09-11T19:51:10.275Z",
+        "updatedAt": "2026-09-11T19:51:12.491Z",
+        "categoryLabel": "Uncategorised",
+        "workspaceId": "procol",
+        "reportedBy": "Customer",
+        "impact": "Not yet assessed",
+        "issueQuote": [
+          "Raised by the contract conformance checker. Safe to ignore."
+        ],
+        "currentAgentAction": "Waiting on a person",
+        "run": {
+          "id": "run_mtxdg5hh003mb25e1b2c",
+          "state": "NEEDS_HUMAN",
+          "path": null,
+          "attempt": 1,
+          "startedAt": "2026-09-11T19:51:10.277Z"
+        },
+        "stage": {
+          "context": "clara",
+          "investigate": null,
+          "verify": null,
+          "approve": null
+        }
+      },
+      {
+        "id": "PRO-1235",
+        "customer": "Conformance Co",
+        "title": "Uniqueness probe",
+        "description": "Checks that references are not reused.",
+        "channel": "portal",
+        "priority": "MEDIUM",
+        "status": "NEW",
+        "category": null,
+        "processKey": null,
+        "createdAt": "2026-09-11T19:51:10.285Z",
+        "updatedAt": "2026-09-11T19:51:10.285Z",
+        "categoryLabel": "Uncategorised",
+        "workspaceId": "procol",
+        "reportedBy": "Customer",
+        "impact": "Not yet assessed",
+        "issueQuote": [
+          "Checks that references are not reused."
+        ],
+        "run": null,
+        "stage": {
+          "context": null,
+          "investigate": null,
+          "verify": null,
+          "approve": null
+        }
+      },
+      {
+        "id": "PRO-1234",
+        "customer": "Conformance Co",
+        "title": "Uniqueness probe",
+        "description": "Checks that references are not reused.",
+        "channel": "portal",
+        "priority": "MEDIUM",
+        "status": "NEW",
+        "category": null,
+        "processKey": null,
+        "createdAt": "2026-09-11T19:51:10.284Z",
+        "updatedAt": "2026-09-11T19:51:10.284Z",
+        "categoryLabel": "Uncategorised",
+        "workspaceId": "procol",
+        "reportedBy": "Customer",
+        "impact": "Not yet assessed",
+        "issueQuote": [
+          "Checks that references are not reused."
+        ],
+        "run": null,
+        "stage": {
+          "context": null,
+          "investigate": null,
+          "verify": null,
+          "approve": null
+        }
+      },
+      {
+        "id": "PRO-1233",
+        "customer": "Conformance Co",
+        "title": "Uniqueness probe",
+        "description": "Checks that references are not reused.",
+        "channel": "portal",
+        "priority": "MEDIUM",
+        "status": "NEW",
+        "category": null,
+        "processKey": null,
+        "createdAt": "2026-09-11T19:51:10.282Z",
+        "updatedAt": "2026-09-11T19:51:10.282Z",
+        "categoryLabel": "Uncategorised",
+        "workspaceId": "procol",
+        "reportedBy": "Customer",
+        "impact": "Not yet assessed",
+        "issueQuote": [
+          "Checks that references are not reused."
+        ],
+        "run": null,
+        "stage": {
+          "context": null,
+          "investigate": null,
+          "verify": null,
           "approve": null
         }
       },
@@ -907,8 +1469,8 @@
         "status": "NEW",
         "category": null,
         "processKey": null,
-        "createdAt": "2026-09-11T19:17:15.554Z",
-        "updatedAt": "2026-09-11T19:17:15.554Z",
+        "createdAt": "2026-09-11T19:51:10.004Z",
+        "updatedAt": "2026-09-11T19:51:10.004Z",
         "categoryLabel": "Uncategorised",
         "workspaceId": "procol",
         "reportedBy": "Monitoring",
@@ -934,8 +1496,8 @@
         "status": "RESOLVED",
         "category": "QUESTION",
         "processKey": null,
-        "createdAt": "2026-09-11T19:17:15.552Z",
-        "updatedAt": "2026-09-11T19:17:15.554Z",
+        "createdAt": "2026-09-11T19:51:10.001Z",
+        "updatedAt": "2026-09-11T19:51:10.004Z",
         "categoryLabel": "How-to",
         "workspaceId": "procol",
         "reportedBy": "Buyer",
@@ -945,11 +1507,11 @@
         ],
         "currentAgentAction": "Closed",
         "run": {
-          "id": "run_mtxc8jhc005xfc724e36",
+          "id": "run_mtxdg59t001iee98bdf7",
           "state": "RESOLVED",
           "path": "ANSWER_ONLY",
           "attempt": 1,
-          "startedAt": "2026-09-11T19:17:15.552Z"
+          "startedAt": "2026-09-11T19:51:10.001Z"
         },
         "stage": {
           "context": "clara",
@@ -971,8 +1533,8 @@
       "status": "AWAITING_APPROVAL",
       "category": "CONFIG",
       "processKey": null,
-      "createdAt": "2026-09-11T19:17:15.550Z",
-      "updatedAt": "2026-09-11T19:17:15.552Z",
+      "createdAt": "2026-09-11T19:51:09.999Z",
+      "updatedAt": "2026-09-11T19:51:10.001Z",
       "categoryLabel": "Auctions",
       "workspaceId": "procol",
       "reportedBy": "Rahul Menon · Sourcing",
@@ -984,14 +1546,14 @@
       "currentAgentAction": "Waiting for your approval"
     },
     "run": {
-      "id": "run_mtxc8jha005fd0b27721",
+      "id": "run_mtxdg59r0010c928d043",
       "ticketId": "PRO-1238",
       "state": "AWAITING_APPROVAL",
       "path": "CONFIG_FIX",
       "attempt": 1,
       "summary": null,
       "policyReason": "Configuration changes to a live tenant require human approval.",
-      "startedAt": "2026-09-11T19:17:15.550Z",
+      "startedAt": "2026-09-11T19:51:09.999Z",
       "endedAt": null
     },
     "artifacts": [
@@ -1010,7 +1572,7 @@
           ],
           "system": "Procol sourcing console"
         },
-        "createdAt": "2026-09-11T19:17:15.552Z",
+        "createdAt": "2026-09-11T19:51:10.001Z",
         "createdBy": "brain"
       },
       {
@@ -1023,7 +1585,7 @@
           "body": "Hi XYZ Metals,\n\nThe vendor was not on the invited participant list for this auction, which is why nothing appeared on their dashboard.\n\nWe have added them under Auction → Participants and their invitation is on its way. The auction will show on their dashboard within a minute of them signing in.\n\nNo product change was needed here, so nothing else on your account is affected.",
           "sentTo": "xyz.metals@example.com"
         },
-        "createdAt": "2026-09-11T19:17:15.552Z",
+        "createdAt": "2026-09-11T19:51:10.001Z",
         "createdBy": "brain"
       }
     ],
@@ -1032,7 +1594,7 @@
   "GET /tickets/PRO-1238/activities": {
     "data": [
       {
-        "id": "act_mtxc8jha005d6d80e369",
+        "id": "act_mtxdg59r000ye8d41b3a",
         "ticketId": "PRO-1238",
         "runId": null,
         "seq": 1,
@@ -1044,10 +1606,10 @@
         "level": "info",
         "taskId": null,
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.550Z"
+        "createdAt": "2026-09-11T19:51:09.999Z"
       },
       {
-        "id": "act_mtxc8jha005ecba4646a",
+        "id": "act_mtxdg59r000z4ec23572",
         "ticketId": "PRO-1238",
         "runId": null,
         "seq": 2,
@@ -1059,12 +1621,12 @@
         "level": "info",
         "taskId": null,
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.550Z"
+        "createdAt": "2026-09-11T19:51:09.999Z"
       },
       {
-        "id": "act_mtxc8jha005g217d3c1f",
+        "id": "act_mtxdg59r00115a5f5dfe",
         "ticketId": "PRO-1238",
-        "runId": "run_mtxc8jha005fd0b27721",
+        "runId": "run_mtxdg59r0010c928d043",
         "seq": 3,
         "type": "run.started",
         "fromAgent": "brain",
@@ -1074,12 +1636,12 @@
         "level": "info",
         "taskId": null,
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.550Z"
+        "createdAt": "2026-09-11T19:51:09.999Z"
       },
       {
-        "id": "act_mtxc8jha005h3a0f6c18",
+        "id": "act_mtxdg59r00126066a3dd",
         "ticketId": "PRO-1238",
-        "runId": "run_mtxc8jha005fd0b27721",
+        "runId": "run_mtxdg59r0010c928d043",
         "seq": 4,
         "type": "run.state",
         "fromAgent": "brain",
@@ -1089,12 +1651,12 @@
         "level": "info",
         "taskId": null,
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.550Z"
+        "createdAt": "2026-09-11T19:51:09.999Z"
       },
       {
-        "id": "act_mtxc8jha005i85b970a5",
+        "id": "act_mtxdg59r00135accd4e3",
         "ticketId": "PRO-1238",
-        "runId": "run_mtxc8jha005fd0b27721",
+        "runId": "run_mtxdg59r0010c928d043",
         "seq": 5,
         "type": "brain.thought",
         "fromAgent": "brain",
@@ -1104,12 +1666,12 @@
         "level": "info",
         "taskId": null,
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.550Z"
+        "createdAt": "2026-09-11T19:51:09.999Z"
       },
       {
-        "id": "act_mtxc8jha005ja2947981",
+        "id": "act_mtxdg59r0014d75051db",
         "ticketId": "PRO-1238",
-        "runId": "run_mtxc8jha005fd0b27721",
+        "runId": "run_mtxdg59r0010c928d043",
         "seq": 6,
         "type": "run.state",
         "fromAgent": "brain",
@@ -1119,27 +1681,27 @@
         "level": "info",
         "taskId": null,
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.550Z"
+        "createdAt": "2026-09-11T19:51:09.999Z"
       },
       {
-        "id": "act_mtxc8jha005kb9b010ca",
+        "id": "act_mtxdg59r0015017cc717",
         "ticketId": "PRO-1238",
-        "runId": "run_mtxc8jha005fd0b27721",
+        "runId": "run_mtxdg59r0010c928d043",
         "seq": 7,
         "type": "a2a.request",
         "fromAgent": "brain",
         "toAgent": "clara",
         "title": "Is this vendor on the invited list for the auction?",
-        "body": "{\n  \"taskId\": \"TASK-e5b53a04\",\n  \"from\": \"brain\",\n  \"to\": \"clara\",\n  \"type\": \"GET_PRODUCT_CONTEXT\",\n  \"context\": {\n    \"ticketId\": \"PRO-1238\",\n    \"customer\": \"XYZ Metals\",\n    \"issue\": \"Vendor cannot see the auction\",\n    \"message\": \"We invited Sharma Steels to the MS Plate auction but they say nothing shows in their dashboard. The auction closes Friday and we need them bidding before then.\",\n    \"playbookId\": \"vendor-access\"\n  }\n}",
+        "body": "{\n  \"taskId\": \"TASK-ad45651d\",\n  \"from\": \"brain\",\n  \"to\": \"clara\",\n  \"type\": \"GET_PRODUCT_CONTEXT\",\n  \"context\": {\n    \"ticketId\": \"PRO-1238\",\n    \"customer\": \"XYZ Metals\",\n    \"issue\": \"Vendor cannot see the auction\",\n    \"message\": \"We invited Sharma Steels to the MS Plate auction but they say nothing shows in their dashboard. The auction closes Friday and we need them bidding before then.\",\n    \"playbookId\": \"vendor-access\"\n  }\n}",
         "level": "info",
-        "taskId": "TASK-e5b53a04",
+        "taskId": "TASK-ad45651d",
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.550Z"
+        "createdAt": "2026-09-11T19:51:09.999Z"
       },
       {
-        "id": "act_mtxc8jhc005l449f2f87",
+        "id": "act_mtxdg59t0016cf5eb97c",
         "ticketId": "PRO-1238",
-        "runId": "run_mtxc8jha005fd0b27721",
+        "runId": "run_mtxdg59r0010c928d043",
         "seq": 8,
         "type": "agent.log",
         "fromAgent": "clara",
@@ -1147,14 +1709,14 @@
         "title": "matched 1 knowledge document",
         "body": null,
         "level": "info",
-        "taskId": "TASK-e5b53a04",
+        "taskId": "TASK-ad45651d",
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.552Z"
+        "createdAt": "2026-09-11T19:51:10.001Z"
       },
       {
-        "id": "act_mtxc8jhc005m69be9e23",
+        "id": "act_mtxdg59t001755451d75",
         "ticketId": "PRO-1238",
-        "runId": "run_mtxc8jha005fd0b27721",
+        "runId": "run_mtxdg59r0010c928d043",
         "seq": 9,
         "type": "agent.log",
         "fromAgent": "clara",
@@ -1162,14 +1724,14 @@
         "title": "read auctions.md#participants",
         "body": null,
         "level": "info",
-        "taskId": "TASK-e5b53a04",
+        "taskId": "TASK-ad45651d",
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.552Z"
+        "createdAt": "2026-09-11T19:51:10.001Z"
       },
       {
-        "id": "act_mtxc8jhc005n72a5a7f6",
+        "id": "act_mtxdg59t0018ab18cbb2",
         "ticketId": "PRO-1238",
-        "runId": "run_mtxc8jha005fd0b27721",
+        "runId": "run_mtxdg59r0010c928d043",
         "seq": 10,
         "type": "agent.log",
         "fromAgent": "clara",
@@ -1177,14 +1739,14 @@
         "title": "checked participant list — 4 vendors, the named vendor absent",
         "body": null,
         "level": "info",
-        "taskId": "TASK-e5b53a04",
+        "taskId": "TASK-ad45651d",
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.552Z"
+        "createdAt": "2026-09-11T19:51:10.001Z"
       },
       {
-        "id": "act_mtxc8jhc005oa6a8183d",
+        "id": "act_mtxdg59t0019766971fa",
         "ticketId": "PRO-1238",
-        "runId": "run_mtxc8jha005fd0b27721",
+        "runId": "run_mtxdg59r0010c928d043",
         "seq": 11,
         "type": "a2a.response",
         "fromAgent": "clara",
@@ -1192,14 +1754,14 @@
         "title": "The vendor was never added to the auction’s invited list",
         "body": "Auction visibility is driven by the participant list. The vendor exists on this tenant but is not a participant on the auction, so the dashboard is behaving correctly. This is a configuration gap, not a product defect.",
         "level": "success",
-        "taskId": "TASK-e5b53a04",
+        "taskId": "TASK-ad45651d",
         "durationMs": 690,
-        "createdAt": "2026-09-11T19:17:15.552Z"
+        "createdAt": "2026-09-11T19:51:10.001Z"
       },
       {
-        "id": "act_mtxc8jhc005p9c331816",
+        "id": "act_mtxdg59t001a8a220592",
         "ticketId": "PRO-1238",
-        "runId": "run_mtxc8jha005fd0b27721",
+        "runId": "run_mtxdg59r0010c928d043",
         "seq": 12,
         "type": "run.state",
         "fromAgent": "brain",
@@ -1209,12 +1771,12 @@
         "level": "info",
         "taskId": null,
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.552Z"
+        "createdAt": "2026-09-11T19:51:10.001Z"
       },
       {
-        "id": "act_mtxc8jhc005qb1997430",
+        "id": "act_mtxdg59t001baa66a8c6",
         "ticketId": "PRO-1238",
-        "runId": "run_mtxc8jha005fd0b27721",
+        "runId": "run_mtxdg59r0010c928d043",
         "seq": 13,
         "type": "brain.thought",
         "fromAgent": "brain",
@@ -1224,12 +1786,12 @@
         "level": "info",
         "taskId": null,
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.552Z"
+        "createdAt": "2026-09-11T19:51:10.001Z"
       },
       {
-        "id": "act_mtxc8jhc005r0a86438b",
+        "id": "act_mtxdg59t001c00b6fbb6",
         "ticketId": "PRO-1238",
-        "runId": "run_mtxc8jha005fd0b27721",
+        "runId": "run_mtxdg59r0010c928d043",
         "seq": 14,
         "type": "run.state",
         "fromAgent": "brain",
@@ -1239,12 +1801,12 @@
         "level": "info",
         "taskId": null,
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.552Z"
+        "createdAt": "2026-09-11T19:51:10.001Z"
       },
       {
-        "id": "act_mtxc8jhc005sf2c8d101",
+        "id": "act_mtxdg59t001d875e4fba",
         "ticketId": "PRO-1238",
-        "runId": "run_mtxc8jha005fd0b27721",
+        "runId": "run_mtxdg59r0010c928d043",
         "seq": 15,
         "type": "artifact.created",
         "fromAgent": "brain",
@@ -1254,12 +1816,12 @@
         "level": "success",
         "taskId": null,
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.552Z"
+        "createdAt": "2026-09-11T19:51:10.001Z"
       },
       {
-        "id": "act_mtxc8jhc005t045db97d",
+        "id": "act_mtxdg59t001ea426c395",
         "ticketId": "PRO-1238",
-        "runId": "run_mtxc8jha005fd0b27721",
+        "runId": "run_mtxdg59r0010c928d043",
         "seq": 16,
         "type": "artifact.created",
         "fromAgent": "brain",
@@ -1269,12 +1831,12 @@
         "level": "success",
         "taskId": null,
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.552Z"
+        "createdAt": "2026-09-11T19:51:10.001Z"
       },
       {
-        "id": "act_mtxc8jhc005ufeb8be78",
+        "id": "act_mtxdg59t001f2e55b62e",
         "ticketId": "PRO-1238",
-        "runId": "run_mtxc8jha005fd0b27721",
+        "runId": "run_mtxdg59r0010c928d043",
         "seq": 17,
         "type": "run.awaiting_approval",
         "fromAgent": "brain",
@@ -1284,7 +1846,7 @@
         "level": "warn",
         "taskId": null,
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.552Z"
+        "createdAt": "2026-09-11T19:51:10.001Z"
       }
     ]
   },
@@ -1330,8 +1892,8 @@
       "status": "AWAITING_APPROVAL",
       "category": "BUG",
       "processKey": null,
-      "createdAt": "2026-09-11T19:17:15.546Z",
-      "updatedAt": "2026-09-11T19:17:15.550Z",
+      "createdAt": "2026-09-11T19:51:09.979Z",
+      "updatedAt": "2026-09-11T19:51:09.999Z",
       "categoryLabel": "Billing & invoicing",
       "workspaceId": "procol",
       "reportedBy": "John Doe · Finance",
@@ -1343,14 +1905,14 @@
       "currentAgentAction": "Waiting for your approval"
     },
     "run": {
-      "id": "run_mtxc8jh6004hf334bfef",
+      "id": "run_mtxdg5980002ed3bedb7",
       "ticketId": "PRO-1245",
       "state": "AWAITING_APPROVAL",
       "path": "CODE_FIX",
       "attempt": 1,
       "summary": null,
       "policyReason": "Code changes to billing always require human approval.",
-      "startedAt": "2026-09-11T19:17:15.546Z",
+      "startedAt": "2026-09-11T19:51:09.980Z",
       "endedAt": null
     },
     "artifacts": [
@@ -1369,7 +1931,7 @@
             "tenantConfig is accepted as a parameter but only read for the discount"
           ]
         },
-        "createdAt": "2026-09-11T19:17:15.549Z",
+        "createdAt": "2026-09-11T19:51:09.996Z",
         "createdBy": "dev-agent"
       },
       {
@@ -1390,7 +1952,7 @@
           "patch": "--- a/src/invoiceCalculator.js\n+++ b/src/invoiceCalculator.js\n@@ -4,7 +4,8 @@ function calculateInvoice(lineItems, tenantConfig) {\n   const taxable = base - discount;\n-  const gst = taxable * (DEFAULT_GST_RATE / 100);\n+  const rate = tenantConfig?.gstPercent ?? DEFAULT_GST_RATE;\n+  const gst = taxable * (rate / 100);\n   return { base, discount, taxable, gst, total: taxable + gst };",
           "state": "mock"
         },
-        "createdAt": "2026-09-11T19:17:15.549Z",
+        "createdAt": "2026-09-11T19:51:09.996Z",
         "createdBy": "dev-agent"
       },
       {
@@ -1418,7 +1980,7 @@
           ],
           "failures": []
         },
-        "createdAt": "2026-09-11T19:17:15.549Z",
+        "createdAt": "2026-09-11T19:51:09.998Z",
         "createdBy": "qa-agent"
       },
       {
@@ -1431,7 +1993,7 @@
           "affectedRecords": 312,
           "firstSeen": "2 March"
         },
-        "createdAt": "2026-09-11T19:17:15.550Z",
+        "createdAt": "2026-09-11T19:51:09.999Z",
         "createdBy": "lens"
       },
       {
@@ -1444,7 +2006,7 @@
           "body": "Hi ABC Corp,\n\nWe have identified and fixed the issue causing GST to be billed at 12% instead of your configured 18%. The calculation was falling back to a default rate instead of reading your tenant configuration.\n\nThe fix has passed our full invoice regression suite and has been approved for release. Your affected invoices are being re-issued — you do not need to raise them again.\n\nIf anything still looks wrong on your next invoice, reply to this ticket and it will come straight back to us.",
           "sentTo": "abc.corp@example.com"
         },
-        "createdAt": "2026-09-11T19:17:15.550Z",
+        "createdAt": "2026-09-11T19:51:09.999Z",
         "createdBy": "brain"
       }
     ],
@@ -1456,7 +2018,7 @@
   "GET /tickets/PRO-1245/activities": {
     "data": [
       {
-        "id": "act_mtxc8jh6004f5be69a2b",
+        "id": "act_mtxdg5970000793a9f73",
         "ticketId": "PRO-1245",
         "runId": null,
         "seq": 1,
@@ -1468,10 +2030,10 @@
         "level": "info",
         "taskId": null,
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.546Z"
+        "createdAt": "2026-09-11T19:51:09.980Z"
       },
       {
-        "id": "act_mtxc8jh6004g55e22ea4",
+        "id": "act_mtxdg5980001368b9332",
         "ticketId": "PRO-1245",
         "runId": null,
         "seq": 2,
@@ -1483,12 +2045,12 @@
         "level": "info",
         "taskId": null,
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.546Z"
+        "createdAt": "2026-09-11T19:51:09.980Z"
       },
       {
-        "id": "act_mtxc8jh6004i27a2bfb4",
+        "id": "act_mtxdg5980003cb03603f",
         "ticketId": "PRO-1245",
-        "runId": "run_mtxc8jh6004hf334bfef",
+        "runId": "run_mtxdg5980002ed3bedb7",
         "seq": 3,
         "type": "run.started",
         "fromAgent": "brain",
@@ -1498,12 +2060,12 @@
         "level": "info",
         "taskId": null,
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.546Z"
+        "createdAt": "2026-09-11T19:51:09.980Z"
       },
       {
-        "id": "act_mtxc8jh6004j4ab26924",
+        "id": "act_mtxdg5980004b7827d80",
         "ticketId": "PRO-1245",
-        "runId": "run_mtxc8jh6004hf334bfef",
+        "runId": "run_mtxdg5980002ed3bedb7",
         "seq": 4,
         "type": "run.state",
         "fromAgent": "brain",
@@ -1513,12 +2075,12 @@
         "level": "info",
         "taskId": null,
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.546Z"
+        "createdAt": "2026-09-11T19:51:09.980Z"
       },
       {
-        "id": "act_mtxc8jh6004k08295676",
+        "id": "act_mtxdg5990005135304e8",
         "ticketId": "PRO-1245",
-        "runId": "run_mtxc8jh6004hf334bfef",
+        "runId": "run_mtxdg5980002ed3bedb7",
         "seq": 5,
         "type": "brain.thought",
         "fromAgent": "brain",
@@ -1528,12 +2090,12 @@
         "level": "info",
         "taskId": null,
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.546Z"
+        "createdAt": "2026-09-11T19:51:09.981Z"
       },
       {
-        "id": "act_mtxc8jh6004l84b4b639",
+        "id": "act_mtxdg5990006b3eabe03",
         "ticketId": "PRO-1245",
-        "runId": "run_mtxc8jh6004hf334bfef",
+        "runId": "run_mtxdg5980002ed3bedb7",
         "seq": 6,
         "type": "run.state",
         "fromAgent": "brain",
@@ -1543,27 +2105,27 @@
         "level": "info",
         "taskId": null,
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.546Z"
+        "createdAt": "2026-09-11T19:51:09.981Z"
       },
       {
-        "id": "act_mtxc8jh6004mf3811a8f",
+        "id": "act_mtxdg599000713f85ba6",
         "ticketId": "PRO-1245",
-        "runId": "run_mtxc8jh6004hf334bfef",
+        "runId": "run_mtxdg5980002ed3bedb7",
         "seq": 7,
         "type": "a2a.request",
         "fromAgent": "brain",
         "toAgent": "clara",
         "title": "What is the expected tax configuration for this tenant?",
-        "body": "{\n  \"taskId\": \"TASK-ab6c6c74\",\n  \"from\": \"brain\",\n  \"to\": \"clara\",\n  \"type\": \"GET_PRODUCT_CONTEXT\",\n  \"context\": {\n    \"ticketId\": \"PRO-1245\",\n    \"customer\": \"ABC Corp\",\n    \"issue\": \"Invoice GST calculation incorrect\",\n    \"message\": \"Our March invoices are showing GST of 12% instead of 18%. The discount looks right but the tax is wrong on every PO raised this month. This is holding up our payment run.\",\n    \"playbookId\": \"invoice-tax\"\n  }\n}",
+        "body": "{\n  \"taskId\": \"TASK-ea615a9b\",\n  \"from\": \"brain\",\n  \"to\": \"clara\",\n  \"type\": \"GET_PRODUCT_CONTEXT\",\n  \"context\": {\n    \"ticketId\": \"PRO-1245\",\n    \"customer\": \"ABC Corp\",\n    \"issue\": \"Invoice GST calculation incorrect\",\n    \"message\": \"Our March invoices are showing GST of 12% instead of 18%. The discount looks right but the tax is wrong on every PO raised this month. This is holding up our payment run.\",\n    \"playbookId\": \"invoice-tax\"\n  }\n}",
         "level": "info",
-        "taskId": "TASK-ab6c6c74",
+        "taskId": "TASK-ea615a9b",
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.546Z"
+        "createdAt": "2026-09-11T19:51:09.981Z"
       },
       {
-        "id": "act_mtxc8jh7004nae82c33c",
+        "id": "act_mtxdg59m0008b6476a64",
         "ticketId": "PRO-1245",
-        "runId": "run_mtxc8jh6004hf334bfef",
+        "runId": "run_mtxdg5980002ed3bedb7",
         "seq": 8,
         "type": "agent.log",
         "fromAgent": "clara",
@@ -1571,14 +2133,14 @@
         "title": "matched 2 knowledge documents",
         "body": null,
         "level": "info",
-        "taskId": "TASK-ab6c6c74",
+        "taskId": "TASK-ea615a9b",
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.547Z"
+        "createdAt": "2026-09-11T19:51:09.994Z"
       },
       {
-        "id": "act_mtxc8jh7004o949909c2",
+        "id": "act_mtxdg59m0009006f9e62",
         "ticketId": "PRO-1245",
-        "runId": "run_mtxc8jh6004hf334bfef",
+        "runId": "run_mtxdg5980002ed3bedb7",
         "seq": 9,
         "type": "agent.log",
         "fromAgent": "clara",
@@ -1586,14 +2148,14 @@
         "title": "read billing-config.md#gst",
         "body": null,
         "level": "info",
-        "taskId": "TASK-ab6c6c74",
+        "taskId": "TASK-ea615a9b",
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.547Z"
+        "createdAt": "2026-09-11T19:51:09.994Z"
       },
       {
-        "id": "act_mtxc8jh7004p6dcf7372",
+        "id": "act_mtxdg59m000ab6388729",
         "ticketId": "PRO-1245",
-        "runId": "run_mtxc8jh6004hf334bfef",
+        "runId": "run_mtxdg5980002ed3bedb7",
         "seq": 10,
         "type": "agent.log",
         "fromAgent": "clara",
@@ -1601,14 +2163,14 @@
         "title": "read tenant settings v1.4",
         "body": null,
         "level": "info",
-        "taskId": "TASK-ab6c6c74",
+        "taskId": "TASK-ea615a9b",
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.547Z"
+        "createdAt": "2026-09-11T19:51:09.994Z"
       },
       {
-        "id": "act_mtxc8jh7004qdc64c23f",
+        "id": "act_mtxdg59m000ba768ebb1",
         "ticketId": "PRO-1245",
-        "runId": "run_mtxc8jh6004hf334bfef",
+        "runId": "run_mtxdg5980002ed3bedb7",
         "seq": 11,
         "type": "a2a.response",
         "fromAgent": "clara",
@@ -1616,14 +2178,14 @@
         "title": "Expected GST 18%, discount 10%, formula base − discount + gst",
         "body": "The tenant is configured correctly for intra-state GST at 18%. The billed rate does not match the configured rate, so this is a product defect rather than a tenant misconfiguration.",
         "level": "success",
-        "taskId": "TASK-ab6c6c74",
+        "taskId": "TASK-ea615a9b",
         "durationMs": 820,
-        "createdAt": "2026-09-11T19:17:15.547Z"
+        "createdAt": "2026-09-11T19:51:09.994Z"
       },
       {
-        "id": "act_mtxc8jh7004r65ebc8e0",
+        "id": "act_mtxdg59m000cb6e1870c",
         "ticketId": "PRO-1245",
-        "runId": "run_mtxc8jh6004hf334bfef",
+        "runId": "run_mtxdg5980002ed3bedb7",
         "seq": 12,
         "type": "run.state",
         "fromAgent": "brain",
@@ -1633,12 +2195,12 @@
         "level": "info",
         "taskId": null,
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.547Z"
+        "createdAt": "2026-09-11T19:51:09.994Z"
       },
       {
-        "id": "act_mtxc8jh7004s1d572127",
+        "id": "act_mtxdg59m000d7f620b60",
         "ticketId": "PRO-1245",
-        "runId": "run_mtxc8jh6004hf334bfef",
+        "runId": "run_mtxdg5980002ed3bedb7",
         "seq": 13,
         "type": "brain.thought",
         "fromAgent": "brain",
@@ -1648,12 +2210,12 @@
         "level": "info",
         "taskId": null,
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.547Z"
+        "createdAt": "2026-09-11T19:51:09.994Z"
       },
       {
-        "id": "act_mtxc8jh7004ta9d9a74a",
+        "id": "act_mtxdg59m000ebf984f77",
         "ticketId": "PRO-1245",
-        "runId": "run_mtxc8jh6004hf334bfef",
+        "runId": "run_mtxdg5980002ed3bedb7",
         "seq": 14,
         "type": "run.state",
         "fromAgent": "brain",
@@ -1663,27 +2225,27 @@
         "level": "info",
         "taskId": null,
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.547Z"
+        "createdAt": "2026-09-11T19:51:09.994Z"
       },
       {
-        "id": "act_mtxc8jh7004ud028e9ec",
+        "id": "act_mtxdg59m000fe76776d9",
         "ticketId": "PRO-1245",
-        "runId": "run_mtxc8jh6004hf334bfef",
+        "runId": "run_mtxdg5980002ed3bedb7",
         "seq": 15,
         "type": "a2a.request",
         "fromAgent": "brain",
         "toAgent": "dev-agent",
         "title": "Trace the defect and open a pull request",
-        "body": "{\n  \"taskId\": \"TASK-501eab77\",\n  \"from\": \"brain\",\n  \"to\": \"dev-agent\",\n  \"type\": \"INVESTIGATE_BUG\",\n  \"context\": {\n    \"ticketId\": \"PRO-1245\",\n    \"issue\": \"Invoice GST calculation incorrect\",\n    \"productContext\": {\n      \"summary\": \"Expected GST 18%, discount 10%, formula base − discount + gst\",\n      \"detail\": [\n        \"The tenant is configured correctly for intra-state GST at 18%. The billed rate does not match the configured rate, so this is a product defect rather than a tenant misconfiguration.\"\n      ],\n      \"customer\": \"ABC Corp\",\n      \"citations\": [\n        \"billing-config.md#gst\"\n      ],\n      \"expectedGst\": 18,\n      \"discount\": 10,\n      \"formula\": \"base - discount + gst\",\n      \"configNotes\": \"Tenant configured for intra-state GST at 18%.\",\n      \"isProductDefect\": true,\n      \"remediation\": null\n    },\n    \"playbookId\": \"invoice-tax\"\n  }\n}",
+        "body": "{\n  \"taskId\": \"TASK-954df8b4\",\n  \"from\": \"brain\",\n  \"to\": \"dev-agent\",\n  \"type\": \"INVESTIGATE_BUG\",\n  \"context\": {\n    \"ticketId\": \"PRO-1245\",\n    \"issue\": \"Invoice GST calculation incorrect\",\n    \"productContext\": {\n      \"summary\": \"Expected GST 18%, discount 10%, formula base − discount + gst\",\n      \"detail\": [\n        \"The tenant is configured correctly for intra-state GST at 18%. The billed rate does not match the configured rate, so this is a product defect rather than a tenant misconfiguration.\"\n      ],\n      \"customer\": \"ABC Corp\",\n      \"citations\": [\n        \"billing-config.md#gst\"\n      ],\n      \"expectedGst\": 18,\n      \"discount\": 10,\n      \"formula\": \"base - discount + gst\",\n      \"configNotes\": \"Tenant configured for intra-state GST at 18%.\",\n      \"isProductDefect\": true,\n      \"remediation\": null\n    },\n    \"playbookId\": \"invoice-tax\"\n  }\n}",
         "level": "info",
-        "taskId": "TASK-501eab77",
+        "taskId": "TASK-954df8b4",
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.547Z"
+        "createdAt": "2026-09-11T19:51:09.994Z"
       },
       {
-        "id": "act_mtxc8jh9004v20f44114",
+        "id": "act_mtxdg59o000g270abce6",
         "ticketId": "PRO-1245",
-        "runId": "run_mtxc8jh6004hf334bfef",
+        "runId": "run_mtxdg5980002ed3bedb7",
         "seq": 16,
         "type": "agent.log",
         "fromAgent": "dev-agent",
@@ -1691,14 +2253,14 @@
         "title": "indexed 3 files in src/billing",
         "body": null,
         "level": "info",
-        "taskId": "TASK-501eab77",
+        "taskId": "TASK-954df8b4",
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.549Z"
+        "createdAt": "2026-09-11T19:51:09.996Z"
       },
       {
-        "id": "act_mtxc8jh9004wb9d09448",
+        "id": "act_mtxdg59o000hccbe897a",
         "ticketId": "PRO-1245",
-        "runId": "run_mtxc8jh6004hf334bfef",
+        "runId": "run_mtxdg5980002ed3bedb7",
         "seq": 17,
         "type": "agent.log",
         "fromAgent": "dev-agent",
@@ -1706,14 +2268,14 @@
         "title": "located calculateInvoice() in invoiceCalculator.js:7",
         "body": null,
         "level": "info",
-        "taskId": "TASK-501eab77",
+        "taskId": "TASK-954df8b4",
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.549Z"
+        "createdAt": "2026-09-11T19:51:09.996Z"
       },
       {
-        "id": "act_mtxc8jh9004x889f2f5a",
+        "id": "act_mtxdg59o000i205f80ab",
         "ticketId": "PRO-1245",
-        "runId": "run_mtxc8jh6004hf334bfef",
+        "runId": "run_mtxdg5980002ed3bedb7",
         "seq": 18,
         "type": "agent.log",
         "fromAgent": "dev-agent",
@@ -1721,14 +2283,14 @@
         "title": "confirmed customerConfig.js holds gstPercent: 18 for this tenant",
         "body": null,
         "level": "info",
-        "taskId": "TASK-501eab77",
+        "taskId": "TASK-954df8b4",
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.549Z"
+        "createdAt": "2026-09-11T19:51:09.996Z"
       },
       {
-        "id": "act_mtxc8jh9004y643de988",
+        "id": "act_mtxdg59o000j7645aad4",
         "ticketId": "PRO-1245",
-        "runId": "run_mtxc8jh6004hf334bfef",
+        "runId": "run_mtxdg5980002ed3bedb7",
         "seq": 19,
         "type": "agent.log",
         "fromAgent": "dev-agent",
@@ -1736,14 +2298,14 @@
         "title": "opened PR #452 against main",
         "body": null,
         "level": "info",
-        "taskId": "TASK-501eab77",
+        "taskId": "TASK-954df8b4",
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.549Z"
+        "createdAt": "2026-09-11T19:51:09.996Z"
       },
       {
-        "id": "act_mtxc8jh9004z977f6c0b",
+        "id": "act_mtxdg59o000k385ec1f1",
         "ticketId": "PRO-1245",
-        "runId": "run_mtxc8jh6004hf334bfef",
+        "runId": "run_mtxdg5980002ed3bedb7",
         "seq": 20,
         "type": "a2a.response",
         "fromAgent": "dev-agent",
@@ -1751,14 +2313,14 @@
         "title": "Root cause: tenant context never reaches the GST calculator",
         "body": "calculateInvoice() reads the module-level DEFAULT_GST_RATE constant instead of the tenant’s configured rate, so every tenant is billed at the 12% default regardless of their settings.",
         "level": "success",
-        "taskId": "TASK-501eab77",
+        "taskId": "TASK-954df8b4",
         "durationMs": 4180,
-        "createdAt": "2026-09-11T19:17:15.549Z"
+        "createdAt": "2026-09-11T19:51:09.996Z"
       },
       {
-        "id": "act_mtxc8jh90050123f4c2c",
+        "id": "act_mtxdg59o000lba45f8b8",
         "ticketId": "PRO-1245",
-        "runId": "run_mtxc8jh6004hf334bfef",
+        "runId": "run_mtxdg5980002ed3bedb7",
         "seq": 21,
         "type": "artifact.created",
         "fromAgent": "dev-agent",
@@ -1768,12 +2330,12 @@
         "level": "success",
         "taskId": null,
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.549Z"
+        "createdAt": "2026-09-11T19:51:09.996Z"
       },
       {
-        "id": "act_mtxc8jh900518e501597",
+        "id": "act_mtxdg59o000mcfabc2f3",
         "ticketId": "PRO-1245",
-        "runId": "run_mtxc8jh6004hf334bfef",
+        "runId": "run_mtxdg5980002ed3bedb7",
         "seq": 22,
         "type": "artifact.created",
         "fromAgent": "dev-agent",
@@ -1783,12 +2345,12 @@
         "level": "success",
         "taskId": null,
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.549Z"
+        "createdAt": "2026-09-11T19:51:09.996Z"
       },
       {
-        "id": "act_mtxc8jh9005262706b4b",
+        "id": "act_mtxdg59o000n2fed894d",
         "ticketId": "PRO-1245",
-        "runId": "run_mtxc8jh6004hf334bfef",
+        "runId": "run_mtxdg5980002ed3bedb7",
         "seq": 23,
         "type": "run.state",
         "fromAgent": "brain",
@@ -1798,27 +2360,27 @@
         "level": "info",
         "taskId": null,
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.549Z"
+        "createdAt": "2026-09-11T19:51:09.996Z"
       },
       {
-        "id": "act_mtxc8jh90053ba868f8b",
+        "id": "act_mtxdg59o000o6379faba",
         "ticketId": "PRO-1245",
-        "runId": "run_mtxc8jh6004hf334bfef",
+        "runId": "run_mtxdg5980002ed3bedb7",
         "seq": 24,
         "type": "a2a.request",
         "fromAgent": "brain",
         "toAgent": "qa-agent",
         "title": "Validate the fix against the regression suite",
-        "body": "{\n  \"taskId\": \"TASK-a1d8fa29\",\n  \"from\": \"brain\",\n  \"to\": \"qa-agent\",\n  \"type\": \"VALIDATE_FIX\",\n  \"context\": {\n    \"ticketId\": \"PRO-1245\",\n    \"playbookId\": \"invoice-tax\"\n  }\n}",
+        "body": "{\n  \"taskId\": \"TASK-01b4c920\",\n  \"from\": \"brain\",\n  \"to\": \"qa-agent\",\n  \"type\": \"VALIDATE_FIX\",\n  \"context\": {\n    \"ticketId\": \"PRO-1245\",\n    \"playbookId\": \"invoice-tax\"\n  }\n}",
         "level": "info",
-        "taskId": "TASK-a1d8fa29",
+        "taskId": "TASK-01b4c920",
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.549Z"
+        "createdAt": "2026-09-11T19:51:09.996Z"
       },
       {
-        "id": "act_mtxc8jh90054d8768bc2",
+        "id": "act_mtxdg59q000pc01832cb",
         "ticketId": "PRO-1245",
-        "runId": "run_mtxc8jh6004hf334bfef",
+        "runId": "run_mtxdg5980002ed3bedb7",
         "seq": 25,
         "type": "agent.log",
         "fromAgent": "qa-agent",
@@ -1826,14 +2388,14 @@
         "title": "checked out fix/gst-tenant-rate",
         "body": null,
         "level": "info",
-        "taskId": "TASK-a1d8fa29",
+        "taskId": "TASK-01b4c920",
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.549Z"
+        "createdAt": "2026-09-11T19:51:09.998Z"
       },
       {
-        "id": "act_mtxc8jh900557c6f7e0a",
+        "id": "act_mtxdg59q000q44f6a4c0",
         "ticketId": "PRO-1245",
-        "runId": "run_mtxc8jh6004hf334bfef",
+        "runId": "run_mtxdg5980002ed3bedb7",
         "seq": 26,
         "type": "agent.log",
         "fromAgent": "qa-agent",
@@ -1841,14 +2403,14 @@
         "title": "ran 47 assertions across 3 suites",
         "body": null,
         "level": "info",
-        "taskId": "TASK-a1d8fa29",
+        "taskId": "TASK-01b4c920",
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.549Z"
+        "createdAt": "2026-09-11T19:51:09.998Z"
       },
       {
-        "id": "act_mtxc8jh900562ed02a5f",
+        "id": "act_mtxdg59q000re57d0058",
         "ticketId": "PRO-1245",
-        "runId": "run_mtxc8jh6004hf334bfef",
+        "runId": "run_mtxdg5980002ed3bedb7",
         "seq": 27,
         "type": "agent.log",
         "fromAgent": "qa-agent",
@@ -1856,14 +2418,14 @@
         "title": "no regressions in discount or rounding",
         "body": null,
         "level": "info",
-        "taskId": "TASK-a1d8fa29",
+        "taskId": "TASK-01b4c920",
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.549Z"
+        "createdAt": "2026-09-11T19:51:09.998Z"
       },
       {
-        "id": "act_mtxc8jh900570d15bfc1",
+        "id": "act_mtxdg59q000sb1a8ddf1",
         "ticketId": "PRO-1245",
-        "runId": "run_mtxc8jh6004hf334bfef",
+        "runId": "run_mtxdg5980002ed3bedb7",
         "seq": 28,
         "type": "a2a.response",
         "fromAgent": "qa-agent",
@@ -1871,14 +2433,14 @@
         "title": "47 of 47 tests passed",
         "body": "The invoice, tax and discount suites all pass against the patched branch.",
         "level": "success",
-        "taskId": "TASK-a1d8fa29",
+        "taskId": "TASK-01b4c920",
         "durationMs": 1830,
-        "createdAt": "2026-09-11T19:17:15.549Z"
+        "createdAt": "2026-09-11T19:51:09.998Z"
       },
       {
-        "id": "act_mtxc8jh90058a0a70d15",
+        "id": "act_mtxdg59q000t36144d99",
         "ticketId": "PRO-1245",
-        "runId": "run_mtxc8jh6004hf334bfef",
+        "runId": "run_mtxdg5980002ed3bedb7",
         "seq": 29,
         "type": "artifact.created",
         "fromAgent": "qa-agent",
@@ -1888,12 +2450,12 @@
         "level": "success",
         "taskId": null,
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.549Z"
+        "createdAt": "2026-09-11T19:51:09.998Z"
       },
       {
-        "id": "act_mtxc8jha0059fff793f4",
+        "id": "act_mtxdg59r000ub80f11e3",
         "ticketId": "PRO-1245",
-        "runId": "run_mtxc8jh6004hf334bfef",
+        "runId": "run_mtxdg5980002ed3bedb7",
         "seq": 30,
         "type": "brain.thought",
         "fromAgent": "lens",
@@ -1903,12 +2465,12 @@
         "level": "warn",
         "taskId": null,
         "durationMs": 760,
-        "createdAt": "2026-09-11T19:17:15.550Z"
+        "createdAt": "2026-09-11T19:51:09.999Z"
       },
       {
-        "id": "act_mtxc8jha005aa443fe28",
+        "id": "act_mtxdg59r000v4ece648f",
         "ticketId": "PRO-1245",
-        "runId": "run_mtxc8jh6004hf334bfef",
+        "runId": "run_mtxdg5980002ed3bedb7",
         "seq": 31,
         "type": "artifact.created",
         "fromAgent": "lens",
@@ -1918,12 +2480,12 @@
         "level": "warn",
         "taskId": null,
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.550Z"
+        "createdAt": "2026-09-11T19:51:09.999Z"
       },
       {
-        "id": "act_mtxc8jha005bd2bc02b3",
+        "id": "act_mtxdg59r000w3cc66d4e",
         "ticketId": "PRO-1245",
-        "runId": "run_mtxc8jh6004hf334bfef",
+        "runId": "run_mtxdg5980002ed3bedb7",
         "seq": 32,
         "type": "artifact.created",
         "fromAgent": "brain",
@@ -1933,12 +2495,12 @@
         "level": "success",
         "taskId": null,
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.550Z"
+        "createdAt": "2026-09-11T19:51:09.999Z"
       },
       {
-        "id": "act_mtxc8jha005ca4bde27b",
+        "id": "act_mtxdg59r000xcce5d65c",
         "ticketId": "PRO-1245",
-        "runId": "run_mtxc8jh6004hf334bfef",
+        "runId": "run_mtxdg5980002ed3bedb7",
         "seq": 33,
         "type": "run.awaiting_approval",
         "fromAgent": "brain",
@@ -1948,7 +2510,404 @@
         "level": "warn",
         "taskId": null,
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.550Z"
+        "createdAt": "2026-09-11T19:51:09.999Z"
+      }
+    ]
+  },
+  "GET /tickets/PRO-1232": {
+    "ticket": {
+      "id": "PRO-1232",
+      "customer": "Conformance Co",
+      "title": "Conformance probe",
+      "description": "Raised by the contract conformance checker. Safe to ignore.",
+      "channel": "portal",
+      "priority": "LOW",
+      "status": "NEEDS_HUMAN",
+      "category": null,
+      "processKey": null,
+      "createdAt": "2026-09-11T19:51:10.275Z",
+      "updatedAt": "2026-09-11T19:51:12.491Z",
+      "categoryLabel": "Uncategorised",
+      "workspaceId": "procol",
+      "reportedBy": "Customer",
+      "impact": "Not yet assessed",
+      "issueQuote": [
+        "Raised by the contract conformance checker. Safe to ignore."
+      ],
+      "currentAgentAction": "Waiting on a person"
+    },
+    "run": {
+      "id": "run_mtxdg5hh003mb25e1b2c",
+      "ticketId": "PRO-1232",
+      "state": "NEEDS_HUMAN",
+      "path": null,
+      "attempt": 1,
+      "summary": null,
+      "policyReason": null,
+      "startedAt": "2026-09-11T19:51:10.277Z",
+      "endedAt": "2026-09-11T19:51:12.491Z"
+    },
+    "artifacts": [],
+    "insight": null
+  },
+  "GET /tickets/PRO-1232/activities": {
+    "data": [
+      {
+        "id": "act_mtxdg5hf003k948f8023",
+        "ticketId": "PRO-1232",
+        "runId": null,
+        "seq": 1,
+        "type": "ticket.created",
+        "fromAgent": "customer",
+        "toAgent": null,
+        "title": "PRO-1232 raised via the customer portal",
+        "body": "Raised by the contract conformance checker. Safe to ignore.",
+        "level": "info",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:51:10.275Z"
+      },
+      {
+        "id": "act_mtxdg5hf003lb46f8a0b",
+        "ticketId": "PRO-1232",
+        "runId": null,
+        "seq": 2,
+        "type": "brain.thought",
+        "fromAgent": "brain",
+        "toAgent": null,
+        "title": "I do not recognise this symptom",
+        "body": "Nothing in this control tower matches these symptoms, so I am working from the customer’s description alone and will say plainly what I am unsure about.",
+        "level": "warn",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:51:10.275Z"
+      },
+      {
+        "id": "act_mtxdg5hh003n18f1f27b",
+        "ticketId": "PRO-1232",
+        "runId": "run_mtxdg5hh003mb25e1b2c",
+        "seq": 3,
+        "type": "run.started",
+        "fromAgent": "brain",
+        "toAgent": null,
+        "title": "Investigation started",
+        "body": "I do not recognise this symptom from anything this control tower has seen before. I will ask for product context and say plainly what I do and do not know.",
+        "level": "info",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:51:10.277Z"
+      },
+      {
+        "id": "act_mtxdg5hh003o3e7c0a42",
+        "ticketId": "PRO-1232",
+        "runId": "run_mtxdg5hh003mb25e1b2c",
+        "seq": 4,
+        "type": "run.state",
+        "fromAgent": "brain",
+        "toAgent": null,
+        "title": "Classifying",
+        "body": null,
+        "level": "info",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:51:10.277Z"
+      },
+      {
+        "id": "act_mtxdg5y7003w5302d507",
+        "ticketId": "PRO-1232",
+        "runId": "run_mtxdg5hh003mb25e1b2c",
+        "seq": 5,
+        "type": "brain.thought",
+        "fromAgent": "brain",
+        "toAgent": null,
+        "title": "Looking for an agent that can answer product questions",
+        "body": "Asking whoever declares product_knowledge in this workspace.",
+        "level": "info",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:51:10.879Z"
+      },
+      {
+        "id": "act_mtxdg69j003x5f513675",
+        "ticketId": "PRO-1232",
+        "runId": "run_mtxdg5hh003mb25e1b2c",
+        "seq": 6,
+        "type": "run.state",
+        "fromAgent": "brain",
+        "toAgent": null,
+        "title": "Fetching product context",
+        "body": null,
+        "level": "info",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:51:11.287Z"
+      },
+      {
+        "id": "act_mtxdg69j003yf19311ee",
+        "ticketId": "PRO-1232",
+        "runId": "run_mtxdg5hh003mb25e1b2c",
+        "seq": 7,
+        "type": "a2a.request",
+        "fromAgent": "brain",
+        "toAgent": "clara",
+        "title": "What product context do you have for this issue?",
+        "body": "{\n  \"taskId\": \"TASK-85624243\",\n  \"from\": \"brain\",\n  \"to\": \"clara\",\n  \"type\": \"GET_PRODUCT_CONTEXT\",\n  \"context\": {\n    \"ticketId\": \"PRO-1232\",\n    \"customer\": \"Conformance Co\",\n    \"issue\": \"Conformance probe\",\n    \"message\": \"Raised by the contract conformance checker. Safe to ignore.\",\n    \"playbookId\": \"unrecognised\"\n  }\n}",
+        "level": "info",
+        "taskId": "TASK-85624243",
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:51:11.287Z"
+      },
+      {
+        "id": "act_mtxdg6t3003z4589f359",
+        "ticketId": "PRO-1232",
+        "runId": "run_mtxdg5hh003mb25e1b2c",
+        "seq": 8,
+        "type": "agent.log",
+        "fromAgent": "clara",
+        "toAgent": null,
+        "title": "searched knowledge index — 0 confident matches",
+        "body": null,
+        "level": "info",
+        "taskId": "TASK-85624243",
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:51:11.991Z"
+      },
+      {
+        "id": "act_mtxdg6t300406ab4ad46",
+        "ticketId": "PRO-1232",
+        "runId": "run_mtxdg5hh003mb25e1b2c",
+        "seq": 9,
+        "type": "agent.log",
+        "fromAgent": "clara",
+        "toAgent": null,
+        "title": "searched previous incidents — 0 matches",
+        "body": null,
+        "level": "info",
+        "taskId": "TASK-85624243",
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:51:11.991Z"
+      },
+      {
+        "id": "act_mtxdg6t300417d6042e5",
+        "ticketId": "PRO-1232",
+        "runId": "run_mtxdg5hh003mb25e1b2c",
+        "seq": 10,
+        "type": "a2a.response",
+        "fromAgent": "clara",
+        "toAgent": "brain",
+        "title": "Nothing on file matches this symptom",
+        "body": "No document, configuration note or previous incident in this workspace covers what the customer is describing. I cannot say whether this is a defect, a configuration gap or expected behaviour.",
+        "level": "success",
+        "taskId": "TASK-85624243",
+        "durationMs": 703,
+        "createdAt": "2026-09-11T19:51:11.991Z"
+      },
+      {
+        "id": "act_mtxdg76z00421b34b583",
+        "ticketId": "PRO-1232",
+        "runId": "run_mtxdg5hh003mb25e1b2c",
+        "seq": 11,
+        "type": "brain.thought",
+        "fromAgent": "brain",
+        "toAgent": null,
+        "title": "Nothing on file — handing this to a person",
+        "body": "There is nothing on file for this. I am not going to invent a root cause, so I am handing it to a person with everything I gathered attached.",
+        "level": "warn",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:51:12.491Z"
+      },
+      {
+        "id": "act_mtxdg76z0043d6751c07",
+        "ticketId": "PRO-1232",
+        "runId": "run_mtxdg5hh003mb25e1b2c",
+        "seq": 12,
+        "type": "run.completed",
+        "fromAgent": "brain",
+        "toAgent": null,
+        "title": "Handed to a person",
+        "body": "Nothing on file in this workspace covers this symptom.",
+        "level": "warn",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:51:12.491Z"
+      }
+    ]
+  },
+  "GET /tickets/PRO-1235": {
+    "ticket": {
+      "id": "PRO-1235",
+      "customer": "Conformance Co",
+      "title": "Uniqueness probe",
+      "description": "Checks that references are not reused.",
+      "channel": "portal",
+      "priority": "MEDIUM",
+      "status": "NEW",
+      "category": null,
+      "processKey": null,
+      "createdAt": "2026-09-11T19:51:10.285Z",
+      "updatedAt": "2026-09-11T19:51:10.285Z",
+      "categoryLabel": "Uncategorised",
+      "workspaceId": "procol",
+      "reportedBy": "Customer",
+      "impact": "Not yet assessed",
+      "issueQuote": [
+        "Checks that references are not reused."
+      ]
+    },
+    "run": null,
+    "artifacts": [],
+    "insight": null
+  },
+  "GET /tickets/PRO-1235/activities": {
+    "data": [
+      {
+        "id": "act_mtxdg5hp003tc054b9f1",
+        "ticketId": "PRO-1235",
+        "runId": null,
+        "seq": 1,
+        "type": "ticket.created",
+        "fromAgent": "customer",
+        "toAgent": null,
+        "title": "PRO-1235 raised via the customer portal",
+        "body": "Checks that references are not reused.",
+        "level": "info",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:51:10.285Z"
+      },
+      {
+        "id": "act_mtxdg5hp003u171115a7",
+        "ticketId": "PRO-1235",
+        "runId": null,
+        "seq": 2,
+        "type": "brain.thought",
+        "fromAgent": "brain",
+        "toAgent": null,
+        "title": "I do not recognise this symptom",
+        "body": "Nothing in this control tower matches these symptoms, so I am working from the customer’s description alone and will say plainly what I am unsure about.",
+        "level": "warn",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:51:10.285Z"
+      }
+    ]
+  },
+  "GET /tickets/PRO-1234": {
+    "ticket": {
+      "id": "PRO-1234",
+      "customer": "Conformance Co",
+      "title": "Uniqueness probe",
+      "description": "Checks that references are not reused.",
+      "channel": "portal",
+      "priority": "MEDIUM",
+      "status": "NEW",
+      "category": null,
+      "processKey": null,
+      "createdAt": "2026-09-11T19:51:10.284Z",
+      "updatedAt": "2026-09-11T19:51:10.284Z",
+      "categoryLabel": "Uncategorised",
+      "workspaceId": "procol",
+      "reportedBy": "Customer",
+      "impact": "Not yet assessed",
+      "issueQuote": [
+        "Checks that references are not reused."
+      ]
+    },
+    "run": null,
+    "artifacts": [],
+    "insight": null
+  },
+  "GET /tickets/PRO-1234/activities": {
+    "data": [
+      {
+        "id": "act_mtxdg5ho003r21f0c1ed",
+        "ticketId": "PRO-1234",
+        "runId": null,
+        "seq": 1,
+        "type": "ticket.created",
+        "fromAgent": "customer",
+        "toAgent": null,
+        "title": "PRO-1234 raised via the customer portal",
+        "body": "Checks that references are not reused.",
+        "level": "info",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:51:10.284Z"
+      },
+      {
+        "id": "act_mtxdg5ho003sf4206e9e",
+        "ticketId": "PRO-1234",
+        "runId": null,
+        "seq": 2,
+        "type": "brain.thought",
+        "fromAgent": "brain",
+        "toAgent": null,
+        "title": "I do not recognise this symptom",
+        "body": "Nothing in this control tower matches these symptoms, so I am working from the customer’s description alone and will say plainly what I am unsure about.",
+        "level": "warn",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:51:10.284Z"
+      }
+    ]
+  },
+  "GET /tickets/PRO-1233": {
+    "ticket": {
+      "id": "PRO-1233",
+      "customer": "Conformance Co",
+      "title": "Uniqueness probe",
+      "description": "Checks that references are not reused.",
+      "channel": "portal",
+      "priority": "MEDIUM",
+      "status": "NEW",
+      "category": null,
+      "processKey": null,
+      "createdAt": "2026-09-11T19:51:10.282Z",
+      "updatedAt": "2026-09-11T19:51:10.282Z",
+      "categoryLabel": "Uncategorised",
+      "workspaceId": "procol",
+      "reportedBy": "Customer",
+      "impact": "Not yet assessed",
+      "issueQuote": [
+        "Checks that references are not reused."
+      ]
+    },
+    "run": null,
+    "artifacts": [],
+    "insight": null
+  },
+  "GET /tickets/PRO-1233/activities": {
+    "data": [
+      {
+        "id": "act_mtxdg5hm003p9a0304fd",
+        "ticketId": "PRO-1233",
+        "runId": null,
+        "seq": 1,
+        "type": "ticket.created",
+        "fromAgent": "customer",
+        "toAgent": null,
+        "title": "PRO-1233 raised via the customer portal",
+        "body": "Checks that references are not reused.",
+        "level": "info",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:51:10.282Z"
+      },
+      {
+        "id": "act_mtxdg5hm003q88a7c7de",
+        "ticketId": "PRO-1233",
+        "runId": null,
+        "seq": 2,
+        "type": "brain.thought",
+        "fromAgent": "brain",
+        "toAgent": null,
+        "title": "I do not recognise this symptom",
+        "body": "Nothing in this control tower matches these symptoms, so I am working from the customer’s description alone and will say plainly what I am unsure about.",
+        "level": "warn",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:51:10.282Z"
       }
     ]
   },
@@ -1963,8 +2922,8 @@
       "status": "NEW",
       "category": null,
       "processKey": null,
-      "createdAt": "2026-09-11T19:17:15.554Z",
-      "updatedAt": "2026-09-11T19:17:15.554Z",
+      "createdAt": "2026-09-11T19:51:10.004Z",
+      "updatedAt": "2026-09-11T19:51:10.004Z",
       "categoryLabel": "Uncategorised",
       "workspaceId": "procol",
       "reportedBy": "Monitoring",
@@ -1980,7 +2939,7 @@
   "GET /tickets/PRO-1242/activities": {
     "data": [
       {
-        "id": "act_mtxc8jhe006d35f0a4e2",
+        "id": "act_mtxdg59w001y9323b61c",
         "ticketId": "PRO-1242",
         "runId": null,
         "seq": 1,
@@ -1992,10 +2951,10 @@
         "level": "info",
         "taskId": null,
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.554Z"
+        "createdAt": "2026-09-11T19:51:10.004Z"
       },
       {
-        "id": "act_mtxc8jhe006e69df5533",
+        "id": "act_mtxdg59w001z04074be1",
         "ticketId": "PRO-1242",
         "runId": null,
         "seq": 2,
@@ -2007,7 +2966,7 @@
         "level": "warn",
         "taskId": null,
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.554Z"
+        "createdAt": "2026-09-11T19:51:10.004Z"
       }
     ]
   },
@@ -2022,8 +2981,8 @@
       "status": "RESOLVED",
       "category": "QUESTION",
       "processKey": null,
-      "createdAt": "2026-09-11T19:17:15.552Z",
-      "updatedAt": "2026-09-11T19:17:15.554Z",
+      "createdAt": "2026-09-11T19:51:10.001Z",
+      "updatedAt": "2026-09-11T19:51:10.004Z",
       "categoryLabel": "How-to",
       "workspaceId": "procol",
       "reportedBy": "Buyer",
@@ -2034,15 +2993,15 @@
       "currentAgentAction": "Closed"
     },
     "run": {
-      "id": "run_mtxc8jhc005xfc724e36",
+      "id": "run_mtxdg59t001iee98bdf7",
       "ticketId": "PRO-1251",
       "state": "RESOLVED",
       "path": "ANSWER_ONLY",
       "attempt": 1,
       "summary": "Extending an auction deadline",
       "policyReason": null,
-      "startedAt": "2026-09-11T19:17:15.552Z",
-      "endedAt": "2026-09-11T19:17:15.554Z"
+      "startedAt": "2026-09-11T19:51:10.001Z",
+      "endedAt": "2026-09-11T19:51:10.004Z"
     },
     "artifacts": [
       {
@@ -2055,7 +3014,7 @@
           "body": "Hi Kanti Metals,\n\nYou can extend a live auction from Sourcing → Auctions: open the auction, choose Extend on the header, and set the new closing time.\n\nParticipants are notified automatically, and the change is recorded on the auction’s audit trail. An auction that has already closed cannot be extended — clone it into a new round instead.",
           "sentTo": "kanti.metals@example.com"
         },
-        "createdAt": "2026-09-11T19:17:15.554Z",
+        "createdAt": "2026-09-11T19:51:10.004Z",
         "createdBy": "brain"
       }
     ],
@@ -2064,7 +3023,7 @@
   "GET /tickets/PRO-1251/activities": {
     "data": [
       {
-        "id": "act_mtxc8jhc005vc5440ada",
+        "id": "act_mtxdg59t001g60b90d16",
         "ticketId": "PRO-1251",
         "runId": null,
         "seq": 1,
@@ -2076,10 +3035,10 @@
         "level": "info",
         "taskId": null,
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.552Z"
+        "createdAt": "2026-09-11T19:51:10.001Z"
       },
       {
-        "id": "act_mtxc8jhc005w0b47af94",
+        "id": "act_mtxdg59t001he7598a8e",
         "ticketId": "PRO-1251",
         "runId": null,
         "seq": 2,
@@ -2091,12 +3050,12 @@
         "level": "info",
         "taskId": null,
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.552Z"
+        "createdAt": "2026-09-11T19:51:10.001Z"
       },
       {
-        "id": "act_mtxc8jhc005y1f775503",
+        "id": "act_mtxdg59t001j15c212ac",
         "ticketId": "PRO-1251",
-        "runId": "run_mtxc8jhc005xfc724e36",
+        "runId": "run_mtxdg59t001iee98bdf7",
         "seq": 3,
         "type": "run.started",
         "fromAgent": "brain",
@@ -2106,12 +3065,12 @@
         "level": "info",
         "taskId": null,
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.552Z"
+        "createdAt": "2026-09-11T19:51:10.001Z"
       },
       {
-        "id": "act_mtxc8jhc005zc2e4f6ed",
+        "id": "act_mtxdg59t001k641e4fad",
         "ticketId": "PRO-1251",
-        "runId": "run_mtxc8jhc005xfc724e36",
+        "runId": "run_mtxdg59t001iee98bdf7",
         "seq": 4,
         "type": "run.state",
         "fromAgent": "brain",
@@ -2121,12 +3080,12 @@
         "level": "info",
         "taskId": null,
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.552Z"
+        "createdAt": "2026-09-11T19:51:10.001Z"
       },
       {
-        "id": "act_mtxc8jhc006077674c67",
+        "id": "act_mtxdg59t001le456e843",
         "ticketId": "PRO-1251",
-        "runId": "run_mtxc8jhc005xfc724e36",
+        "runId": "run_mtxdg59t001iee98bdf7",
         "seq": 5,
         "type": "brain.thought",
         "fromAgent": "brain",
@@ -2136,12 +3095,12 @@
         "level": "info",
         "taskId": null,
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.552Z"
+        "createdAt": "2026-09-11T19:51:10.001Z"
       },
       {
-        "id": "act_mtxc8jhc006125ea8c18",
+        "id": "act_mtxdg59t001mae9ab133",
         "ticketId": "PRO-1251",
-        "runId": "run_mtxc8jhc005xfc724e36",
+        "runId": "run_mtxdg59t001iee98bdf7",
         "seq": 6,
         "type": "run.state",
         "fromAgent": "brain",
@@ -2151,27 +3110,27 @@
         "level": "info",
         "taskId": null,
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.552Z"
+        "createdAt": "2026-09-11T19:51:10.001Z"
       },
       {
-        "id": "act_mtxc8jhc0062c9520df7",
+        "id": "act_mtxdg59t001n97545c23",
         "ticketId": "PRO-1251",
-        "runId": "run_mtxc8jhc005xfc724e36",
+        "runId": "run_mtxdg59t001iee98bdf7",
         "seq": 7,
         "type": "a2a.request",
         "fromAgent": "brain",
         "toAgent": "clara",
         "title": "How is an auction deadline extended?",
-        "body": "{\n  \"taskId\": \"TASK-9d941261\",\n  \"from\": \"brain\",\n  \"to\": \"clara\",\n  \"type\": \"GET_PRODUCT_CONTEXT\",\n  \"context\": {\n    \"ticketId\": \"PRO-1251\",\n    \"customer\": \"Kanti Metals\",\n    \"issue\": \"How do I extend an auction deadline?\",\n    \"message\": \"How do I extend an auction deadline once it is already live?\",\n    \"playbookId\": \"auction-howto\"\n  }\n}",
+        "body": "{\n  \"taskId\": \"TASK-7510922f\",\n  \"from\": \"brain\",\n  \"to\": \"clara\",\n  \"type\": \"GET_PRODUCT_CONTEXT\",\n  \"context\": {\n    \"ticketId\": \"PRO-1251\",\n    \"customer\": \"Kanti Metals\",\n    \"issue\": \"How do I extend an auction deadline?\",\n    \"message\": \"How do I extend an auction deadline once it is already live?\",\n    \"playbookId\": \"auction-howto\"\n  }\n}",
         "level": "info",
-        "taskId": "TASK-9d941261",
+        "taskId": "TASK-7510922f",
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.552Z"
+        "createdAt": "2026-09-11T19:51:10.001Z"
       },
       {
-        "id": "act_mtxc8jhe00632c3d9359",
+        "id": "act_mtxdg59v001oe5a3a8c1",
         "ticketId": "PRO-1251",
-        "runId": "run_mtxc8jhc005xfc724e36",
+        "runId": "run_mtxdg59t001iee98bdf7",
         "seq": 8,
         "type": "agent.log",
         "fromAgent": "clara",
@@ -2179,14 +3138,14 @@
         "title": "matched 1 knowledge document",
         "body": null,
         "level": "info",
-        "taskId": "TASK-9d941261",
+        "taskId": "TASK-7510922f",
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.554Z"
+        "createdAt": "2026-09-11T19:51:10.003Z"
       },
       {
-        "id": "act_mtxc8jhe0064a865e7c9",
+        "id": "act_mtxdg59v001pfda59bdf",
         "ticketId": "PRO-1251",
-        "runId": "run_mtxc8jhc005xfc724e36",
+        "runId": "run_mtxdg59t001iee98bdf7",
         "seq": 9,
         "type": "agent.log",
         "fromAgent": "clara",
@@ -2194,14 +3153,14 @@
         "title": "read auctions.md#extending-a-live-auction",
         "body": null,
         "level": "info",
-        "taskId": "TASK-9d941261",
+        "taskId": "TASK-7510922f",
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.554Z"
+        "createdAt": "2026-09-11T19:51:10.003Z"
       },
       {
-        "id": "act_mtxc8jhe0065d051d6ba",
+        "id": "act_mtxdg59v001qc71a423d",
         "ticketId": "PRO-1251",
-        "runId": "run_mtxc8jhc005xfc724e36",
+        "runId": "run_mtxdg59t001iee98bdf7",
         "seq": 10,
         "type": "a2a.response",
         "fromAgent": "clara",
@@ -2209,14 +3168,14 @@
         "title": "An auction can be extended until it closes, from the auction header",
         "body": "A live auction’s closing time can be changed by the buyer who created it, up until the moment it closes. Participants are notified automatically and the extension is recorded on the auction’s audit trail.",
         "level": "success",
-        "taskId": "TASK-9d941261",
+        "taskId": "TASK-7510922f",
         "durationMs": 610,
-        "createdAt": "2026-09-11T19:17:15.554Z"
+        "createdAt": "2026-09-11T19:51:10.003Z"
       },
       {
-        "id": "act_mtxc8jhe0066a9678c12",
+        "id": "act_mtxdg59v001rcc92b9b1",
         "ticketId": "PRO-1251",
-        "runId": "run_mtxc8jhc005xfc724e36",
+        "runId": "run_mtxdg59t001iee98bdf7",
         "seq": 11,
         "type": "run.state",
         "fromAgent": "brain",
@@ -2226,12 +3185,12 @@
         "level": "info",
         "taskId": null,
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.554Z"
+        "createdAt": "2026-09-11T19:51:10.003Z"
       },
       {
-        "id": "act_mtxc8jhe00673dde299a",
+        "id": "act_mtxdg59v001s86490c6f",
         "ticketId": "PRO-1251",
-        "runId": "run_mtxc8jhc005xfc724e36",
+        "runId": "run_mtxdg59t001iee98bdf7",
         "seq": 12,
         "type": "brain.thought",
         "fromAgent": "brain",
@@ -2241,12 +3200,12 @@
         "level": "info",
         "taskId": null,
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.554Z"
+        "createdAt": "2026-09-11T19:51:10.003Z"
       },
       {
-        "id": "act_mtxc8jhe0068480aebcf",
+        "id": "act_mtxdg59w001tee595722",
         "ticketId": "PRO-1251",
-        "runId": "run_mtxc8jhc005xfc724e36",
+        "runId": "run_mtxdg59t001iee98bdf7",
         "seq": 13,
         "type": "run.state",
         "fromAgent": "brain",
@@ -2256,12 +3215,12 @@
         "level": "info",
         "taskId": null,
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.554Z"
+        "createdAt": "2026-09-11T19:51:10.004Z"
       },
       {
-        "id": "act_mtxc8jhe006959484231",
+        "id": "act_mtxdg59w001udb0a6b3b",
         "ticketId": "PRO-1251",
-        "runId": "run_mtxc8jhc005xfc724e36",
+        "runId": "run_mtxdg59t001iee98bdf7",
         "seq": 14,
         "type": "brain.thought",
         "fromAgent": "brain",
@@ -2271,12 +3230,12 @@
         "level": "success",
         "taskId": null,
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.554Z"
+        "createdAt": "2026-09-11T19:51:10.004Z"
       },
       {
-        "id": "act_mtxc8jhe006a2c447c5d",
+        "id": "act_mtxdg59w001vcbb32a37",
         "ticketId": "PRO-1251",
-        "runId": "run_mtxc8jhc005xfc724e36",
+        "runId": "run_mtxdg59t001iee98bdf7",
         "seq": 15,
         "type": "artifact.created",
         "fromAgent": "brain",
@@ -2286,12 +3245,12 @@
         "level": "success",
         "taskId": null,
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.554Z"
+        "createdAt": "2026-09-11T19:51:10.004Z"
       },
       {
-        "id": "act_mtxc8jhe006b739e0239",
+        "id": "act_mtxdg59w001w0daae44a",
         "ticketId": "PRO-1251",
-        "runId": "run_mtxc8jhc005xfc724e36",
+        "runId": "run_mtxdg59t001iee98bdf7",
         "seq": 16,
         "type": "run.state",
         "fromAgent": "brain",
@@ -2301,12 +3260,12 @@
         "level": "success",
         "taskId": null,
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.554Z"
+        "createdAt": "2026-09-11T19:51:10.004Z"
       },
       {
-        "id": "act_mtxc8jhe006cbd8c02b6",
+        "id": "act_mtxdg59w001x9929eebc",
         "ticketId": "PRO-1251",
-        "runId": "run_mtxc8jhc005xfc724e36",
+        "runId": "run_mtxdg59t001iee98bdf7",
         "seq": 17,
         "type": "run.completed",
         "fromAgent": "brain",
@@ -2316,7 +3275,7 @@
         "level": "success",
         "taskId": null,
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.554Z"
+        "createdAt": "2026-09-11T19:51:10.004Z"
       }
     ]
   },
@@ -2344,7 +3303,7 @@
         ],
         "tools": [],
         "description": "Identical to the Procol deployment. It routes by declared capability, so it never needed to know that this company has no Clara.",
-        "lastSeenAt": "2026-09-11T19:16:51.433Z",
+        "lastSeenAt": "2026-09-11T19:54:58.918Z",
         "tasksToday": 0,
         "role": "orchestrator",
         "ownership": "procol"
@@ -2373,7 +3332,7 @@
           }
         ],
         "description": "Runs inside AcmeCloud. Serves internal documentation, API references, runbooks and previous incidents. Brain reaches it over A2A exactly as it reaches Clara.",
-        "lastSeenAt": "2026-09-11T19:16:51.433Z",
+        "lastSeenAt": "2026-09-11T19:54:58.918Z",
         "tasksToday": 2,
         "role": "knowledge",
         "ownership": "customer"
@@ -2397,7 +3356,7 @@
           }
         ],
         "description": "Same agent, pointed at AcmeCloud’s repository through their own code host credentials.",
-        "lastSeenAt": "2026-09-11T19:16:51.433Z",
+        "lastSeenAt": "2026-09-11T19:54:58.918Z",
         "tasksToday": 2,
         "role": "engineering",
         "ownership": "procol"
@@ -2420,7 +3379,7 @@
           }
         ],
         "description": "Executes the customer’s own test suite against the patched branch.",
-        "lastSeenAt": "2026-09-11T19:16:51.433Z",
+        "lastSeenAt": "2026-09-11T19:54:58.918Z",
         "tasksToday": 2,
         "role": "validation",
         "ownership": "procol"
@@ -2438,7 +3397,7 @@
         ],
         "tools": [],
         "description": "Production changes stop here. The policy that required the stop is shown above the button.",
-        "lastSeenAt": "2026-09-11T19:16:51.433Z",
+        "lastSeenAt": "2026-09-11T19:54:58.918Z",
         "tasksToday": 0,
         "role": "approval",
         "ownership": "customer"
@@ -2448,47 +3407,104 @@
   "GET /connectors?workspace=acmecloud": {
     "data": [
       {
-        "id": "incident-db",
-        "kind": "database",
-        "capabilities": [
-          "describe_schema",
-          "query"
-        ],
-        "health": {
-          "ok": true,
-          "latencyMs": 41
-        },
-        "name": "Incident history",
-        "dataMode": "query-in-place"
-      },
-      {
         "id": "github",
-        "kind": "saas-api",
+        "kind": "mcp",
         "capabilities": [
+          "create_pr",
+          "search_code",
           "read_file",
           "create_branch",
-          "commit",
-          "create_pr"
+          "commit"
         ],
         "health": {
           "ok": true,
           "latencyMs": 186
         },
         "name": "GitHub",
-        "dataMode": "query-in-place"
+        "description": "Access repositories, create PRs, review code and more.",
+        "category": "mcp",
+        "typeLabel": "MCP Server",
+        "status": "connected",
+        "usedBy": [
+          "Development Agent",
+          "QA Agent"
+        ],
+        "logo": "github",
+        "endpoint": "mcp://github.com/acmecloud",
+        "dataMode": "query-in-place",
+        "addedAt": "2026-08-01"
       },
       {
         "id": "confluence",
-        "kind": "saas-api",
+        "kind": "file",
         "capabilities": [
-          "search_docs"
+          "search_docs",
+          "read_page",
+          "list_spaces"
         ],
         "health": {
           "ok": true,
           "latencyMs": 320
         },
-        "name": "Internal documentation",
-        "dataMode": "metadata-only"
+        "name": "Confluence",
+        "description": "Internal documentation, runbooks and API references.",
+        "category": "knowledge",
+        "typeLabel": "Knowledge Source",
+        "status": "connected",
+        "usedBy": [
+          "Company Knowledge Agent"
+        ],
+        "logo": "confluence",
+        "endpoint": "https://acmecloud.atlassian.net/wiki",
+        "dataMode": "metadata-only",
+        "addedAt": "2026-08-01"
+      },
+      {
+        "id": "incident-db",
+        "kind": "database",
+        "capabilities": [
+          "describe_schema",
+          "query",
+          "search_incidents"
+        ],
+        "health": {
+          "ok": true,
+          "latencyMs": 41
+        },
+        "name": "Incident history",
+        "description": "Previous incidents, post-mortems and their resolutions.",
+        "category": "database",
+        "typeLabel": "Database",
+        "status": "connected",
+        "usedBy": [
+          "Company Knowledge Agent"
+        ],
+        "logo": "postgres",
+        "endpoint": "postgres://read-only@incident-db",
+        "dataMode": "query-in-place",
+        "addedAt": "2026-08-01"
+      },
+      {
+        "id": "pagerduty",
+        "kind": "saas-api",
+        "capabilities": [
+          "get_oncall",
+          "create_incident",
+          "acknowledge"
+        ],
+        "health": {
+          "ok": false,
+          "latencyMs": 0
+        },
+        "name": "PagerDuty",
+        "description": "On-call schedules and incident escalation.",
+        "category": "saas",
+        "typeLabel": "API / SaaS",
+        "status": "not_connected",
+        "usedBy": [],
+        "logo": "pagerduty",
+        "dataMode": "query-in-place",
+        "addedAt": "2026-08-01"
       }
     ]
   },
@@ -2668,8 +3684,8 @@
         "status": "AWAITING_APPROVAL",
         "category": "BUG",
         "processKey": null,
-        "createdAt": "2026-09-11T19:17:15.554Z",
-        "updatedAt": "2026-09-11T19:17:15.560Z",
+        "createdAt": "2026-09-11T19:51:10.004Z",
+        "updatedAt": "2026-09-11T19:51:10.009Z",
         "categoryLabel": "Authentication",
         "workspaceId": "acmecloud",
         "reportedBy": "Priya Raman · IT Operations",
@@ -2680,11 +3696,11 @@
         "currentAgentId": "human-approver",
         "currentAgentAction": "Waiting for your approval",
         "run": {
-          "id": "run_mtxc8jhe006he7cf94a9",
+          "id": "run_mtxdg59w0022554ec835",
           "state": "AWAITING_APPROVAL",
           "path": "CODE_FIX",
           "attempt": 1,
-          "startedAt": "2026-09-11T19:17:15.554Z"
+          "startedAt": "2026-09-11T19:51:10.004Z"
         },
         "stage": {
           "context": "acme-knowledge",
@@ -2703,8 +3719,8 @@
         "status": "NEW",
         "category": null,
         "processKey": null,
-        "createdAt": "2026-09-11T19:17:15.563Z",
-        "updatedAt": "2026-09-11T19:17:15.563Z",
+        "createdAt": "2026-09-11T19:51:10.011Z",
+        "updatedAt": "2026-09-11T19:51:10.011Z",
         "categoryLabel": "Uncategorised",
         "workspaceId": "acmecloud",
         "reportedBy": "Reporting team",
@@ -2730,8 +3746,8 @@
         "status": "RESOLVED",
         "category": "CONFIG",
         "processKey": null,
-        "createdAt": "2026-09-11T19:17:15.560Z",
-        "updatedAt": "2026-09-11T19:17:15.563Z",
+        "createdAt": "2026-09-11T19:51:10.009Z",
+        "updatedAt": "2026-09-11T19:51:10.011Z",
         "categoryLabel": "Integrations",
         "workspaceId": "acmecloud",
         "reportedBy": "Platform team",
@@ -2741,11 +3757,11 @@
         ],
         "currentAgentAction": "Closed",
         "run": {
-          "id": "run_mtxc8jhk007e70451532",
+          "id": "run_mtxdg5a1002z63513c40",
           "state": "RESOLVED",
           "path": "CONFIG_FIX",
           "attempt": 1,
-          "startedAt": "2026-09-11T19:17:15.560Z"
+          "startedAt": "2026-09-11T19:51:10.009Z"
         },
         "stage": {
           "context": "acme-knowledge",
@@ -2767,8 +3783,8 @@
       "status": "AWAITING_APPROVAL",
       "category": "BUG",
       "processKey": null,
-      "createdAt": "2026-09-11T19:17:15.554Z",
-      "updatedAt": "2026-09-11T19:17:15.560Z",
+      "createdAt": "2026-09-11T19:51:10.004Z",
+      "updatedAt": "2026-09-11T19:51:10.009Z",
       "categoryLabel": "Authentication",
       "workspaceId": "acmecloud",
       "reportedBy": "Priya Raman · IT Operations",
@@ -2780,14 +3796,14 @@
       "currentAgentAction": "Waiting for your approval"
     },
     "run": {
-      "id": "run_mtxc8jhe006he7cf94a9",
+      "id": "run_mtxdg59w0022554ec835",
       "ticketId": "ACME-7821",
       "state": "AWAITING_APPROVAL",
       "path": "CODE_FIX",
       "attempt": 1,
       "summary": null,
       "policyReason": "Changes to authentication in production always require human approval.",
-      "startedAt": "2026-09-11T19:17:15.554Z",
+      "startedAt": "2026-09-11T19:51:10.004Z",
       "endedAt": null
     },
     "artifacts": [
@@ -2806,7 +3822,7 @@
             "Incident INC-382 (January) — identical signature, identical cause"
           ]
         },
-        "createdAt": "2026-09-11T19:17:15.558Z",
+        "createdAt": "2026-09-11T19:51:10.007Z",
         "createdBy": "dev-agent"
       },
       {
@@ -2828,7 +3844,7 @@
           "patch": "--- a/deploy/production.yaml\n+++ b/deploy/production.yaml\n@@ -18,7 +18,7 @@ services:\n   env:\n-    JWT_ISSUER: api.acmecloud.com\n+    JWT_ISSUER: auth.acmecloud.com\n\n--- a/services/auth/jwt.js\n+++ b/services/auth/jwt.js\n@@ -32,6 +32,7 @@ export function verifyToken(token) {\n+  assertIssuerConfigured(process.env.JWT_ISSUER);\n   const claims = decode(token);",
           "state": "mock"
         },
-        "createdAt": "2026-09-11T19:17:15.558Z",
+        "createdAt": "2026-09-11T19:51:10.007Z",
         "createdBy": "dev-agent"
       },
       {
@@ -2857,7 +3873,7 @@
           ],
           "failures": []
         },
-        "createdAt": "2026-09-11T19:17:15.560Z",
+        "createdAt": "2026-09-11T19:51:10.009Z",
         "createdBy": "qa-agent"
       },
       {
@@ -2870,7 +3886,7 @@
           "body": "Hi XYZ Corp,\n\nWe have identified and fixed the authentication issue that was causing 401 errors after our recent deployment. A configuration value for token validation was pointing at the wrong host, so valid tokens were being rejected.\n\nThe fix has passed our full authentication regression suite and has been approved for deployment.\n\nPlease try logging in again. If you continue to experience any issues, reply to this ticket.",
           "sentTo": "xyz.corp@example.com"
         },
-        "createdAt": "2026-09-11T19:17:15.560Z",
+        "createdAt": "2026-09-11T19:51:10.009Z",
         "createdBy": "brain"
       }
     ],
@@ -2879,7 +3895,7 @@
   "GET /tickets/ACME-7821/activities": {
     "data": [
       {
-        "id": "act_mtxc8jhe006f0d88de48",
+        "id": "act_mtxdg59w0020ac17a79e",
         "ticketId": "ACME-7821",
         "runId": null,
         "seq": 1,
@@ -2891,10 +3907,10 @@
         "level": "info",
         "taskId": null,
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.554Z"
+        "createdAt": "2026-09-11T19:51:10.004Z"
       },
       {
-        "id": "act_mtxc8jhe006g196d8530",
+        "id": "act_mtxdg59w00212fa568e8",
         "ticketId": "ACME-7821",
         "runId": null,
         "seq": 2,
@@ -2906,12 +3922,12 @@
         "level": "info",
         "taskId": null,
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.554Z"
+        "createdAt": "2026-09-11T19:51:10.004Z"
       },
       {
-        "id": "act_mtxc8jhe006ib8f64bd6",
+        "id": "act_mtxdg59w002327ca565f",
         "ticketId": "ACME-7821",
-        "runId": "run_mtxc8jhe006he7cf94a9",
+        "runId": "run_mtxdg59w0022554ec835",
         "seq": 3,
         "type": "run.started",
         "fromAgent": "brain",
@@ -2921,12 +3937,12 @@
         "level": "info",
         "taskId": null,
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.554Z"
+        "createdAt": "2026-09-11T19:51:10.004Z"
       },
       {
-        "id": "act_mtxc8jhe006ja9b5839c",
+        "id": "act_mtxdg59w00240f5b80d5",
         "ticketId": "ACME-7821",
-        "runId": "run_mtxc8jhe006he7cf94a9",
+        "runId": "run_mtxdg59w0022554ec835",
         "seq": 4,
         "type": "run.state",
         "fromAgent": "brain",
@@ -2936,12 +3952,12 @@
         "level": "info",
         "taskId": null,
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.554Z"
+        "createdAt": "2026-09-11T19:51:10.004Z"
       },
       {
-        "id": "act_mtxc8jhe006k19b076d3",
+        "id": "act_mtxdg59w00253997cf6f",
         "ticketId": "ACME-7821",
-        "runId": "run_mtxc8jhe006he7cf94a9",
+        "runId": "run_mtxdg59w0022554ec835",
         "seq": 5,
         "type": "brain.thought",
         "fromAgent": "brain",
@@ -2951,12 +3967,12 @@
         "level": "info",
         "taskId": null,
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.554Z"
+        "createdAt": "2026-09-11T19:51:10.004Z"
       },
       {
-        "id": "act_mtxc8jhe006l29c3e4b1",
+        "id": "act_mtxdg59w0026fb144156",
         "ticketId": "ACME-7821",
-        "runId": "run_mtxc8jhe006he7cf94a9",
+        "runId": "run_mtxdg59w0022554ec835",
         "seq": 6,
         "type": "run.state",
         "fromAgent": "brain",
@@ -2966,27 +3982,27 @@
         "level": "info",
         "taskId": null,
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.554Z"
+        "createdAt": "2026-09-11T19:51:10.004Z"
       },
       {
-        "id": "act_mtxc8jhe006mdfadee1d",
+        "id": "act_mtxdg59w00270f7a150c",
         "ticketId": "ACME-7821",
-        "runId": "run_mtxc8jhe006he7cf94a9",
+        "runId": "run_mtxdg59w0022554ec835",
         "seq": 7,
         "type": "a2a.request",
         "fromAgent": "brain",
         "toAgent": "acme-knowledge",
         "title": "What changed in the last deployment, and have we seen this before?",
-        "body": "{\n  \"taskId\": \"TASK-891bc976\",\n  \"from\": \"brain\",\n  \"to\": \"acme-knowledge\",\n  \"type\": \"GET_PRODUCT_CONTEXT\",\n  \"context\": {\n    \"ticketId\": \"ACME-7821\",\n    \"customer\": \"XYZ Corp\",\n    \"issue\": \"All users receiving 401 Unauthorized after deployment\",\n    \"message\": \"Since yesterday’s deployment, all our users are getting 401 Unauthorized when trying to log into AcmeCloud. Nothing changed on our side.\",\n    \"playbookId\": \"auth-401\"\n  }\n}",
+        "body": "{\n  \"taskId\": \"TASK-0ebda336\",\n  \"from\": \"brain\",\n  \"to\": \"acme-knowledge\",\n  \"type\": \"GET_PRODUCT_CONTEXT\",\n  \"context\": {\n    \"ticketId\": \"ACME-7821\",\n    \"customer\": \"XYZ Corp\",\n    \"issue\": \"All users receiving 401 Unauthorized after deployment\",\n    \"message\": \"Since yesterday’s deployment, all our users are getting 401 Unauthorized when trying to log into AcmeCloud. Nothing changed on our side.\",\n    \"playbookId\": \"auth-401\"\n  }\n}",
         "level": "info",
-        "taskId": "TASK-891bc976",
+        "taskId": "TASK-0ebda336",
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.554Z"
+        "createdAt": "2026-09-11T19:51:10.004Z"
       },
       {
-        "id": "act_mtxc8jhg006n10afcf38",
+        "id": "act_mtxdg59x0028b344bb8e",
         "ticketId": "ACME-7821",
-        "runId": "run_mtxc8jhe006he7cf94a9",
+        "runId": "run_mtxdg59w0022554ec835",
         "seq": 8,
         "type": "agent.log",
         "fromAgent": "acme-knowledge",
@@ -2994,14 +4010,14 @@
         "title": "searched internal documentation — 3 matches",
         "body": null,
         "level": "info",
-        "taskId": "TASK-891bc976",
+        "taskId": "TASK-0ebda336",
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.556Z"
+        "createdAt": "2026-09-11T19:51:10.005Z"
       },
       {
-        "id": "act_mtxc8jhg006o4606b168",
+        "id": "act_mtxdg59x00297e93ddd3",
         "ticketId": "ACME-7821",
-        "runId": "run_mtxc8jhe006he7cf94a9",
+        "runId": "run_mtxdg59w0022554ec835",
         "seq": 9,
         "type": "agent.log",
         "fromAgent": "acme-knowledge",
@@ -3009,14 +4025,14 @@
         "title": "read auth-service runbook §4 (token validation)",
         "body": null,
         "level": "info",
-        "taskId": "TASK-891bc976",
+        "taskId": "TASK-0ebda336",
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.556Z"
+        "createdAt": "2026-09-11T19:51:10.005Z"
       },
       {
-        "id": "act_mtxc8jhg006p52707de2",
+        "id": "act_mtxdg59x002a04ef7f53",
         "ticketId": "ACME-7821",
-        "runId": "run_mtxc8jhe006he7cf94a9",
+        "runId": "run_mtxdg59w0022554ec835",
         "seq": 10,
         "type": "agent.log",
         "fromAgent": "acme-knowledge",
@@ -3024,14 +4040,14 @@
         "title": "read release notes 2026.09.10",
         "body": null,
         "level": "info",
-        "taskId": "TASK-891bc976",
+        "taskId": "TASK-0ebda336",
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.556Z"
+        "createdAt": "2026-09-11T19:51:10.005Z"
       },
       {
-        "id": "act_mtxc8jhg006qe3aa08db",
+        "id": "act_mtxdg59x002b966234dd",
         "ticketId": "ACME-7821",
-        "runId": "run_mtxc8jhe006he7cf94a9",
+        "runId": "run_mtxdg59w0022554ec835",
         "seq": 11,
         "type": "agent.log",
         "fromAgent": "acme-knowledge",
@@ -3039,14 +4055,14 @@
         "title": "matched previous incident INC-382",
         "body": null,
         "level": "info",
-        "taskId": "TASK-891bc976",
+        "taskId": "TASK-0ebda336",
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.556Z"
+        "createdAt": "2026-09-11T19:51:10.005Z"
       },
       {
-        "id": "act_mtxc8jhg006r46ceaf9a",
+        "id": "act_mtxdg59x002c664d3be2",
         "ticketId": "ACME-7821",
-        "runId": "run_mtxc8jhe006he7cf94a9",
+        "runId": "run_mtxdg59w0022554ec835",
         "seq": 12,
         "type": "a2a.response",
         "fromAgent": "acme-knowledge",
@@ -3054,14 +4070,14 @@
         "title": "Authentication uses JWT; the last release changed the issuer configuration",
         "body": "The authentication service validates JWTs against a configured issuer. Release 2026.09.10 altered the JWT_ISSUER environment variable. Incident INC-382 had the same signature in January and was also an issuer mismatch.",
         "level": "success",
-        "taskId": "TASK-891bc976",
+        "taskId": "TASK-0ebda336",
         "durationMs": 940,
-        "createdAt": "2026-09-11T19:17:15.556Z"
+        "createdAt": "2026-09-11T19:51:10.005Z"
       },
       {
-        "id": "act_mtxc8jhg006sba51f51f",
+        "id": "act_mtxdg59x002d842a03a4",
         "ticketId": "ACME-7821",
-        "runId": "run_mtxc8jhe006he7cf94a9",
+        "runId": "run_mtxdg59w0022554ec835",
         "seq": 13,
         "type": "run.state",
         "fromAgent": "brain",
@@ -3071,12 +4087,12 @@
         "level": "info",
         "taskId": null,
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.556Z"
+        "createdAt": "2026-09-11T19:51:10.005Z"
       },
       {
-        "id": "act_mtxc8jhg006tf533fb7c",
+        "id": "act_mtxdg59x002e6e9004f7",
         "ticketId": "ACME-7821",
-        "runId": "run_mtxc8jhe006he7cf94a9",
+        "runId": "run_mtxdg59w0022554ec835",
         "seq": 14,
         "type": "brain.thought",
         "fromAgent": "brain",
@@ -3086,12 +4102,12 @@
         "level": "info",
         "taskId": null,
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.556Z"
+        "createdAt": "2026-09-11T19:51:10.005Z"
       },
       {
-        "id": "act_mtxc8jhg006ufe6231c7",
+        "id": "act_mtxdg59x002f4b00d4ac",
         "ticketId": "ACME-7821",
-        "runId": "run_mtxc8jhe006he7cf94a9",
+        "runId": "run_mtxdg59w0022554ec835",
         "seq": 15,
         "type": "run.state",
         "fromAgent": "brain",
@@ -3101,27 +4117,27 @@
         "level": "info",
         "taskId": null,
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.556Z"
+        "createdAt": "2026-09-11T19:51:10.005Z"
       },
       {
-        "id": "act_mtxc8jhg006v7215503c",
+        "id": "act_mtxdg59x002g403f2f48",
         "ticketId": "ACME-7821",
-        "runId": "run_mtxc8jhe006he7cf94a9",
+        "runId": "run_mtxdg59w0022554ec835",
         "seq": 16,
         "type": "a2a.request",
         "fromAgent": "brain",
         "toAgent": "dev-agent",
         "title": "Trace the defect and open a pull request",
-        "body": "{\n  \"taskId\": \"TASK-5408bb5a\",\n  \"from\": \"brain\",\n  \"to\": \"dev-agent\",\n  \"type\": \"INVESTIGATE_BUG\",\n  \"context\": {\n    \"ticketId\": \"ACME-7821\",\n    \"issue\": \"All users receiving 401 Unauthorized after deployment\",\n    \"productContext\": {\n      \"summary\": \"Authentication uses JWT; the last release changed the issuer configuration\",\n      \"detail\": [\n        \"The authentication service validates JWTs against a configured issuer. Release 2026.09.10 altered the JWT_ISSUER environment variable. Incident INC-382 had the same signature in January and was also an issuer mismatch.\"\n      ],\n      \"customer\": \"XYZ Corp\",\n      \"citations\": [\n        \"auth-service-runbook.md#token-validation\",\n        \"release-notes-2026-09-10.md\"\n      ],\n      \"authMechanism\": \"JWT\",\n      \"expectedIssuer\": \"auth.acmecloud.com\",\n      \"changedIn\": \"release 2026.09.10\",\n      \"isProductDefect\": true,\n      \"priorIncidents\": [\n        \"INC-382\"\n      ]\n    },\n    \"playbookId\": \"auth-401\"\n  }\n}",
+        "body": "{\n  \"taskId\": \"TASK-932cae37\",\n  \"from\": \"brain\",\n  \"to\": \"dev-agent\",\n  \"type\": \"INVESTIGATE_BUG\",\n  \"context\": {\n    \"ticketId\": \"ACME-7821\",\n    \"issue\": \"All users receiving 401 Unauthorized after deployment\",\n    \"productContext\": {\n      \"summary\": \"Authentication uses JWT; the last release changed the issuer configuration\",\n      \"detail\": [\n        \"The authentication service validates JWTs against a configured issuer. Release 2026.09.10 altered the JWT_ISSUER environment variable. Incident INC-382 had the same signature in January and was also an issuer mismatch.\"\n      ],\n      \"customer\": \"XYZ Corp\",\n      \"citations\": [\n        \"auth-service-runbook.md#token-validation\",\n        \"release-notes-2026-09-10.md\"\n      ],\n      \"authMechanism\": \"JWT\",\n      \"expectedIssuer\": \"auth.acmecloud.com\",\n      \"changedIn\": \"release 2026.09.10\",\n      \"isProductDefect\": true,\n      \"priorIncidents\": [\n        \"INC-382\"\n      ]\n    },\n    \"playbookId\": \"auth-401\"\n  }\n}",
         "level": "info",
-        "taskId": "TASK-5408bb5a",
+        "taskId": "TASK-932cae37",
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.556Z"
+        "createdAt": "2026-09-11T19:51:10.005Z"
       },
       {
-        "id": "act_mtxc8jhi006w690cdaa8",
+        "id": "act_mtxdg59z002ha66aea99",
         "ticketId": "ACME-7821",
-        "runId": "run_mtxc8jhe006he7cf94a9",
+        "runId": "run_mtxdg59w0022554ec835",
         "seq": 17,
         "type": "agent.log",
         "fromAgent": "dev-agent",
@@ -3129,14 +4145,14 @@
         "title": "indexed 4 files in services/auth",
         "body": null,
         "level": "info",
-        "taskId": "TASK-5408bb5a",
+        "taskId": "TASK-932cae37",
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.558Z"
+        "createdAt": "2026-09-11T19:51:10.007Z"
       },
       {
-        "id": "act_mtxc8jhi006x63f518b3",
+        "id": "act_mtxdg59z002i06cdbc83",
         "ticketId": "ACME-7821",
-        "runId": "run_mtxc8jhe006he7cf94a9",
+        "runId": "run_mtxdg59w0022554ec835",
         "seq": 18,
         "type": "agent.log",
         "fromAgent": "dev-agent",
@@ -3144,14 +4160,14 @@
         "title": "diffed deploy/production.yaml against the previous release",
         "body": null,
         "level": "info",
-        "taskId": "TASK-5408bb5a",
+        "taskId": "TASK-932cae37",
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.558Z"
+        "createdAt": "2026-09-11T19:51:10.007Z"
       },
       {
-        "id": "act_mtxc8jhi006ye854f5f4",
+        "id": "act_mtxdg59z002j5cc37307",
         "ticketId": "ACME-7821",
-        "runId": "run_mtxc8jhe006he7cf94a9",
+        "runId": "run_mtxdg59w0022554ec835",
         "seq": 19,
         "type": "agent.log",
         "fromAgent": "dev-agent",
@@ -3159,14 +4175,14 @@
         "title": "located verifyToken() in services/auth/jwt.js:34",
         "body": null,
         "level": "info",
-        "taskId": "TASK-5408bb5a",
+        "taskId": "TASK-932cae37",
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.558Z"
+        "createdAt": "2026-09-11T19:51:10.007Z"
       },
       {
-        "id": "act_mtxc8jhi006z8d1aa852",
+        "id": "act_mtxdg59z002ke4454ad0",
         "ticketId": "ACME-7821",
-        "runId": "run_mtxc8jhe006he7cf94a9",
+        "runId": "run_mtxdg59w0022554ec835",
         "seq": 20,
         "type": "agent.log",
         "fromAgent": "dev-agent",
@@ -3174,14 +4190,14 @@
         "title": "opened PR #892 against main",
         "body": null,
         "level": "info",
-        "taskId": "TASK-5408bb5a",
+        "taskId": "TASK-932cae37",
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.558Z"
+        "createdAt": "2026-09-11T19:51:10.007Z"
       },
       {
-        "id": "act_mtxc8jhi00706185f648",
+        "id": "act_mtxdg59z002l0295a28d",
         "ticketId": "ACME-7821",
-        "runId": "run_mtxc8jhe006he7cf94a9",
+        "runId": "run_mtxdg59w0022554ec835",
         "seq": 21,
         "type": "a2a.response",
         "fromAgent": "dev-agent",
@@ -3189,14 +4205,14 @@
         "title": "Root cause: JWT_ISSUER was set to the API host instead of the auth host",
         "body": "The deployment manifest sets JWT_ISSUER to api.acmecloud.com. Tokens are minted with issuer auth.acmecloud.com, so every token fails the issuer check and the service returns 401 — correctly, against the wrong expectation.",
         "level": "success",
-        "taskId": "TASK-5408bb5a",
+        "taskId": "TASK-932cae37",
         "durationMs": 3960,
-        "createdAt": "2026-09-11T19:17:15.558Z"
+        "createdAt": "2026-09-11T19:51:10.007Z"
       },
       {
-        "id": "act_mtxc8jhi007168789181",
+        "id": "act_mtxdg59z002m25c5747f",
         "ticketId": "ACME-7821",
-        "runId": "run_mtxc8jhe006he7cf94a9",
+        "runId": "run_mtxdg59w0022554ec835",
         "seq": 22,
         "type": "artifact.created",
         "fromAgent": "dev-agent",
@@ -3206,12 +4222,12 @@
         "level": "success",
         "taskId": null,
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.558Z"
+        "createdAt": "2026-09-11T19:51:10.007Z"
       },
       {
-        "id": "act_mtxc8jhi0072f34839a9",
+        "id": "act_mtxdg59z002n85c5890e",
         "ticketId": "ACME-7821",
-        "runId": "run_mtxc8jhe006he7cf94a9",
+        "runId": "run_mtxdg59w0022554ec835",
         "seq": 23,
         "type": "artifact.created",
         "fromAgent": "dev-agent",
@@ -3221,12 +4237,12 @@
         "level": "success",
         "taskId": null,
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.558Z"
+        "createdAt": "2026-09-11T19:51:10.007Z"
       },
       {
-        "id": "act_mtxc8jhi0073a337f7a1",
+        "id": "act_mtxdg59z002oad37b4ff",
         "ticketId": "ACME-7821",
-        "runId": "run_mtxc8jhe006he7cf94a9",
+        "runId": "run_mtxdg59w0022554ec835",
         "seq": 24,
         "type": "run.state",
         "fromAgent": "brain",
@@ -3236,27 +4252,27 @@
         "level": "info",
         "taskId": null,
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.558Z"
+        "createdAt": "2026-09-11T19:51:10.007Z"
       },
       {
-        "id": "act_mtxc8jhi00749ecf8f01",
+        "id": "act_mtxdg59z002p33af6a37",
         "ticketId": "ACME-7821",
-        "runId": "run_mtxc8jhe006he7cf94a9",
+        "runId": "run_mtxdg59w0022554ec835",
         "seq": 25,
         "type": "a2a.request",
         "fromAgent": "brain",
         "toAgent": "qa-agent",
         "title": "Validate the fix against the regression suite",
-        "body": "{\n  \"taskId\": \"TASK-cd9b71b3\",\n  \"from\": \"brain\",\n  \"to\": \"qa-agent\",\n  \"type\": \"VALIDATE_FIX\",\n  \"context\": {\n    \"ticketId\": \"ACME-7821\",\n    \"playbookId\": \"auth-401\"\n  }\n}",
+        "body": "{\n  \"taskId\": \"TASK-c3cba3ae\",\n  \"from\": \"brain\",\n  \"to\": \"qa-agent\",\n  \"type\": \"VALIDATE_FIX\",\n  \"context\": {\n    \"ticketId\": \"ACME-7821\",\n    \"playbookId\": \"auth-401\"\n  }\n}",
         "level": "info",
-        "taskId": "TASK-cd9b71b3",
+        "taskId": "TASK-c3cba3ae",
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.558Z"
+        "createdAt": "2026-09-11T19:51:10.007Z"
       },
       {
-        "id": "act_mtxc8jhk007508986f54",
+        "id": "act_mtxdg5a1002q1b719011",
         "ticketId": "ACME-7821",
-        "runId": "run_mtxc8jhe006he7cf94a9",
+        "runId": "run_mtxdg59w0022554ec835",
         "seq": 26,
         "type": "agent.log",
         "fromAgent": "qa-agent",
@@ -3264,14 +4280,14 @@
         "title": "checked out fix/jwt-issuer",
         "body": null,
         "level": "info",
-        "taskId": "TASK-cd9b71b3",
+        "taskId": "TASK-c3cba3ae",
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.560Z"
+        "createdAt": "2026-09-11T19:51:10.009Z"
       },
       {
-        "id": "act_mtxc8jhk00767e09143e",
+        "id": "act_mtxdg5a1002rd4e2c42f",
         "ticketId": "ACME-7821",
-        "runId": "run_mtxc8jhe006he7cf94a9",
+        "runId": "run_mtxdg59w0022554ec835",
         "seq": 27,
         "type": "agent.log",
         "fromAgent": "qa-agent",
@@ -3279,14 +4295,14 @@
         "title": "ran 32 assertions across 6 suites",
         "body": null,
         "level": "info",
-        "taskId": "TASK-cd9b71b3",
+        "taskId": "TASK-c3cba3ae",
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.560Z"
+        "createdAt": "2026-09-11T19:51:10.009Z"
       },
       {
-        "id": "act_mtxc8jhk00775de51303",
+        "id": "act_mtxdg5a1002sf6f29515",
         "ticketId": "ACME-7821",
-        "runId": "run_mtxc8jhe006he7cf94a9",
+        "runId": "run_mtxdg59w0022554ec835",
         "seq": 28,
         "type": "agent.log",
         "fromAgent": "qa-agent",
@@ -3294,14 +4310,14 @@
         "title": "verified tokens minted before the fix still validate",
         "body": null,
         "level": "info",
-        "taskId": "TASK-cd9b71b3",
+        "taskId": "TASK-c3cba3ae",
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.560Z"
+        "createdAt": "2026-09-11T19:51:10.009Z"
       },
       {
-        "id": "act_mtxc8jhk0078b25fca04",
+        "id": "act_mtxdg5a1002tad932caf",
         "ticketId": "ACME-7821",
-        "runId": "run_mtxc8jhe006he7cf94a9",
+        "runId": "run_mtxdg59w0022554ec835",
         "seq": 29,
         "type": "a2a.response",
         "fromAgent": "qa-agent",
@@ -3309,14 +4325,14 @@
         "title": "32 of 32 tests passed",
         "body": "Login, logout, token refresh, invalid token, expired token and multi-tenant authentication all pass against the patched branch.",
         "level": "success",
-        "taskId": "TASK-cd9b71b3",
+        "taskId": "TASK-c3cba3ae",
         "durationMs": 2240,
-        "createdAt": "2026-09-11T19:17:15.560Z"
+        "createdAt": "2026-09-11T19:51:10.009Z"
       },
       {
-        "id": "act_mtxc8jhk007912b6a5f1",
+        "id": "act_mtxdg5a1002uacf095c8",
         "ticketId": "ACME-7821",
-        "runId": "run_mtxc8jhe006he7cf94a9",
+        "runId": "run_mtxdg59w0022554ec835",
         "seq": 30,
         "type": "artifact.created",
         "fromAgent": "qa-agent",
@@ -3326,12 +4342,12 @@
         "level": "success",
         "taskId": null,
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.560Z"
+        "createdAt": "2026-09-11T19:51:10.009Z"
       },
       {
-        "id": "act_mtxc8jhk007a6f3b7e6c",
+        "id": "act_mtxdg5a1002vfb1475d2",
         "ticketId": "ACME-7821",
-        "runId": "run_mtxc8jhe006he7cf94a9",
+        "runId": "run_mtxdg59w0022554ec835",
         "seq": 31,
         "type": "artifact.created",
         "fromAgent": "brain",
@@ -3341,12 +4357,12 @@
         "level": "success",
         "taskId": null,
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.560Z"
+        "createdAt": "2026-09-11T19:51:10.009Z"
       },
       {
-        "id": "act_mtxc8jhk007bf30f04f9",
+        "id": "act_mtxdg5a1002w513f5b93",
         "ticketId": "ACME-7821",
-        "runId": "run_mtxc8jhe006he7cf94a9",
+        "runId": "run_mtxdg59w0022554ec835",
         "seq": 32,
         "type": "run.awaiting_approval",
         "fromAgent": "brain",
@@ -3356,7 +4372,7 @@
         "level": "warn",
         "taskId": null,
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.560Z"
+        "createdAt": "2026-09-11T19:51:10.009Z"
       }
     ]
   },
@@ -3425,8 +4441,8 @@
       "status": "NEW",
       "category": null,
       "processKey": null,
-      "createdAt": "2026-09-11T19:17:15.563Z",
-      "updatedAt": "2026-09-11T19:17:15.563Z",
+      "createdAt": "2026-09-11T19:51:10.011Z",
+      "updatedAt": "2026-09-11T19:51:10.011Z",
       "categoryLabel": "Uncategorised",
       "workspaceId": "acmecloud",
       "reportedBy": "Reporting team",
@@ -3442,7 +4458,7 @@
   "GET /tickets/ACME-7833/activities": {
     "data": [
       {
-        "id": "act_mtxc8jhn007x836960df",
+        "id": "act_mtxdg5a3003ifb6b2fb7",
         "ticketId": "ACME-7833",
         "runId": null,
         "seq": 1,
@@ -3454,10 +4470,10 @@
         "level": "info",
         "taskId": null,
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.563Z"
+        "createdAt": "2026-09-11T19:51:10.011Z"
       },
       {
-        "id": "act_mtxc8jhn007y070f0524",
+        "id": "act_mtxdg5a3003jf12dbd4f",
         "ticketId": "ACME-7833",
         "runId": null,
         "seq": 2,
@@ -3469,7 +4485,7 @@
         "level": "warn",
         "taskId": null,
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.563Z"
+        "createdAt": "2026-09-11T19:51:10.011Z"
       }
     ]
   },
@@ -3484,8 +4500,8 @@
       "status": "RESOLVED",
       "category": "CONFIG",
       "processKey": null,
-      "createdAt": "2026-09-11T19:17:15.560Z",
-      "updatedAt": "2026-09-11T19:17:15.563Z",
+      "createdAt": "2026-09-11T19:51:10.009Z",
+      "updatedAt": "2026-09-11T19:51:10.011Z",
       "categoryLabel": "Integrations",
       "workspaceId": "acmecloud",
       "reportedBy": "Platform team",
@@ -3496,15 +4512,15 @@
       "currentAgentAction": "Closed"
     },
     "run": {
-      "id": "run_mtxc8jhk007e70451532",
+      "id": "run_mtxdg5a1002z63513c40",
       "ticketId": "ACME-7804",
       "state": "RESOLVED",
       "path": "CONFIG_FIX",
       "attempt": 1,
       "summary": "Webhook delivery issue resolved",
       "policyReason": "Configuration changes to a live environment require human approval.",
-      "startedAt": "2026-09-11T19:17:15.560Z",
-      "endedAt": "2026-09-11T19:17:15.563Z"
+      "startedAt": "2026-09-11T19:51:10.009Z",
+      "endedAt": "2026-09-11T19:51:10.011Z"
     },
     "artifacts": [
       {
@@ -3522,7 +4538,7 @@
           ],
           "system": "AcmeCloud admin console"
         },
-        "createdAt": "2026-09-11T19:17:15.563Z",
+        "createdAt": "2026-09-11T19:51:10.011Z",
         "createdBy": "brain"
       },
       {
@@ -3535,7 +4551,7 @@
           "body": "Hi Northwind Ltd,\n\nYour events were being abandoned because your endpoint’s response time is longer than the retry budget configured on your tenant, so slow-but-successful deliveries were dropped before they completed.\n\nWe have raised the budget on your tenant and replayed the deliveries that were abandoned, so nothing is lost. We have also added an alert so this surfaces to us next time instead of to you.\n\nNo change to your integration is needed on your side.",
           "sentTo": "northwind.ltd@example.com"
         },
-        "createdAt": "2026-09-11T19:17:15.563Z",
+        "createdAt": "2026-09-11T19:51:10.011Z",
         "createdBy": "brain"
       }
     ],
@@ -3544,7 +4560,7 @@
   "GET /tickets/ACME-7804/activities": {
     "data": [
       {
-        "id": "act_mtxc8jhk007c961a11b8",
+        "id": "act_mtxdg5a1002xe9d0b39d",
         "ticketId": "ACME-7804",
         "runId": null,
         "seq": 1,
@@ -3556,10 +4572,10 @@
         "level": "info",
         "taskId": null,
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.560Z"
+        "createdAt": "2026-09-11T19:51:10.009Z"
       },
       {
-        "id": "act_mtxc8jhk007d6a16098b",
+        "id": "act_mtxdg5a1002y35e1fbfd",
         "ticketId": "ACME-7804",
         "runId": null,
         "seq": 2,
@@ -3571,12 +4587,12 @@
         "level": "info",
         "taskId": null,
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.560Z"
+        "createdAt": "2026-09-11T19:51:10.009Z"
       },
       {
-        "id": "act_mtxc8jhk007fede1cb95",
+        "id": "act_mtxdg5a1003084615db6",
         "ticketId": "ACME-7804",
-        "runId": "run_mtxc8jhk007e70451532",
+        "runId": "run_mtxdg5a1002z63513c40",
         "seq": 3,
         "type": "run.started",
         "fromAgent": "brain",
@@ -3586,12 +4602,12 @@
         "level": "info",
         "taskId": null,
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.560Z"
+        "createdAt": "2026-09-11T19:51:10.009Z"
       },
       {
-        "id": "act_mtxc8jhk007g33410710",
+        "id": "act_mtxdg5a100315e2cff33",
         "ticketId": "ACME-7804",
-        "runId": "run_mtxc8jhk007e70451532",
+        "runId": "run_mtxdg5a1002z63513c40",
         "seq": 4,
         "type": "run.state",
         "fromAgent": "brain",
@@ -3601,12 +4617,12 @@
         "level": "info",
         "taskId": null,
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.560Z"
+        "createdAt": "2026-09-11T19:51:10.009Z"
       },
       {
-        "id": "act_mtxc8jhk007haac95f4b",
+        "id": "act_mtxdg5a1003218085d73",
         "ticketId": "ACME-7804",
-        "runId": "run_mtxc8jhk007e70451532",
+        "runId": "run_mtxdg5a1002z63513c40",
         "seq": 5,
         "type": "brain.thought",
         "fromAgent": "brain",
@@ -3616,12 +4632,12 @@
         "level": "info",
         "taskId": null,
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.560Z"
+        "createdAt": "2026-09-11T19:51:10.009Z"
       },
       {
-        "id": "act_mtxc8jhk007i596a6c52",
+        "id": "act_mtxdg5a10033ff5ff1a6",
         "ticketId": "ACME-7804",
-        "runId": "run_mtxc8jhk007e70451532",
+        "runId": "run_mtxdg5a1002z63513c40",
         "seq": 6,
         "type": "run.state",
         "fromAgent": "brain",
@@ -3631,27 +4647,27 @@
         "level": "info",
         "taskId": null,
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.560Z"
+        "createdAt": "2026-09-11T19:51:10.009Z"
       },
       {
-        "id": "act_mtxc8jhk007j4c6a21dd",
+        "id": "act_mtxdg5a10034401e8d63",
         "ticketId": "ACME-7804",
-        "runId": "run_mtxc8jhk007e70451532",
+        "runId": "run_mtxdg5a1002z63513c40",
         "seq": 7,
         "type": "a2a.request",
         "fromAgent": "brain",
         "toAgent": "acme-knowledge",
         "title": "What does the delivery log say, and what is this tenant’s retry budget?",
-        "body": "{\n  \"taskId\": \"TASK-793ba57d\",\n  \"from\": \"brain\",\n  \"to\": \"acme-knowledge\",\n  \"type\": \"GET_PRODUCT_CONTEXT\",\n  \"context\": {\n    \"ticketId\": \"ACME-7804\",\n    \"customer\": \"Northwind Ltd\",\n    \"issue\": \"Webhook deliveries stopped reaching our endpoint\",\n    \"message\": \"Our webhook endpoint stopped receiving events for tenant northwind. We are not getting any error, the deliveries just stop.\",\n    \"playbookId\": \"webhook-retry\"\n  }\n}",
+        "body": "{\n  \"taskId\": \"TASK-9bcf5021\",\n  \"from\": \"brain\",\n  \"to\": \"acme-knowledge\",\n  \"type\": \"GET_PRODUCT_CONTEXT\",\n  \"context\": {\n    \"ticketId\": \"ACME-7804\",\n    \"customer\": \"Northwind Ltd\",\n    \"issue\": \"Webhook deliveries stopped reaching our endpoint\",\n    \"message\": \"Our webhook endpoint stopped receiving events for tenant northwind. We are not getting any error, the deliveries just stop.\",\n    \"playbookId\": \"webhook-retry\"\n  }\n}",
         "level": "info",
-        "taskId": "TASK-793ba57d",
+        "taskId": "TASK-9bcf5021",
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.560Z"
+        "createdAt": "2026-09-11T19:51:10.009Z"
       },
       {
-        "id": "act_mtxc8jhn007k63519010",
+        "id": "act_mtxdg5a30035569e80e5",
         "ticketId": "ACME-7804",
-        "runId": "run_mtxc8jhk007e70451532",
+        "runId": "run_mtxdg5a1002z63513c40",
         "seq": 8,
         "type": "agent.log",
         "fromAgent": "acme-knowledge",
@@ -3659,14 +4675,14 @@
         "title": "searched internal documentation — 2 matches",
         "body": null,
         "level": "info",
-        "taskId": "TASK-793ba57d",
+        "taskId": "TASK-9bcf5021",
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.563Z"
+        "createdAt": "2026-09-11T19:51:10.011Z"
       },
       {
-        "id": "act_mtxc8jhn007led2c0658",
+        "id": "act_mtxdg5a30036ac20495c",
         "ticketId": "ACME-7804",
-        "runId": "run_mtxc8jhk007e70451532",
+        "runId": "run_mtxdg5a1002z63513c40",
         "seq": 9,
         "type": "agent.log",
         "fromAgent": "acme-knowledge",
@@ -3674,14 +4690,14 @@
         "title": "read webhook-delivery runbook §2 (retry budget)",
         "body": null,
         "level": "info",
-        "taskId": "TASK-793ba57d",
+        "taskId": "TASK-9bcf5021",
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.563Z"
+        "createdAt": "2026-09-11T19:51:10.011Z"
       },
       {
-        "id": "act_mtxc8jhn007m370e21e5",
+        "id": "act_mtxdg5a30037680595b4",
         "ticketId": "ACME-7804",
-        "runId": "run_mtxc8jhk007e70451532",
+        "runId": "run_mtxdg5a1002z63513c40",
         "seq": 10,
         "type": "agent.log",
         "fromAgent": "acme-knowledge",
@@ -3689,14 +4705,14 @@
         "title": "read delivery log — 212 abandoned, 0 rejected",
         "body": null,
         "level": "info",
-        "taskId": "TASK-793ba57d",
+        "taskId": "TASK-9bcf5021",
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.563Z"
+        "createdAt": "2026-09-11T19:51:10.011Z"
       },
       {
-        "id": "act_mtxc8jhn007n528d25da",
+        "id": "act_mtxdg5a30038dce7b2bb",
         "ticketId": "ACME-7804",
-        "runId": "run_mtxc8jhk007e70451532",
+        "runId": "run_mtxdg5a1002z63513c40",
         "seq": 11,
         "type": "a2a.response",
         "fromAgent": "acme-knowledge",
@@ -3704,14 +4720,14 @@
         "title": "The retry budget is lower than this endpoint’s p99 response time",
         "body": "Deliveries are abandoned after the configured retry budget is exhausted. This tenant’s endpoint answers in 4.2s at p99 while the budget allows 3s, so slow-but-healthy deliveries are being dropped. The platform is behaving exactly as configured.",
         "level": "success",
-        "taskId": "TASK-793ba57d",
+        "taskId": "TASK-9bcf5021",
         "durationMs": 780,
-        "createdAt": "2026-09-11T19:17:15.563Z"
+        "createdAt": "2026-09-11T19:51:10.011Z"
       },
       {
-        "id": "act_mtxc8jhn007o9e80c976",
+        "id": "act_mtxdg5a30039457e87a5",
         "ticketId": "ACME-7804",
-        "runId": "run_mtxc8jhk007e70451532",
+        "runId": "run_mtxdg5a1002z63513c40",
         "seq": 12,
         "type": "run.state",
         "fromAgent": "brain",
@@ -3721,12 +4737,12 @@
         "level": "info",
         "taskId": null,
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.563Z"
+        "createdAt": "2026-09-11T19:51:10.011Z"
       },
       {
-        "id": "act_mtxc8jhn007p8496ceb0",
+        "id": "act_mtxdg5a3003ad59ee59c",
         "ticketId": "ACME-7804",
-        "runId": "run_mtxc8jhk007e70451532",
+        "runId": "run_mtxdg5a1002z63513c40",
         "seq": 13,
         "type": "brain.thought",
         "fromAgent": "brain",
@@ -3736,12 +4752,12 @@
         "level": "info",
         "taskId": null,
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.563Z"
+        "createdAt": "2026-09-11T19:51:10.011Z"
       },
       {
-        "id": "act_mtxc8jhn007q187700ed",
+        "id": "act_mtxdg5a3003b4983d66e",
         "ticketId": "ACME-7804",
-        "runId": "run_mtxc8jhk007e70451532",
+        "runId": "run_mtxdg5a1002z63513c40",
         "seq": 14,
         "type": "run.state",
         "fromAgent": "brain",
@@ -3751,12 +4767,12 @@
         "level": "info",
         "taskId": null,
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.563Z"
+        "createdAt": "2026-09-11T19:51:10.011Z"
       },
       {
-        "id": "act_mtxc8jhn007r9eb0e815",
+        "id": "act_mtxdg5a3003cf5598b65",
         "ticketId": "ACME-7804",
-        "runId": "run_mtxc8jhk007e70451532",
+        "runId": "run_mtxdg5a1002z63513c40",
         "seq": 15,
         "type": "artifact.created",
         "fromAgent": "brain",
@@ -3766,12 +4782,12 @@
         "level": "success",
         "taskId": null,
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.563Z"
+        "createdAt": "2026-09-11T19:51:10.011Z"
       },
       {
-        "id": "act_mtxc8jhn007s55a24982",
+        "id": "act_mtxdg5a3003d68daa9c3",
         "ticketId": "ACME-7804",
-        "runId": "run_mtxc8jhk007e70451532",
+        "runId": "run_mtxdg5a1002z63513c40",
         "seq": 16,
         "type": "artifact.created",
         "fromAgent": "brain",
@@ -3781,12 +4797,12 @@
         "level": "success",
         "taskId": null,
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.563Z"
+        "createdAt": "2026-09-11T19:51:10.011Z"
       },
       {
-        "id": "act_mtxc8jhn007td9122c9a",
+        "id": "act_mtxdg5a3003e094cf14b",
         "ticketId": "ACME-7804",
-        "runId": "run_mtxc8jhk007e70451532",
+        "runId": "run_mtxdg5a1002z63513c40",
         "seq": 17,
         "type": "run.awaiting_approval",
         "fromAgent": "brain",
@@ -3796,12 +4812,12 @@
         "level": "warn",
         "taskId": null,
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.563Z"
+        "createdAt": "2026-09-11T19:51:10.011Z"
       },
       {
-        "id": "act_mtxc8jhn007u41d3baf1",
+        "id": "act_mtxdg5a3003fe6629f99",
         "ticketId": "ACME-7804",
-        "runId": "run_mtxc8jhk007e70451532",
+        "runId": "run_mtxdg5a1002z63513c40",
         "seq": 18,
         "type": "run.state",
         "fromAgent": "human",
@@ -3811,12 +4827,12 @@
         "level": "success",
         "taskId": null,
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.563Z"
+        "createdAt": "2026-09-11T19:51:10.011Z"
       },
       {
-        "id": "act_mtxc8jhn007vfc0bf084",
+        "id": "act_mtxdg5a3003gfb3a5f22",
         "ticketId": "ACME-7804",
-        "runId": "run_mtxc8jhk007e70451532",
+        "runId": "run_mtxdg5a1002z63513c40",
         "seq": 19,
         "type": "run.state",
         "fromAgent": "brain",
@@ -3826,12 +4842,12 @@
         "level": "success",
         "taskId": null,
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.563Z"
+        "createdAt": "2026-09-11T19:51:10.011Z"
       },
       {
-        "id": "act_mtxc8jhn007w7f8fa873",
+        "id": "act_mtxdg5a3003hc7a0f472",
         "ticketId": "ACME-7804",
-        "runId": "run_mtxc8jhk007e70451532",
+        "runId": "run_mtxdg5a1002z63513c40",
         "seq": 20,
         "type": "run.completed",
         "fromAgent": "brain",
@@ -3841,7 +4857,7 @@
         "level": "success",
         "taskId": null,
         "durationMs": null,
-        "createdAt": "2026-09-11T19:17:15.563Z"
+        "createdAt": "2026-09-11T19:51:10.011Z"
       }
     ]
   }

@@ -1,4 +1,7 @@
 import type {
+  Connection,
+  ConnectionCategory,
+  ConnectionType,
   DecisionOutcome,
   KnowledgeEntry,
   MemoryEntry,
@@ -60,6 +63,29 @@ export interface ConsoleApi {
 
   /** GET /processes — Flow definitions. Empty when the backend has none. */
   listProcesses(): Promise<unknown[]>
+
+  /** GET /connectors — the contract's registry, richer when the backend has more. */
+  listConnections(workspaceId: string): Promise<Connection[]>
+
+  /** GET /connection-types — extension; empty when the backend has none. */
+  listConnectionTypes(): Promise<ConnectionType[]>
+
+  /** POST /connectors — extension. Rejects when the backend does not accept it. */
+  addConnection(input: AddConnectionInput): Promise<Connection>
+
+  /** POST /connectors/:id/reconnect — extension. */
+  reconnect(workspaceId: string, id: string): Promise<Connection>
+
+  /** DELETE /connectors/:id — extension. */
+  removeConnection(workspaceId: string, id: string): Promise<void>
+}
+
+export interface AddConnectionInput {
+  workspaceId: string
+  name: string
+  category: ConnectionCategory
+  description?: string
+  endpoint?: string
 }
 
 export interface TicketFilter {

@@ -76,6 +76,51 @@ export type ConnectorKind =
   | 'file'
   | 'event-stream'
 
+export type ConnectionCategory = 'agent' | 'mcp' | 'database' | 'saas' | 'knowledge'
+export type ConnectionStatus = 'connected' | 'action_required' | 'not_connected'
+
+/**
+ * A connection, as the Connections screen reads it.
+ *
+ * Only `id`, `kind`, `capabilities` and `health` are the contract's. The rest
+ * is additive and every field is optional here for that reason: against a
+ * backend that implements the contract and nothing more, a card still renders
+ * — named by its id, typed by its kind, listing what it can do.
+ */
+export interface Connection {
+  id: string
+  kind: ConnectorKind
+  capabilities: string[]
+  health: { ok: boolean; latencyMs: number }
+
+  name?: string
+  description?: string
+  category?: ConnectionCategory
+  typeLabel?: string
+  status?: ConnectionStatus
+  statusDetail?: string
+  usedBy?: string[]
+  logo?: string
+  endpoint?: string
+  dataMode?: string
+  addedAt?: string
+}
+
+export interface ConnectionType {
+  id: ConnectionCategory
+  name: string
+  description: string
+  accent: 'violet' | 'blue' | 'green' | 'orange' | 'red'
+  fields: {
+    key: 'name' | 'endpoint' | 'token'
+    label: string
+    placeholder: string
+    required: boolean
+    secret?: boolean
+  }[]
+  discovering: string
+}
+
 export interface ConnectorDef {
   id: string
   name: string

@@ -1,4 +1,4 @@
-import { BookOpen, Brain, FileText, Home, Settings, Sparkles, Users } from 'lucide-react'
+import { BookOpen, Brain, FileText, Home, Settings, Sparkles, Unplug, Users } from 'lucide-react'
 import { NavLink } from 'react-router-dom'
 import { isDemoData } from '../platform/api'
 import SidebarTickets from './SidebarTickets'
@@ -9,6 +9,7 @@ const PRIMARY_NAV = [{ label: 'Board', to: '/', icon: Home }]
 
 const SECONDARY_NAV = [
   { label: 'Agents', to: '/agents', icon: Users },
+  { label: 'Connections', to: '/connections', icon: Unplug },
   { label: 'Memory', to: '/memory', icon: Sparkles },
   { label: 'Knowledge', to: '/knowledge', icon: BookOpen },
   { label: 'Settings', to: '/settings', icon: Settings },

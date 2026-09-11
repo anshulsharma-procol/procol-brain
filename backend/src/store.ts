@@ -2,6 +2,14 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { bus } from './events.js'
 import { cuid } from './ids.js'
 import { env } from './env.js'
+import {
+  ACME_CONNECTIONS,
+  CONNECTION_KIND,
+  CONNECTION_TYPE_LABEL,
+  DISCOVERABLE,
+  PROCOL_CONNECTIONS,
+} from './domain/connections.js'
+import type { ConnectionCategory, ConnectionDef } from './domain/connections.js'
 import { SEED_KNOWLEDGE } from './domain/knowledge.js'
 import { SEED_MEMORY } from './domain/memory.js'
 import type {
@@ -78,6 +86,8 @@ class Store {
   private runs = new Map<string, RunControl>()
   private tasks = new Map<string, TaskRecord>()
   private signals = new Map<string, StoredSignal>()
+  /** Connections per workspace, in the order they should be listed. */
+  private connections = new Map<string, ConnectionDef[]>()
   private memory: MemoryEntry[] = []
   private knowledge: KnowledgeEntry[] = []
   /** Next ticket number per workspace. */
@@ -95,6 +105,10 @@ class Store {
     this.runs.clear()
     this.tasks.clear()
     this.signals.clear()
+    this.connections = new Map([
+      ['procol', PROCOL_CONNECTIONS.map((row) => ({ ...row }))],
+      ['acmecloud', ACME_CONNECTIONS.map((row) => ({ ...row }))],
+    ])
     this.memory = SEED_MEMORY.map((entry) => ({ ...entry }))
     this.knowledge = SEED_KNOWLEDGE.map((entry) => ({ ...entry }))
     this.counters.clear()
@@ -461,6 +475,92 @@ class Store {
     return matchMemory(this.memory, workspaceId, query, excludeId)
   }
 
+  // -- connections ---------------------------------------------------------
+
+  listConnections(workspaceId: string): ConnectionDef[] {
+    return this.connections.get(workspaceId) ?? []
+  }
+
+  getConnection(workspaceId: string, id: string): ConnectionDef | undefined {
+    return this.listConnections(workspaceId).find((row) => row.id === id)
+  }
+
+  /**
+   * Adds a connection and discovers what it can do.
+   *
+   * Discovery is the whole reason this is one step rather than a
+   * configuration form: nobody should have to tell Brain what a tool is
+   * capable of. An MCP server lists its tools, an agent card lists its
+   * skills, a database describes its schema — and the capabilities that come
+   * back are what the agents route against.
+   */
+  addConnection(
+    workspaceId: string,
+    input: {
+      name: string
+      category: ConnectionCategory
+      description?: string
+      endpoint?: string
+      logo?: string
+    },
+  ): ConnectionDef {
+    const rows = this.listConnections(workspaceId)
+    const id = slug(input.name, new Set(rows.map((row) => row.id)))
+
+    const created: ConnectionDef = {
+      id,
+      name: input.name,
+      category: input.category,
+      kind: CONNECTION_KIND[input.category],
+      typeLabel: CONNECTION_TYPE_LABEL[input.category],
+      description: input.description?.trim() || `Connected ${CONNECTION_TYPE_LABEL[input.category].toLowerCase()}.`,
+      status: 'connected',
+      capabilities: DISCOVERABLE[input.category],
+      usedBy: [],
+      logo: input.logo ?? id,
+      endpoint: input.endpoint,
+      dataMode: input.category === 'knowledge' ? 'metadata-only' : 'query-in-place',
+      health: { ok: true, latencyMs: 120 },
+      addedAt: new Date().toISOString().slice(0, 10),
+    }
+
+    this.connections.set(workspaceId, [created, ...rows])
+    this.persist()
+    bus.emit({ type: 'board.updated', workspaceId })
+    return created
+  }
+
+  /** Reconnecting is what an `action_required` card asks for. */
+  reconnect(workspaceId: string, id: string): ConnectionDef | undefined {
+    const rows = this.listConnections(workspaceId)
+    const index = rows.findIndex((row) => row.id === id)
+    if (index < 0) return undefined
+
+    const next: ConnectionDef = {
+      ...rows[index]!,
+      status: 'connected',
+      health: { ok: true, latencyMs: rows[index]!.health.latencyMs || 140 },
+    }
+    delete next.statusDetail
+
+    rows[index] = next
+    this.connections.set(workspaceId, [...rows])
+    this.persist()
+    bus.emit({ type: 'board.updated', workspaceId })
+    return next
+  }
+
+  removeConnection(workspaceId: string, id: string): boolean {
+    const rows = this.listConnections(workspaceId)
+    const next = rows.filter((row) => row.id !== id)
+    if (next.length === rows.length) return false
+
+    this.connections.set(workspaceId, next)
+    this.persist()
+    bus.emit({ type: 'board.updated', workspaceId })
+    return true
+  }
+
   // -- knowledge -----------------------------------------------------------
 
   listKnowledge(workspaceId: string): KnowledgeEntry[] {
@@ -723,3 +823,18 @@ export function buildStages(needed: Stage['id'][]): Stage[] {
 }
 
 export const store = new Store()
+
+/** `Google Drive` -> `google-drive`, made unique against what exists. */
+function slug(name: string, taken: Set<string>): string {
+  const base =
+    name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '') || 'connection'
+
+  if (!taken.has(base)) return base
+
+  let suffix = 2
+  while (taken.has(`${base}-${suffix}`)) suffix++
+  return `${base}-${suffix}`
+}

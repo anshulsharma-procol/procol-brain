@@ -11,8 +11,18 @@ import type {
   TicketListRow,
   StreamEventName,
 } from '../contract'
-import type { MemoryEntry, MemoryMatch, Stage, Ticket, TicketDetail, Workspace } from '../types'
 import type {
+  Connection,
+  ConnectionType,
+  MemoryEntry,
+  MemoryMatch,
+  Stage,
+  Ticket,
+  TicketDetail,
+  Workspace,
+} from '../types'
+import type {
+  AddConnectionInput,
   ConsoleApi,
   CreateTicketInput,
   DecisionInput,
@@ -90,6 +100,9 @@ export function createHttpConsoleApi(options: HttpConsoleApiOptions): ConsoleApi
           `Brain API ${init?.method ?? 'GET'} ${path} failed (${response.status})`,
       )
     }
+
+    // 204 and friends carry nothing to parse.
+    if (response.status === 204) return undefined as T
 
     return (await response.json()) as T
   }
@@ -352,6 +365,34 @@ export function createHttpConsoleApi(options: HttpConsoleApiOptions): ConsoleApi
     async listProcesses() {
       const processes = await optional<{ data: ProcessDefinition[] }>('processes', '/processes')
       return processes?.data ?? []
+    },
+
+    /**
+     * The contract's connector registry. Whatever the backend adds beyond the
+     * four required fields comes through untouched, and the screen reads what
+     * is there — so a contract-only backend still fills this page.
+     */
+    listConnections: (workspaceId) => listOf<Connection>(`/connectors${scope(workspaceId)}`),
+
+    async listConnectionTypes() {
+      const types = await optional<{ data: ConnectionType[] }>('connection-types', '/connection-types')
+      return types?.data ?? []
+    },
+
+    addConnection: (input: AddConnectionInput) =>
+      post<Connection>('/connectors', {
+        workspaceId: input.workspaceId,
+        name: input.name,
+        category: input.category,
+        description: input.description,
+        endpoint: input.endpoint,
+      }),
+
+    reconnect: (workspaceId, id) =>
+      post<Connection>(`/connectors/${ref(id)}/reconnect${scope(workspaceId)}`),
+
+    async removeConnection(workspaceId, id) {
+      await request(`/connectors/${ref(id)}${scope(workspaceId)}`, { method: 'DELETE' })
     },
   }
 }

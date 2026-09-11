@@ -9,11 +9,11 @@ import type {
   TicketListRow,
   Task as ContractTask,
 } from '../contract.js'
+import type { ConnectionDef } from '../domain/connections.js'
 import type {
   ActivityEvent,
   AgentDef,
   Artifact,
-  ConnectorDef,
   Run,
   Stage,
   TaskRecord,
@@ -227,18 +227,31 @@ export function agentView(
   }
 }
 
-/** Additive: a display name and how data moves, neither in the contract. */
-export function connectorView(
-  connector: ConnectorDef,
-): ContractConnector & { name?: string; dataMode?: string } {
+/**
+ * A connection, in the contract's four fields plus everything the Connections
+ * screen reads. All of the latter is additive: a client that knows only the
+ * contract gets id, kind, capabilities and health, and renders a card from
+ * them.
+ */
+export function connectorView(connection: ConnectionDef): ContractConnector & Partial<ConnectionDef> {
   return {
-    id: connector.id,
-    kind: connector.kind === 'code-host' ? 'saas-api' : connector.kind,
-    capabilities: connector.capabilities,
-    health: { ok: connector.status === 'connected', latencyMs: connector.latencyMs ?? 0 },
+    // contract
+    id: connection.id,
+    kind: connection.kind,
+    capabilities: connection.capabilities,
+    health: connection.health,
 
     // additive
-    name: connector.name,
-    dataMode: connector.dataMode,
+    name: connection.name,
+    description: connection.description,
+    category: connection.category,
+    typeLabel: connection.typeLabel,
+    status: connection.status,
+    statusDetail: connection.statusDetail,
+    usedBy: connection.usedBy,
+    logo: connection.logo,
+    endpoint: connection.endpoint,
+    dataMode: connection.dataMode,
+    addedAt: connection.addedAt,
   }
 }

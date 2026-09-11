@@ -15,6 +15,7 @@ const Home = lazy(() => import('./pages/Home'))
 const TicketDetail = lazy(() => import('./pages/TicketDetail'))
 const Resolution = lazy(() => import('./pages/Resolution'))
 const AgentRegistry = lazy(() => import('./pages/AgentRegistry'))
+const Connections = lazy(() => import('./pages/Connections'))
 const Memory = lazy(() => import('./pages/Memory'))
 const Knowledge = lazy(() => import('./pages/Knowledge'))
 const Settings = lazy(() => import('./pages/Settings'))
@@ -28,6 +29,7 @@ function App() {
           <Route path="/tickets/:id" element={<TicketDetail />} />
           <Route path="/tickets/:id/resolution" element={<Resolution />} />
           <Route path="/agents" element={<AgentRegistry />} />
+          <Route path="/connections" element={<Connections />} />
           <Route path="/memory" element={<Memory />} />
           <Route path="/knowledge" element={<Knowledge />} />
           <Route path="/settings" element={<Settings />} />
@@ -75,6 +77,7 @@ const MODULE_NAMES: Record<string, string> = {
   home: 'Control tower',
   tickets: 'Ticket investigation',
   agents: 'Agent registry',
+  connections: 'Connections',
   memory: 'Institutional memory',
   knowledge: 'Knowledge',
   settings: 'Settings',

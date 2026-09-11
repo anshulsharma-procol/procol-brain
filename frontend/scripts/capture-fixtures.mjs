@@ -36,6 +36,7 @@ const workspaces = (await capture('GET', '/workspaces'))?.data ?? [{ id: '' }]
 await capture('GET', '/agents')
 await capture('GET', '/connectors')
 await capture('GET', '/processes')
+await capture('GET', '/connection-types')
 
 for (const workspace of workspaces) {
   const scope = workspace.id ? `?workspace=${encodeURIComponent(workspace.id)}` : ''

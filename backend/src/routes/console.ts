@@ -17,6 +17,7 @@ import { store } from '../store.js'
 import { PROCESSES } from '../domain/processes.js'
 import { answerQuestion } from '../domain/analytics.js'
 import { getPlaybook } from '../domain/playbooks.js'
+import { CONNECTION_TYPES } from '../domain/connectionTypes.js'
 import { WORKSPACES, findAgent, getWorkspace } from '../domain/workspaces.js'
 import { openStream } from './stream.js'
 import { fail } from './errors.js'
@@ -36,6 +37,14 @@ import { fail } from './errors.js'
  * the promise that pointing the console at another compliant backend is a URL
  * change and nothing more.
  */
+/** Names the field actually at fault rather than one generic sentence. */
+function describeIssue(error: z.ZodError): string {
+  const issue = error.issues[0]
+  if (!issue) return 'Invalid request body'
+  const path = issue.path.join('.')
+  return path ? `${path}: ${issue.message}` : issue.message
+}
+
 export function consoleRouter(): Router {
   const router = Router()
 
@@ -199,13 +208,15 @@ export function consoleRouter(): Router {
     return fail(response, 404, 'NOT_FOUND', `No agent ${request.params.id}`)
   })
 
+  /**
+   * The contract's connector registry. A connection carries the four fields
+   * the contract names plus everything the Connections screen needs, all of
+   * it additive — a client that only knows the contract sees four fields and
+   * renders a perfectly usable card from them.
+   */
   router.get('/connectors', (request, response) => {
-    const scope = scopeOf(request.query.workspace)
-    response.json({
-      data: WORKSPACES.filter((workspace) => !scope || workspace.id === scope).flatMap((workspace) =>
-        workspace.connectors.map(connectorView),
-      ),
-    })
+    const scope = scopeOf(request.query.workspace) ?? WORKSPACES[0]!.id
+    response.json({ data: store.listConnections(scope).map(connectorView) })
   })
 
   // -- aggregates ---------------------------------------------------------
@@ -326,6 +337,45 @@ export function consoleRouter(): Router {
   // =======================================================================
   //  EXTENSIONS — not in the contract; optional for any client
   // =======================================================================
+
+  /** The five things a company can plug in, and what each one asks for. */
+  router.get('/connection-types', (_request, response) => {
+    response.json({ data: CONNECTION_TYPES })
+  })
+
+  const addConnectionSchema = z.object({
+    name: z.string().min(1),
+    category: z.enum(['agent', 'mcp', 'database', 'saas', 'knowledge']),
+    description: z.string().optional(),
+    endpoint: z.string().optional(),
+    logo: z.string().optional(),
+    workspaceId: z.string().optional(),
+  })
+
+  router.post('/connectors', (request, response) => {
+    const parsed = addConnectionSchema.safeParse(request.body)
+    if (!parsed.success) {
+      return fail(response, 400, 'BAD_REQUEST', describeIssue(parsed.error))
+    }
+
+    const workspaceId = getWorkspace(parsed.data.workspaceId).id
+    response.status(201).json(store.addConnection(workspaceId, parsed.data))
+  })
+
+  router.post('/connectors/:id/reconnect', (request, response) => {
+    const workspaceId = getWorkspace(String(request.query.workspace ?? '')).id
+    const reconnected = store.reconnect(workspaceId, request.params.id)
+    if (!reconnected) return fail(response, 404, 'NOT_FOUND', `No connection ${request.params.id}`)
+    response.json(reconnected)
+  })
+
+  router.delete('/connectors/:id', (request, response) => {
+    const workspaceId = getWorkspace(String(request.query.workspace ?? '')).id
+    if (!store.removeConnection(workspaceId, request.params.id)) {
+      return fail(response, 404, 'NOT_FOUND', `No connection ${request.params.id}`)
+    }
+    response.status(204).end()
+  })
 
   router.get('/workspaces', (_request, response) => {
     response.json({
