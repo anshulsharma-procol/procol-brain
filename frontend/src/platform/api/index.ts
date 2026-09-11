@@ -1,18 +1,24 @@
+import { createFixtureConsoleApi } from './fixtureApi'
 import { createHttpConsoleApi } from './httpApi'
-import { MockConsoleApi } from './mockApi'
 import type { ConsoleApi } from './types'
 
 /**
  * ============================================================================
- *  THE ONE LINE THAT SWITCHES THE PRODUCT ON
+ *  THE ONE LINE THAT POINTS THE CONSOLE AT A BACKEND
  * ============================================================================
  *
- * No `VITE_BRAIN_API_URL` -> the scripted control towers in `scenarios/`.
- * With one          -> the live Brain API, same interface, same screens.
- *
- *   # .env.local
+ *   # frontend/.env.local
  *   VITE_BRAIN_API_URL=https://brain.procol.in/api
  *   VITE_BRAIN_API_TOKEN=...            # optional
+ *
+ * Any service that implements docs/API_CONTRACT.md works, because everything
+ * above this line consumes the contract and nothing else. Point it at a
+ * different host and the console is pointed at a different backend — that is
+ * the whole migration.
+ *
+ * Unset, it serves the captured fixtures in `fixtures.json`, so the console
+ * is browsable with the service stopped. Nothing streams in that mode; a live
+ * run needs the API.
  *
  * Nothing else in the application reads `import.meta.env`.
  */
@@ -24,24 +30,22 @@ export const consoleApi: ConsoleApi = baseUrl
       baseUrl,
       headers: token ? { Authorization: `Bearer ${token}` } : undefined,
     })
-  : new MockConsoleApi()
+  : createFixtureConsoleApi()
 
-/** True while the console is running on scripted data. Shown in the UI. */
+/** True while the console is running on captured fixtures. Shown in the UI. */
 export const isDemoData = !baseUrl
 
 /**
  * Where the embedded chat widget should point.
  *
  * The customer-facing API keeps its own vocabulary under `/chat` on the same
- * service, so one variable configures both surfaces — and both end up reading
- * the same tickets, which is the whole point: a customer raising an issue in
- * their own dashboard lands on our board immediately.
- *
- * Undefined leaves the widget on its bundled scripted demo.
+ * service, so one variable configures both surfaces — and both read the same
+ * tickets, which is the point: a customer raising an issue in their own
+ * dashboard lands on our board immediately.
  */
 export const chatApiBaseUrl = baseUrl ? `${baseUrl.replace(/\/+$/, '')}/chat` : undefined
 
-export { createHttpConsoleApi, MockConsoleApi }
+export { createHttpConsoleApi, createFixtureConsoleApi }
 export type { ConsoleApi } from './types'
 export type {
   CreateTicketInput,

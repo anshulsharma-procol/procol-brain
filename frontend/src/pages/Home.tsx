@@ -14,7 +14,7 @@ import { humaniseConstant, relativeTime } from '../utils/format'
 
 const STATUS_TONE: Record<Ticket['status'], Tone> = {
   NEW: 'neutral',
-  INVESTIGATING: 'info',
+  RUNNING: 'info',
   AWAITING_APPROVAL: 'warning',
   RESOLVED: 'success',
   NEEDS_HUMAN: 'danger',

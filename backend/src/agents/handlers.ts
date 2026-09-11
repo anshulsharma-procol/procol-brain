@@ -106,7 +106,7 @@ export function engineeringHandler(agentId: string): AgentHandler {
         summary: engineering.summary,
         detail: engineering.detail,
         confidence: engineering.confidence,
-        filesChanged: engineering.pr.filesChanged,
+        filesChanged: engineering.pr.files,
         tool: engineering.tool,
       },
       artifacts: [
@@ -117,8 +117,12 @@ export function engineeringHandler(agentId: string): AgentHandler {
         },
         {
           kind: 'PR',
-          title: `PR ${engineering.pr.number}`,
-          data: { ...engineering.pr, state: 'open' },
+          title: `PR #${engineering.pr.number}`,
+          // 'mock' is the contract's word for a pull request this deployment
+          // did not really open, and it is the honest one while CODE_HOST is
+          // a mock. Calling it 'created' or flipping it to 'merged' after an
+          // approval would claim a merge that never happened.
+          data: { ...engineering.pr, state: 'mock' },
         },
       ],
     }
@@ -162,9 +166,10 @@ export function validationHandler(agentId: string): AgentHandler {
       artifacts: [
         {
           kind: 'TEST_RESULT',
-          title: `${validation.suite} suite`,
+          title: 'Test results',
           data: {
-            suite: validation.suite,
+            status: validation.failed > 0 ? 'failed' : 'passed',
+            suites: validation.suites,
             total: validation.total,
             passed: validation.passed,
             failed: validation.failed,

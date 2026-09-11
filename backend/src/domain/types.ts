@@ -80,17 +80,32 @@ export interface Workspace {
   supportEmailDomain: string
 }
 
-export type TicketStatus =
-  | 'NEW'
-  | 'INVESTIGATING'
-  | 'AWAITING_APPROVAL'
-  | 'RESOLVED'
-  | 'NEEDS_HUMAN'
-  | 'REJECTED'
+/**
+ * The contract's vocabulary, re-exported so nothing internal invents its own
+ * spelling of a value that crosses the wire. `src/contract.ts` is generated
+ * from contracts/api.ts and is the only definition of these.
+ */
+export type {
+  Category,
+  Channel as TicketChannel,
+  Level,
+  Priority as TicketPriority,
+  RunPath as ResolutionPath,
+  RunState,
+  TaskType as A2ATaskType,
+  TicketStatus,
+} from '../contract.js'
 
-export type TicketPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'
-export type TicketChannel = 'chat' | 'email' | 'portal' | 'signal' | 'event'
-export type ResolutionPath = 'CODE_FIX' | 'CONFIG_FIX' | 'ANSWER_ONLY' | 'PROCESS'
+import type {
+  Category,
+  Channel,
+  Priority,
+  RunPath,
+  RunState,
+  TaskType,
+  TicketStatus,
+} from '../contract.js'
+
 export type StageId = 'context' | 'investigate' | 'verify' | 'approve'
 
 export interface Stage {
@@ -101,85 +116,100 @@ export interface Stage {
   detail?: string
 }
 
+/**
+ * The stored ticket. Its contract-visible half is exactly `contract.Ticket`;
+ * everything after `processKey` is internal and is either projected into the
+ * contract's shape at the route boundary or served on an extension endpoint.
+ */
 export interface Ticket {
+  // -- contract.Ticket ----------------------------------------------------
   id: string
-  reference: string
-  workspaceId: string
+  customer: string | null
   title: string
   description: string
-  customer: string
-  reportedBy?: string
-  channel: TicketChannel
-  priority: TicketPriority
+  channel: Channel
+  priority: Priority
   status: TicketStatus
-  category: string
-  impact: string
-  issueQuote: string[]
-  attachment?: string
+  category: Category | null
+  processKey: string | null
   createdAt: string
   updatedAt: string
-  path?: ResolutionPath
+
+  // -- additive, and safe to ignore ---------------------------------------
+  /** Human-readable category, e.g. "Billing & invoicing". The enum is coarse. */
+  categoryLabel?: string
+  /** Which control tower owns it. Absent from the contract by design. */
+  workspaceId: string
+  reportedBy?: string
+  impact?: string
+  issueQuote: string[]
+  attachment?: string
+
+  // -- internal only, never serialised as part of contract.Ticket ---------
+  /** The run currently attached to this ticket. */
+  runId?: string
   currentAgentId?: string
   currentAgentAction?: string
   progress: number
-  stages?: Stage[]
-  /** Where the request came from, when the widget sent one. */
+  stages: Stage[]
+  /** Where the request came from, when the chat widget sent one. */
   origin?: { userId?: string; page?: string; module?: string; recordId?: string }
 }
 
-export type ActivityType =
-  | 'ticket.created'
-  | 'run.started'
-  | 'brain.thought'
-  | 'a2a.request'
-  | 'a2a.response'
-  | 'agent.log'
-  | 'artifact.created'
-  | 'run.awaiting_approval'
-  | 'human.decision'
-  | 'customer.notified'
-  | 'run.completed'
+/** The run, exactly as the contract defines it. */
+export interface Run {
+  id: string
+  ticketId: string
+  state: RunState
+  path: RunPath | null
+  attempt: number
+  summary: string | null
+  policyReason: string | null
+  startedAt: string
+  endedAt: string | null
+}
 
+export type { ActivityType, ArtifactKind } from '../contract.js'
+import type { ActivityType, ArtifactKind, Level } from '../contract.js'
+
+/**
+ * One row of the audit trail, in the contract's shape.
+ *
+ * `body` is a string and stays one: it is either prose or a JSON payload the
+ * UI shows verbatim, and making the frontend parse a response field is how
+ * two codebases end up disagreeing about what a payload is.
+ *
+ * An agent's working notes are their own `agent.log` rows carrying the parent
+ * `taskId`, rather than an array nested inside the response — which is what
+ * lets the UI render them as sub-lines under the exchange they belong to.
+ */
 export interface ActivityEvent {
   id: string
   ticketId: string
+  runId: string | null
   /** Monotonic per ticket, allocated server-side. Order by this, not by time. */
   seq: number
   type: ActivityType
-  fromAgent?: string
-  toAgent?: string
-  taskType?: string
+  fromAgent: string | null
+  toAgent: string | null
   title: string
-  body?: string[]
-  logs?: string[]
-  level: 'info' | 'success' | 'warn' | 'error'
-  durationMs?: number
-  /** The raw A2A envelope, revealed by "show payload". */
-  payload?: unknown
-  /** Set on hops so the console can pull the full task record. */
-  taskId?: string
-  /** MCP tool call behind this step, when there was one. */
-  tool?: { server: string; call: string }
-  timestamp: string
+  body: string | null
+  level: Level
+  taskId: string | null
+  durationMs: number | null
+  createdAt: string
 }
-
-export type ArtifactKind =
-  | 'ROOT_CAUSE'
-  | 'PR'
-  | 'TEST_RESULT'
-  | 'CONFIG_FIX'
-  | 'CUSTOMER_REPLY'
-  | 'IMPACT'
-  | 'PROCESS_RESULT'
 
 export interface Artifact {
   id: string
   ticketId: string
   kind: ArtifactKind
   title: string
-  createdBy: string
-  createdAt: string
+  /** Contract shape per kind — see contract.ArtifactData. */
   data: Record<string, unknown>
+  createdAt: string
+  /** Additive: which agent produced it. */
+  createdBy?: string
 }
 
 export interface MemoryEntry {
@@ -190,7 +220,7 @@ export interface MemoryEntry {
   symptom: string
   rootCause: string
   resolution: string
-  path: ResolutionPath
+  path: RunPath
   tags: string[]
   reuseCount: number
   minutesSavedPerReuse: number
@@ -243,8 +273,13 @@ export interface Decision {
   at: string
 }
 
+/**
+ * Internal aggregate. The contract's `GET /api/tickets/:id` is a narrower
+ * projection of this — see routes/console.ts.
+ */
 export interface TicketDetail {
   ticket: Ticket
+  run?: Run
   stages: Stage[]
   activity: ActivityEvent[]
   artifacts: Artifact[]
@@ -257,18 +292,11 @@ export interface TicketDetail {
 // A2A
 // ---------------------------------------------------------------------------
 
-export type A2ATaskType =
-  | 'GET_PRODUCT_CONTEXT'
-  | 'INVESTIGATE_BUG'
-  | 'VALIDATE_FIX'
-  | 'IMPACT_ANALYSIS'
-  | 'DRAFT_REPLY'
-
 export interface A2ATask {
   taskId: string
   from: string
   to: string
-  type: A2ATaskType
+  type: TaskType
   context: Record<string, unknown>
 }
 
@@ -288,6 +316,8 @@ export interface TaskRecord {
   task: A2ATask
   response?: A2AResponse
   ticketId: string
+  /** The run this hop belongs to — the contract's Task carries it. */
+  runId?: string
   startedAt: string
   endedAt?: string
 }

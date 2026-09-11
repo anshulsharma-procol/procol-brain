@@ -1,10 +1,11 @@
 import type {
   ArtifactKind,
+  Category,
   ResolutionPath,
   StageId,
   TicketChannel,
   TicketPriority,
-} from './types'
+} from './types.js'
 
 /**
  * ============================================================================
@@ -42,7 +43,10 @@ export interface Playbook {
     title: string
     /** Used when the customer's own words are all we have. */
     description: string
-    category: string
+    /** The contract's coarse enum. */
+    category: Category
+    /** Additive: what a person would call it. The enum has four values. */
+    categoryLabel: string
     priority: TicketPriority
     impact: string
     channel?: TicketChannel
@@ -81,16 +85,18 @@ export interface Playbook {
     durationMs: number
     confidence: number
     tool: { server: string; call: string }
-    rootCause: { headline: string; detail: string; evidence: string[] }
+    /** contract ROOT_CAUSE, plus `evidence` as an additive extra. */
+    rootCause: { summary: string; detail: string; confidence: number; evidence: string[] }
+    /** contract PR: `patch` is a unified diff the UI renders red/green. */
     pr: {
-      number: string
+      number: number
       title: string
       url: string
-      repository: string
-      filesChanged: string[]
+      branch: string
+      files: string[]
       additions: number
       deletions: number
-      diff: { type: 'add' | 'remove' | 'context'; text: string }[]
+      patch: string
     }
   }
 
@@ -101,7 +107,8 @@ export interface Playbook {
     logs: string[]
     durationMs: number
     tool: { server: string; call: string }
-    suite: string
+    /** contract TEST_RESULT, plus `cases` as an additive extra. */
+    suites: string[]
     total: number
     passed: number
     failed: number
@@ -122,10 +129,12 @@ export interface Playbook {
   }
 
   /** The remediation Brain drafts when the product is behaving correctly. */
+  /** contract CONFIG_FIX, plus `change` as an additive extra. */
   configFix?: {
     summary: string
-    change: string
     steps: string[]
+    system: string
+    change: string
   }
 
   /** The answer Brain gives when the customer only needs information. */
@@ -172,7 +181,8 @@ const INVOICE_TAX: Playbook = {
   ticket: {
     title: 'Invoice GST calculation incorrect',
     description: 'Invoices are being billed at the platform default tax rate instead of the tenant’s configured rate.',
-    category: 'Billing & invoicing',
+    category: 'BUG',
+    categoryLabel: 'Billing & invoicing',
     priority: 'HIGH',
     impact: 'Every purchase order raised this month',
     defaultCustomer: 'ABC Corp',
@@ -229,9 +239,10 @@ const INVOICE_TAX: Playbook = {
     confidence: 0.94,
     tool: { server: 'github', call: 'read_file + create_branch + create_pr' },
     rootCause: {
-      headline: 'Tenant context is never passed into the GST calculator.',
+      summary: 'Tenant context is never passed into the GST calculator.',
       detail:
         'calculateInvoice() applies the module-level DEFAULT_GST_RATE constant instead of the tenant’s configured gstPercent, so every tenant falls back to the default 12% slab regardless of their settings.',
+      confidence: 0.94,
       evidence: [
         'src/invoiceCalculator.js:7 — const gst = taxable * (DEFAULT_GST_RATE / 100)',
         'src/customerConfig.js — ABC Corp: { gstPercent: 18, discountPercent: 10 }',
@@ -239,20 +250,23 @@ const INVOICE_TAX: Playbook = {
       ],
     },
     pr: {
-      number: '#452',
+      number: 452,
       title: 'Use the tenant’s configured GST rate in calculateInvoice',
       url: 'https://github.com/procol-hack/demo-repo/pull/452',
-      repository: 'procol-hack/demo-repo',
-      filesChanged: ['src/invoiceCalculator.js'],
+      branch: 'fix/gst-tenant-rate',
+      files: ['src/invoiceCalculator.js'],
       additions: 7,
       deletions: 3,
-      diff: [
-        { type: 'context', text: '  const taxable = base - discount;' },
-        { type: 'remove', text: '  const gst = taxable * (DEFAULT_GST_RATE / 100);' },
-        { type: 'add', text: '  const rate = tenantConfig?.gstPercent ?? DEFAULT_GST_RATE;' },
-        { type: 'add', text: '  const gst = taxable * (rate / 100);' },
-        { type: 'context', text: '  return { base, discount, taxable, gst, total: taxable + gst };' },
-      ],
+      patch: [
+        '--- a/src/invoiceCalculator.js',
+        '+++ b/src/invoiceCalculator.js',
+        '@@ -4,7 +4,8 @@ function calculateInvoice(lineItems, tenantConfig) {',
+        '   const taxable = base - discount;',
+        '-  const gst = taxable * (DEFAULT_GST_RATE / 100);',
+        '+  const rate = tenantConfig?.gstPercent ?? DEFAULT_GST_RATE;',
+        '+  const gst = taxable * (rate / 100);',
+        '   return { base, discount, taxable, gst, total: taxable + gst };',
+      ].join('\n'),
     },
   },
 
@@ -266,7 +280,7 @@ const INVOICE_TAX: Playbook = {
     ],
     durationMs: 1830,
     tool: { server: 'test-runner', call: 'run_tests' },
-    suite: 'Invoice & billing',
+    suites: ['invoice', 'tax', 'discount'],
     total: 47,
     passed: 47,
     failed: 0,
@@ -339,7 +353,8 @@ const VENDOR_ACCESS: Playbook = {
   ticket: {
     title: 'Vendor cannot see the auction',
     description: 'An invited vendor reports that the auction does not appear in their dashboard.',
-    category: 'Auctions',
+    category: 'CONFIG',
+    categoryLabel: 'Auctions',
     priority: 'MEDIUM',
     impact: 'One auction, closing this week',
     defaultCustomer: 'XYZ Metals',
@@ -383,6 +398,7 @@ const VENDOR_ACCESS: Playbook = {
 
   configFix: {
     summary: 'Add the vendor to the auction participant list.',
+    system: 'Procol sourcing console',
     change: 'Auction → Participants → add the invited vendor',
     steps: [
       'Open the auction in the sourcing console',
@@ -427,7 +443,8 @@ const AUTH_401: Playbook = {
   ticket: {
     title: 'All users receiving 401 Unauthorized after deployment',
     description: 'Every user on the tenant is rejected at login with 401 Unauthorized since the last deployment.',
-    category: 'Authentication',
+    category: 'BUG',
+    categoryLabel: 'Authentication',
     priority: 'CRITICAL',
     impact: 'All users on the tenant — complete login outage',
     defaultCustomer: 'XYZ Corp',
@@ -488,7 +505,8 @@ const AUTH_401: Playbook = {
     confidence: 0.97,
     tool: { server: 'github', call: 'read_file + create_branch + create_pr' },
     rootCause: {
-      headline: 'JWT_ISSUER was changed to the API host during deployment.',
+      summary: 'JWT_ISSUER was changed to the API host during deployment.',
+      confidence: 0.97,
       detail:
         'Tokens are minted with issuer auth.acmecloud.com, but the deployed auth service validates against api.acmecloud.com. Every token fails the issuer check, so the service returns 401 for every user on every tenant.',
       evidence: [
@@ -498,21 +516,27 @@ const AUTH_401: Playbook = {
       ],
     },
     pr: {
-      number: '#892',
+      number: 892,
       title: 'Fix JWT issuer configuration',
       url: 'https://github.com/acmecloud/platform/pull/892',
-      repository: 'acmecloud/platform',
-      filesChanged: ['deploy/production.yaml', 'services/auth/jwt.js'],
+      branch: 'fix/jwt-issuer',
+      files: ['deploy/production.yaml', 'services/auth/jwt.js'],
       additions: 6,
       deletions: 2,
-      diff: [
-        { type: 'context', text: '  env:' },
-        { type: 'remove', text: '    JWT_ISSUER: api.acmecloud.com' },
-        { type: 'add', text: '    JWT_ISSUER: auth.acmecloud.com' },
-        { type: 'context', text: '' },
-        { type: 'context', text: '  // services/auth/jwt.js' },
-        { type: 'add', text: '  assertIssuerConfigured(process.env.JWT_ISSUER);' },
-      ],
+      patch: [
+        '--- a/deploy/production.yaml',
+        '+++ b/deploy/production.yaml',
+        '@@ -18,7 +18,7 @@ services:',
+        '   env:',
+        '-    JWT_ISSUER: api.acmecloud.com',
+        '+    JWT_ISSUER: auth.acmecloud.com',
+        '',
+        '--- a/services/auth/jwt.js',
+        '+++ b/services/auth/jwt.js',
+        '@@ -32,6 +32,7 @@ export function verifyToken(token) {',
+        '+  assertIssuerConfigured(process.env.JWT_ISSUER);',
+        '   const claims = decode(token);',
+      ].join('\n'),
     },
   },
 
@@ -528,7 +552,7 @@ const AUTH_401: Playbook = {
     ],
     durationMs: 2240,
     tool: { server: 'test-runner', call: 'run_tests' },
-    suite: 'Authentication',
+    suites: ['login', 'tokens', 'multi-tenant'],
     total: 32,
     passed: 32,
     failed: 0,
@@ -579,7 +603,8 @@ const AUCTION_HOWTO: Playbook = {
   ticket: {
     title: 'How do I extend an auction deadline?',
     description: 'A how-to question about extending the closing time of a live auction.',
-    category: 'How-to',
+    category: 'QUESTION',
+    categoryLabel: 'How-to',
     priority: 'LOW',
     impact: 'One user',
     defaultCustomer: 'Kanti Metals',
@@ -657,7 +682,8 @@ const WEBHOOK_RETRY: Playbook = {
   ticket: {
     title: 'Webhook deliveries stopped reaching our endpoint',
     description: 'Events stop arriving at the customer’s endpoint with no error surfaced to them.',
-    category: 'Integrations',
+    category: 'CONFIG',
+    categoryLabel: 'Integrations',
     priority: 'HIGH',
     impact: 'Every event for the affected tenant',
     defaultCustomer: 'Northwind Ltd',
@@ -701,6 +727,7 @@ const WEBHOOK_RETRY: Playbook = {
 
   configFix: {
     summary: 'Raise the tenant’s webhook retry budget from 3s to 10s.',
+    system: 'AcmeCloud admin console',
     change: 'Tenant settings → Integrations → retry budget: 3s → 10s',
     steps: [
       'Open the tenant in the admin console',
@@ -755,7 +782,8 @@ const UNRECOGNISED: Playbook = {
   ticket: {
     title: 'Reported issue',
     description: 'Raised from the customer’s own description.',
-    category: 'Uncategorised',
+    category: 'BUG',
+    categoryLabel: 'Uncategorised',
     priority: 'MEDIUM',
     impact: 'Not yet assessed',
     defaultCustomer: 'Your organisation',

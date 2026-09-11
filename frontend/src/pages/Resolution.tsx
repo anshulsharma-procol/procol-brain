@@ -7,18 +7,32 @@ import PageShell from '../components/PageShell'
 import StatusPill from '../components/StatusPill'
 import TopBar from '../components/TopBar'
 import { useTicketDetail, useWorkspace } from '../platform/react'
-import type {
-  ConfigFixArtifact,
-  CustomerReplyArtifact,
-  ImpactArtifact,
-  PrArtifact,
-  RootCauseArtifact,
-  TestResultArtifact,
-  TicketDetail,
-} from '../platform/types'
+import { findArtifact } from '../platform/types'
+import type { TicketDetail } from '../platform/types'
 import { durationLabel } from '../utils/format'
 
 const APPROVER = 'Anshul Sharma'
+
+/** The contract's three PR states. 'mock' says plainly it was not real. */
+const PR_STATE: Record<string, string> = {
+  created: 'Open',
+  merged: 'Merged',
+  mock: 'Mock PR',
+}
+
+/**
+ * Additive fields this deployment sends. A contract-only backend omits them
+ * and the panel simply shows less, which is the point of them being additive.
+ */
+function evidenceOf(data: unknown): string[] | undefined {
+  const evidence = (data as { evidence?: unknown }).evidence
+  return Array.isArray(evidence) ? (evidence as string[]) : undefined
+}
+
+function casesOf(data: { suites: string[] }): string[] {
+  const cases = (data as { cases?: unknown }).cases
+  return Array.isArray(cases) ? (cases as string[]) : data.suites
+}
 
 /**
  * The decision. Everything a person needs to say yes or no, in the order they
@@ -54,15 +68,13 @@ export default function Resolution() {
   }
 
   const { ticket, artifacts, approvalPolicy, decision } = detail
-  const find = <T extends { kind: string }>(kind: T['kind']) =>
-    artifacts.find((artifact) => artifact.kind === kind)
 
-  const rootCause = find<RootCauseArtifact>('ROOT_CAUSE') as RootCauseArtifact | undefined
-  const pr = find<PrArtifact>('PR') as PrArtifact | undefined
-  const tests = find<TestResultArtifact>('TEST_RESULT') as TestResultArtifact | undefined
-  const impact = find<ImpactArtifact>('IMPACT') as ImpactArtifact | undefined
-  const configFix = find<ConfigFixArtifact>('CONFIG_FIX') as ConfigFixArtifact | undefined
-  const reply = find<CustomerReplyArtifact>('CUSTOMER_REPLY') as CustomerReplyArtifact | undefined
+  const rootCause = findArtifact(artifacts, 'ROOT_CAUSE')
+  const pr = findArtifact(artifacts, 'PR')
+  const tests = findArtifact(artifacts, 'TEST_RESULT')
+  const impact = findArtifact(artifacts, 'IMPACT')
+  const configFix = findArtifact(artifacts, 'CONFIG_FIX')
+  const reply = findArtifact(artifacts, 'CUSTOMER_REPLY')
 
   const submit = async (outcome: 'APPROVED' | 'REJECTED') => {
     setSubmitting(true)
@@ -109,14 +121,14 @@ export default function Resolution() {
             <Card className="p-6">
               <p className="text-xs uppercase tracking-wide text-gray-400">Root cause</p>
               <p className="mt-2 text-lg font-semibold leading-snug text-gray-900">
-                {rootCause.data.headline}
+                {rootCause.data.summary}
               </p>
               <p className="mt-2 max-w-[70ch] text-sm leading-relaxed text-gray-600">
                 {rootCause.data.detail}
               </p>
-              {rootCause.data.evidence && (
+              {evidenceOf(rootCause.data) && (
                 <ul className="mt-3 space-y-1">
-                  {rootCause.data.evidence.map((line) => (
+                  {evidenceOf(rootCause.data)!.map((line: string) => (
                     <li key={line} className="font-mono text-[11px] text-gray-500">
                       <span className="mr-1.5 text-gray-300">›</span>
                       {line}
@@ -138,19 +150,19 @@ export default function Resolution() {
                     rel="noreferrer"
                     className="inline-flex items-center gap-1 font-mono text-blue-600 hover:underline"
                   >
-                    {pr.data.number}
+                    #{pr.data.number}
                     <ExternalLink className="h-3 w-3" />
                   </a>{' '}
-                  · <span className="font-mono">{pr.data.filesChanged.join(', ')}</span>
+                  · <span className="font-mono">{pr.data.files.join(', ')}</span>
                 </p>
                 <StatusPill
-                  label={pr.data.state === 'merged' ? 'Merged' : 'Open'}
+                  label={PR_STATE[pr.data.state]}
                   tone={pr.data.state === 'merged' ? 'success' : 'info'}
                 />
               </div>
-              <p className="mt-1 text-sm font-medium text-gray-900">{pr.data.title}</p>
+              <p className="mt-1 text-sm font-medium text-gray-900">{pr.title}</p>
               <div className="mt-3">
-                <DiffView diff={pr.data.diff} />
+                <DiffView patch={pr.data.patch} />
               </div>
             </Card>
           )}
@@ -159,7 +171,7 @@ export default function Resolution() {
             <Card className="p-6">
               <p className="text-xs uppercase tracking-wide text-gray-400">The change</p>
               <p className="mt-2 text-base font-semibold text-gray-900">{configFix.data.summary}</p>
-              <p className="mt-1 font-mono text-xs text-gray-600">{configFix.data.change}</p>
+              <p className="mt-1 font-mono text-xs text-gray-600">{configFix.data.system}</p>
               <ol className="mt-3 space-y-1.5">
                 {configFix.data.steps.map((step, index) => (
                   <li key={step} className="flex gap-2 text-sm text-gray-600">
@@ -186,9 +198,9 @@ export default function Resolution() {
                   {durationLabel(tests.data.durationMs)}
                 </span>
               </div>
-              <p className="mt-1 text-sm text-gray-500">{tests.data.suite}</p>
+              <p className="mt-1 text-sm text-gray-500">{tests.data.suites.join(' · ')}</p>
               <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-1">
-                {tests.data.cases.map((testCase) => (
+                {casesOf(tests.data).map((testCase: string) => (
                   <li key={testCase} className="flex items-center gap-1.5 text-xs text-gray-600">
                     <CheckCircle className="h-3.5 w-3.5 text-green-600" />
                     {testCase}
@@ -211,7 +223,7 @@ export default function Resolution() {
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-gray-900">{impact.data.affectedRecords}</p>
-                  <p className="text-sm text-gray-500">{impact.data.recordLabel}</p>
+                  <p className="text-sm text-gray-500">records affected</p>
                 </div>
                 <p className="text-sm text-gray-400">since {impact.data.firstSeen}</p>
               </div>
@@ -230,16 +242,16 @@ export default function Resolution() {
                   Customer reply
                 </p>
                 <StatusPill
-                  label={reply.data.sent ? 'Sent' : 'Drafted — sends on approval'}
-                  tone={reply.data.sent ? 'success' : 'neutral'}
+                  label={decision ? 'Sent' : 'Drafted — sends on approval'}
+                  tone={decision ? 'success' : 'neutral'}
                 />
               </div>
               <p className="mt-2 font-medium text-gray-900">{reply.data.subject}</p>
               <div className="mt-2 space-y-2 text-sm leading-relaxed text-gray-600">
-                {reply.data.body.map((line) => (
+                {reply.data.body.split('\n\n').map((line: string) => (
                   <p key={line}>{line}</p>
                 ))}
-                <p className="text-gray-500">{reply.data.signature}</p>
+                <p className="text-gray-500">Sent to {reply.data.sentTo}</p>
               </div>
             </Card>
           )}

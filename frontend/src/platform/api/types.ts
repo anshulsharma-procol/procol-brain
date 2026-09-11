@@ -57,6 +57,9 @@ export interface ConsoleApi {
 
   /** GET /workspaces/:id/knowledge */
   listKnowledge(workspaceId: string): Promise<KnowledgeEntry[]>
+
+  /** GET /processes — Flow definitions. Empty when the backend has none. */
+  listProcesses(): Promise<unknown[]>
 }
 
 export interface TicketFilter {
@@ -84,12 +87,21 @@ export type StreamTarget =
   | { kind: 'workspace'; workspaceId: string }
 
 /**
- * What the stream pushes. `ticket.updated` carries the whole detail so a
- * consumer never has to re-fetch to stay consistent — the same guarantee an
- * SSE event plus a cache write gives on the real backend.
+ * What the stream pushes — one message per contract event (§4).
+ *
+ * Each carries the `activityId` that lets a consumer drop what it already has
+ * from the history fetch. That join is the reason the boundary entry does not
+ * render twice, which is the commonest bug in a timeline like this one.
  */
 export type StreamMessage =
-  | { type: 'ticket.updated'; detail: TicketDetail }
+  | {
+      type: 'activity'
+      /** The contract event name, e.g. 'a2a.response'. */
+      name: string
+      ticketRef: string | undefined
+      activityId: string | undefined
+      payload: Record<string, unknown>
+    }
   | { type: 'board.updated'; workspaceId: string }
 
 export type StreamListener = (message: StreamMessage) => void

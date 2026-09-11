@@ -11,6 +11,4 @@
 export * from './types'
 export { consoleApi, isDemoData } from './api'
 export type { ConsoleApi } from './api'
-export { agentByRole, agentsByCapability, findAgent, getWorkspace, WORKSPACES } from './workspaces'
-export { SCENARIOS, scenariosForWorkspace } from './scenarios'
 export * from './react'

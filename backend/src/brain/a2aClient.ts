@@ -14,6 +14,7 @@ import type { A2AResponse, A2ATask, A2ATaskType } from '../domain/types.js'
 export interface SendTaskOptions {
   baseUrl: string
   ticketRef: string
+  runId?: string
   task: A2ATask
   /**
    * How fast the caller wants this run played out. Sent as a header rather
@@ -49,7 +50,7 @@ export interface SendTaskResult {
 export async function sendTask(options: SendTaskOptions): Promise<SendTaskResult> {
   const { task } = options
   const startedAt = new Date()
-  store.putTask({ task, ticketId: options.ticketRef, startedAt: startedAt.toISOString() })
+  store.putTask({ task, ticketId: options.ticketRef, runId: options.runId, startedAt: startedAt.toISOString() })
 
   const started = performance.now()
 
@@ -72,6 +73,7 @@ export async function sendTask(options: SendTaskOptions): Promise<SendTaskResult
       store.putTask({
         task,
         ticketId: options.ticketRef,
+        runId: options.runId,
         startedAt: startedAt.toISOString(),
         endedAt: new Date().toISOString(),
         response: { taskId: task.taskId, status: 'failed', agent: task.to, error },
@@ -83,6 +85,7 @@ export async function sendTask(options: SendTaskOptions): Promise<SendTaskResult
     store.putTask({
       task,
       ticketId: options.ticketRef,
+      runId: options.runId,
       startedAt: startedAt.toISOString(),
       endedAt: new Date().toISOString(),
       response: body,
@@ -99,6 +102,7 @@ export async function sendTask(options: SendTaskOptions): Promise<SendTaskResult
     store.putTask({
       task,
       ticketId: options.ticketRef,
+      runId: options.runId,
       startedAt: startedAt.toISOString(),
       endedAt: new Date().toISOString(),
       response: { taskId: task.taskId, status: 'failed', agent: task.to, error },

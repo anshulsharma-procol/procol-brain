@@ -21,18 +21,18 @@ export async function seed(): Promise<void> {
   // -- Procol -------------------------------------------------------------
 
   const gst = createTicket({
-    reference: 'PRO-1245',
+    id: 'PRO-1245',
     workspaceId: 'procol',
     message:
       'Our March invoices are showing GST of 12% instead of 18%. The discount looks right but the tax is wrong on every PO raised this month. This is holding up our payment run.',
     customer: 'ABC Corp',
     reportedBy: 'John Doe · Finance',
-    channel: 'chat',
+    channel: 'portal',
   })
-  await runToCompletion(gst.reference, { speed: 0 })
+  await runToCompletion(gst.id, { speed: 0 })
 
   const auction = createTicket({
-    reference: 'PRO-1238',
+    id: 'PRO-1238',
     workspaceId: 'procol',
     message:
       'We invited Sharma Steels to the MS Plate auction but they say nothing shows in their dashboard. The auction closes Friday and we need them bidding before then.',
@@ -40,23 +40,23 @@ export async function seed(): Promise<void> {
     reportedBy: 'Rahul Menon · Sourcing',
     channel: 'portal',
   })
-  await runToCompletion(auction.reference, { speed: 0 })
+  await runToCompletion(auction.id, { speed: 0 })
 
   // A question, answered and closed without an approval gate.
   const howto = createTicket({
-    reference: 'PRO-1251',
+    id: 'PRO-1251',
     workspaceId: 'procol',
     message: 'How do I extend an auction deadline once it is already live?',
     customer: 'Kanti Metals',
     reportedBy: 'Buyer',
     channel: 'portal',
   })
-  await runToCompletion(howto.reference, { speed: 0 })
+  await runToCompletion(howto.id, { speed: 0 })
 
   // Raised by monitoring and not yet touched: the board's "nobody has looked
   // at this" row, and the one to open when showing a run from the beginning.
   createTicket({
-    reference: 'PRO-1242',
+    id: 'PRO-1242',
     workspaceId: 'procol',
     title: 'PO approval webhook failing',
     message:
@@ -70,19 +70,19 @@ export async function seed(): Promise<void> {
   // -- AcmeCloud ----------------------------------------------------------
 
   const auth = createTicket({
-    reference: 'ACME-7821',
+    id: 'ACME-7821',
     workspaceId: 'acmecloud',
     message:
       'Since yesterday’s deployment, all our users are getting 401 Unauthorized when trying to log into AcmeCloud. Nothing changed on our side.',
     customer: 'XYZ Corp',
     reportedBy: 'Priya Raman · IT Operations',
-    channel: 'chat',
+    channel: 'portal',
   })
-  await runToCompletion(auth.reference, { speed: 0 })
+  await runToCompletion(auth.id, { speed: 0 })
 
   // Already closed, so the tower has a resolved run and a reused memory.
   const webhook = createTicket({
-    reference: 'ACME-7804',
+    id: 'ACME-7804',
     workspaceId: 'acmecloud',
     message:
       'Our webhook endpoint stopped receiving events for tenant northwind. We are not getting any error, the deliveries just stop.',
@@ -90,15 +90,15 @@ export async function seed(): Promise<void> {
     reportedBy: 'Platform team',
     channel: 'email',
   })
-  await runToCompletion(webhook.reference, { speed: 0 })
-  decide(webhook.reference, {
-    outcome: 'APPROVED',
+  await runToCompletion(webhook.id, { speed: 0 })
+  decide(webhook.id, {
+    decision: 'APPROVE',
     by: 'Dana Whitfield',
     note: 'Budget raised and deliveries replayed. Alert added.',
   })
 
   createTicket({
-    reference: 'ACME-7833',
+    id: 'ACME-7833',
     workspaceId: 'acmecloud',
     title: 'CSV export missing the last column',
     message: 'The CSV export is missing the last column when we download more than 500 rows.',

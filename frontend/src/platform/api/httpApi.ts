@@ -1,12 +1,17 @@
 import type {
-  KnowledgeEntry,
-  MemoryEntry,
-  MemoryMatch,
-  Ticket,
-  TicketDetail,
-  Workspace,
-  WorkspaceStats,
-} from '../types'
+  Activity,
+  Agent,
+  Artifact,
+  Connector,
+  ProcessDefinition,
+  Run,
+  Stage as ContractStage,
+  Stats,
+  Ticket as ContractTicket,
+  TicketListRow,
+  StreamEventName,
+} from '../contract'
+import type { MemoryEntry, MemoryMatch, Stage, Ticket, TicketDetail, Workspace } from '../types'
 import type {
   ConsoleApi,
   CreateTicketInput,
@@ -19,42 +24,55 @@ import type {
 
 /**
  * ============================================================================
- *  THE REAL BACKEND ADAPTER
+ *  THE CONTRACT ADAPTER
  * ============================================================================
  *
- * This is the whole integration. Set `VITE_BRAIN_API_URL` and the console
- * stops reading scenario files and starts reading the Brain API — no screen,
- * hook or type changes, because both sides implement `ConsoleApi`.
+ * Speaks docs/API_CONTRACT.md and nothing else, then adapts it into the view
+ * model the screens use. This file is the whole integration: point
+ * VITE_BRAIN_API_URL at any backend that implements §2 and the console works,
+ * because nothing above this line knows the wire format exists.
  *
- * Endpoints it expects (mirrors docs/BACKEND_API_CONTRACT.md):
+ * Two rules it keeps, and they are the reason that claim holds:
  *
- *   GET  {base}/workspaces
- *   GET  {base}/workspaces/:id
- *   GET  {base}/workspaces/:id/stats
- *   GET  {base}/workspaces/:id/tickets?status=A,B
- *   GET  {base}/workspaces/:id/memory
- *   POST {base}/workspaces/:id/memory/search   { query }
- *   GET  {base}/workspaces/:id/knowledge
- *   GET  {base}/tickets/:ref                   -> TicketDetail
- *   POST {base}/tickets                        -> Ticket
- *   POST {base}/tickets/:ref/investigate       -> { runId }   (202, immediate)
- *   POST {base}/tickets/:ref/decision          -> TicketDetail
- *   GET  {base}/tickets/:ref/stream            -> SSE
- *   GET  {base}/workspaces/:id/stream          -> SSE
- *
- * Lists come back as `{ data: [...] }`; errors as `{ error: { code, message } }`.
+ *  - Everything the screens need is derived from §2 alone. Fields this
+ *    deployment adds (a category label, a workspace id, the agent currently
+ *    holding the work) are read when present and done without when absent.
+ *  - Endpoints outside the contract — workspaces, memory, knowledge — are
+ *    probed once and disabled quietly on a 404. A backend that has never
+ *    heard of them serves a console that simply does not show those panels.
  */
 export interface HttpConsoleApiOptions {
   baseUrl: string
-  /** Auth token, tenant key, anything the gateway needs. */
   headers?: Record<string, string>
-  /** Injectable for tests and for host-provided auth wrappers. */
+  /**
+   * Injectable transport. The offline fixture mode is exactly this client
+   * with a fetch that answers from a captured snapshot — which means there is
+   * only ever one implementation of the contract on this side, and the
+   * fixtures are checked against the same parsing the network path uses.
+   */
   fetch?: typeof globalThis.fetch
+  /** Fixture mode has nothing to stream. */
+  streaming?: boolean
+}
+
+/** Additive fields this deployment sends. Everything here is optional. */
+interface TicketExtras {
+  categoryLabel?: string
+  workspaceId?: string
+  reportedBy?: string
+  impact?: string
+  issueQuote?: string[]
+  attachment?: string
+  currentAgentId?: string
+  currentAgentAction?: string
 }
 
 export function createHttpConsoleApi(options: HttpConsoleApiOptions): ConsoleApi {
   const baseUrl = options.baseUrl.replace(/\/+$/, '')
   const doFetch = options.fetch ?? globalThis.fetch.bind(globalThis)
+
+  /** Extension endpoints that answered 404 once and are not asked again. */
+  const unavailable = new Set<string>()
 
   async function request<T>(path: string, init?: RequestInit): Promise<T> {
     const response = await doFetch(`${baseUrl}${path}`, {
@@ -63,71 +81,549 @@ export function createHttpConsoleApi(options: HttpConsoleApiOptions): ConsoleApi
     })
 
     if (!response.ok) {
-      // One error shape, always. No stack trace ever reaches a screen.
-      const body = await response.json().catch(() => null)
+      // One error shape, always — and never a stack trace on a screen.
+      const body = (await response.json().catch(() => null)) as
+        | { error?: { message?: string } }
+        | null
       throw new Error(
-        body?.error?.message ?? `Brain API ${init?.method ?? 'GET'} ${path} failed (${response.status})`,
+        body?.error?.message ??
+          `Brain API ${init?.method ?? 'GET'} ${path} failed (${response.status})`,
       )
     }
 
     return (await response.json()) as T
   }
 
+  /** An extension: undefined rather than an error when the backend lacks it. */
+  async function optional<T>(key: string, path: string, init?: RequestInit): Promise<T | undefined> {
+    if (unavailable.has(key)) return undefined
+
+    try {
+      return await request<T>(path, init)
+    } catch {
+      unavailable.add(key)
+      return undefined
+    }
+  }
+
   const get = <T,>(path: string) => request<T>(path)
   const post = <T,>(path: string, body?: unknown) =>
     request<T>(path, { method: 'POST', body: body === undefined ? undefined : JSON.stringify(body) })
-  const list = async <T,>(path: string) => (await get<{ data: T[] }>(path)).data
+  const listOf = async <T,>(path: string) => (await get<{ data: T[] }>(path)).data
   const ref = (value: string) => encodeURIComponent(value)
+  const scope = (workspaceId: string | undefined, separator = '?') =>
+    workspaceId ? `${separator}workspace=${ref(workspaceId)}` : ''
 
   return {
-    listWorkspaces: () => list<Workspace>('/workspaces'),
-    getWorkspace: (workspaceId) => get<Workspace>(`/workspaces/${ref(workspaceId)}`),
-    getStats: (workspaceId) => get<WorkspaceStats>(`/workspaces/${ref(workspaceId)}/stats`),
+    /**
+     * The contract has no workspace concept: one backend is one control tower.
+     * When the extension is absent, the console runs as a single unnamed
+     * workspace assembled from the registry it can see.
+     */
+    async listWorkspaces() {
+      const summaries = await optional<{ data: Workspace[] }>('workspaces', '/workspaces')
 
-    listTickets: (workspaceId: string, filter?: TicketFilter) => {
-      const query = filter?.status?.length ? `?status=${filter.status.join(',')}` : ''
-      return list<Ticket>(`/workspaces/${ref(workspaceId)}/tickets${query}`)
+      if (!summaries?.data?.length) {
+        const [agents, connectors] = await Promise.all([
+          listOf<Agent>('/agents'),
+          listOf<Connector>('/connectors').catch(() => []),
+        ])
+        return [buildImplicitWorkspace(agents, connectors)]
+      }
+
+      // Scoped per workspace rather than filtered from one list: two control
+      // towers legitimately declare agents with the same ids — both have a
+      // dev-agent — and merging them would show each tower the other's.
+      return Promise.all(
+        summaries.data.map(async (summary) => {
+          const [agents, connectors] = await Promise.all([
+            listOf<Agent>(`/agents?workspace=${ref(summary.id)}`),
+            listOf<Connector>(`/connectors?workspace=${ref(summary.id)}`).catch(() => []),
+          ])
+
+          return { ...buildImplicitWorkspace(agents, connectors), ...summary }
+        }),
+      )
     },
 
-    getTicket: (ticketRef) => get<TicketDetail>(`/tickets/${ref(ticketRef)}`),
-    createTicket: (input: CreateTicketInput) => post<Ticket>('/tickets', input),
+    async getWorkspace(workspaceId) {
+      const all = await this.listWorkspaces()
+      return all.find((workspace) => workspace.id === workspaceId) ?? all[0]!
+    },
 
-    startInvestigation: (ticketRef) =>
-      post<{ runId: string }>(`/tickets/${ref(ticketRef)}/investigate`),
+    /**
+     * The contract's Stats is five numbers. The charts the board draws are
+     * computed here from the ticket list rather than asking for an endpoint
+     * the contract does not define.
+     */
+    async getStats(workspaceId) {
+      const [stats, tickets] = await Promise.all([
+        get<Stats>(`/stats${scope(workspaceId)}`),
+        this.listTickets(workspaceId),
+      ])
 
-    submitDecision: (ticketRef, decision: DecisionInput) =>
-      post<TicketDetail>(`/tickets/${ref(ticketRef)}/decision`, decision),
+      const memory = await optional<{ data: MemoryEntry[] }>(
+        'memory',
+        `/memory${scope(workspaceId)}`,
+      )
+      const minutesSaved = (memory?.data ?? []).reduce(
+        (total, entry) => total + entry.reuseCount * entry.minutesSavedPerReuse,
+        0,
+      )
 
-    listMemory: (workspaceId) => list<MemoryEntry>(`/workspaces/${ref(workspaceId)}/memory`),
-    searchMemory: (workspaceId, query) =>
-      post<MemoryMatch[]>(`/workspaces/${ref(workspaceId)}/memory/search`, { query }),
-    listKnowledge: (workspaceId) => list<KnowledgeEntry>(`/workspaces/${ref(workspaceId)}/knowledge`),
+      const countBy = (status: Ticket['status']) =>
+        tickets.filter((ticket) => ticket.status === status).length
 
+      const responses = new Map<string, number>()
+      for (const ticket of tickets) {
+        if (!ticket.currentAgentId) continue
+        responses.set(ticket.currentAgentId, (responses.get(ticket.currentAgentId) ?? 0) + 1)
+      }
+
+      const agents = await listOf<Agent>(`/agents${scope(workspaceId)}`)
+
+      return {
+        activeTickets: stats.active,
+        aiWorking: stats.aiWorking,
+        awaitingApproval: stats.needsApproval,
+        resolvedThisWeek: stats.resolvedToday,
+        hoursSavedThisMonth: Math.round(minutesSaved / 60),
+        avgResolutionMinutes: stats.avgResolutionMins,
+        ticketsByStatus: [
+          { name: 'New', value: countBy('NEW'), color: '#3b82f6' },
+          { name: 'Running', value: countBy('RUNNING'), color: '#7c3aed' },
+          { name: 'Awaiting approval', value: countBy('AWAITING_APPROVAL'), color: '#f59e0b' },
+          { name: 'Resolved', value: countBy('RESOLVED'), color: '#16a34a' },
+        ],
+        agentActivity: agents
+          .filter((agent) => agent.tasksToday > 0)
+          .map((agent) => ({ agentId: agent.id, name: agent.name, value: agent.tasksToday })),
+      }
+    },
+
+    async listTickets(workspaceId: string, filter?: TicketFilter) {
+      const query = [
+        workspaceId ? `workspace=${ref(workspaceId)}` : '',
+        filter?.status?.length ? `status=${filter.status.join(',')}` : '',
+      ]
+        .filter(Boolean)
+        .join('&')
+
+      const rows = await listOf<TicketListRow & TicketExtras>(`/tickets${query ? `?${query}` : ''}`)
+      return rows.map(adaptListRow)
+    },
+
+    async getTicket(ticketRef) {
+      const [detail, activities] = await Promise.all([
+        get<{
+          ticket: ContractTicket & TicketExtras
+          run: Run | null
+          artifacts: Artifact[]
+          insight: { affectedTenants: number; affectedRecords: number } | null
+        }>(`/tickets/${ref(ticketRef)}`),
+        listOf<Activity>(`/tickets/${ref(ticketRef)}/activities`),
+      ])
+
+      const matches = await optional<{ data: MemoryMatch[] }>(
+        'memory-search',
+        `/memory/search${scope(detail.ticket.workspaceId)}`,
+        {
+          method: 'POST',
+          body: JSON.stringify({ query: `${detail.ticket.title} ${detail.ticket.description}` }),
+        },
+      )
+
+      return buildDetail(detail, activities, matches?.data ?? [])
+    },
+
+    async createTicket(input: CreateTicketInput) {
+      const created = await post<ContractTicket & TicketExtras>('/tickets', {
+        customer: input.customer,
+        title: input.title,
+        description: input.description,
+        priority: input.priority,
+        channel: input.channel,
+        workspaceId: input.workspaceId,
+      })
+      return adaptTicket(created, null, null)
+    },
+
+    async startInvestigation(ticketRef) {
+      const started = await post<{ runId: string; state: string }>(
+        `/tickets/${ref(ticketRef)}/investigate`,
+      )
+      return { runId: started.runId }
+    },
+
+    async submitDecision(ticketRef, decision: DecisionInput) {
+      await post(`/tickets/${ref(ticketRef)}/decision`, {
+        decision: decision.outcome === 'APPROVED' ? 'APPROVE' : 'REJECT',
+        note: decision.note,
+        by: decision.by,
+      })
+      // The decision response is a subset; re-read so the page has the
+      // timeline and the memory panel as well.
+      return this.getTicket(ticketRef)
+    },
+
+    async listMemory(workspaceId) {
+      const memory = await optional<{ data: MemoryEntry[] }>('memory', `/memory${scope(workspaceId)}`)
+      return memory?.data ?? []
+    },
+
+    async searchMemory(workspaceId, query) {
+      const matches = await optional<{ data: MemoryMatch[] }>(
+        'memory-search',
+        `/memory/search${scope(workspaceId)}`,
+        { method: 'POST', body: JSON.stringify({ query }) },
+      )
+      return matches?.data ?? []
+    },
+
+    async listKnowledge(workspaceId) {
+      const knowledge = await optional<{ data: never[] }>(
+        'knowledge',
+        `/knowledge${scope(workspaceId)}`,
+      )
+      return knowledge?.data ?? []
+    },
+
+    /**
+     * §4. The history and the stream are joined by `activityId`: the page
+     * fetches `/activities`, opens this, and drops any event it already
+     * holds. Every payload carries the id and the seq that make that safe.
+     */
     subscribe(target: StreamTarget, listener: StreamListener): Unsubscribe {
+      if (options.streaming === false) return () => {}
+
       const path =
         target.kind === 'ticket'
           ? `/tickets/${ref(target.ticketRef)}/stream`
-          : `/workspaces/${ref(target.workspaceId)}/stream`
+          : `/stream${scope(target.workspaceId)}`
 
       const source = new EventSource(`${baseUrl}${path}`)
 
-      // The server sends one JSON object per `data:` line, with `event:` set
-      // to the message type — the same union the mock pushes in-process.
-      const onTicket = (event: MessageEvent<string>) => {
-        listener({ type: 'ticket.updated', detail: JSON.parse(event.data) as TicketDetail })
-      }
-      const onBoard = (event: MessageEvent<string>) => {
-        listener({ type: 'board.updated', ...(JSON.parse(event.data) as { workspaceId: string }) })
+      const NAMES: StreamEventName[] = [
+        'ticket.created',
+        'run.started',
+        'run.state',
+        'brain.thought',
+        'a2a.request',
+        'a2a.response',
+        'agent.log',
+        'artifact.created',
+        'run.awaiting_approval',
+        'run.completed',
+        'agent.status',
+        'signal.raised',
+      ]
+
+      const handlers = new Map<string, EventListener>()
+
+      for (const name of NAMES) {
+        const handler = ((event: MessageEvent<string>) => {
+          const payload = JSON.parse(event.data) as { ticketId?: string; activityId?: string }
+          listener({
+            type: 'activity',
+            name,
+            ticketRef: payload.ticketId,
+            activityId: payload.activityId,
+            payload,
+          })
+        }) as EventListener
+
+        handlers.set(name, handler)
+        source.addEventListener(name, handler)
       }
 
-      source.addEventListener('ticket.updated', onTicket as EventListener)
-      source.addEventListener('board.updated', onBoard as EventListener)
+      const boardHandler = ((event: MessageEvent<string>) => {
+        listener({ type: 'board.updated', ...(JSON.parse(event.data) as { workspaceId: string }) })
+      }) as EventListener
+
+      handlers.set('board.updated', boardHandler)
+      source.addEventListener('board.updated', boardHandler)
 
       return () => {
-        source.removeEventListener('ticket.updated', onTicket as EventListener)
-        source.removeEventListener('board.updated', onBoard as EventListener)
+        for (const [name, handler] of handlers) source.removeEventListener(name, handler)
         source.close()
       }
     },
+
+    async listProcesses() {
+      const processes = await optional<{ data: ProcessDefinition[] }>('processes', '/processes')
+      return processes?.data ?? []
+    },
   }
 }
+
+// ---------------------------------------------------------------------------
+// Contract → view model
+// ---------------------------------------------------------------------------
+
+const STAGE_LABELS: { id: Stage['id']; label: string }[] = [
+  { id: 'context', label: 'Context' },
+  { id: 'investigate', label: 'Investigate' },
+  { id: 'verify', label: 'Verify' },
+  { id: 'approve', label: 'Approve' },
+]
+
+/**
+ * The four-dot rail, from the contract's `stage` map plus the run's path.
+ *
+ * The contract has one way to say "no dot here yet", so a stage a path never
+ * had and a stage it has not reached both arrive as null. `run.path` is what
+ * separates them: a configuration fix never had an investigate stage, and
+ * showing it as pending would claim work is still coming that never was.
+ */
+export function stagesFrom(stage: ContractStage | undefined, run: Run | null, status: Ticket['status']): Stage[] {
+  const skipped =
+    run?.path === 'CONFIG_FIX' || run?.path === 'ANSWER_ONLY'
+      ? new Set<Stage['id']>(['investigate', 'verify'])
+      : new Set<Stage['id']>()
+
+  const stages = STAGE_LABELS.map<Stage>(({ id, label }) => {
+    const agentId = stage?.[id] ?? undefined
+
+    if (skipped.has(id)) return { id, label, status: 'skipped', detail: 'Not needed on this path' }
+    if (agentId) return { id, label, status: 'complete', agentId }
+    return { id, label, status: 'pending' }
+  })
+
+  if (status === 'AWAITING_APPROVAL') {
+    const approve = stages.find((candidate) => candidate.id === 'approve')
+    if (approve) approve.status = 'active'
+    return stages
+  }
+
+  if (status === 'RUNNING') {
+    const next = stages.find((candidate) => candidate.status === 'pending')
+    if (next) next.status = 'active'
+  }
+
+  return stages
+}
+
+function progressFrom(stages: Stage[], status: Ticket['status']): number {
+  if (status === 'RESOLVED') return 100
+  const live = stages.filter((stage) => stage.status !== 'skipped')
+  if (live.length === 0) return 0
+
+  const complete = live.filter((stage) => stage.status === 'complete').length
+  const active = live.some((stage) => stage.status === 'active') ? 0.5 : 0
+  return Math.round(((complete + active) / live.length) * 100)
+}
+
+/** What is happening right now, named without an extension field if need be. */
+const RUN_STATE_ACTION: Record<string, string> = {
+  RECEIVED: 'Received',
+  CLASSIFYING: 'Classifying',
+  GATHERING_CONTEXT: 'Fetching context',
+  DECIDING: 'Deciding',
+  INVESTIGATING: 'Investigating the code',
+  VERIFYING: 'Running the suite',
+  DRAFTING_REMEDIATION: 'Drafting the remediation',
+  DRAFTING_REPLY: 'Drafting the reply',
+  EXECUTING_PROCESS: 'Executing the process',
+  AWAITING_APPROVAL: 'Waiting for your approval',
+  RESOLVED: 'Closed',
+  NEEDS_HUMAN: 'Waiting on a person',
+}
+
+function adaptTicket(
+  ticket: ContractTicket & TicketExtras,
+  run: Run | null,
+  stage: ContractStage | null,
+): Ticket {
+  const stages = stagesFrom(stage ?? undefined, run, ticket.status)
+
+  return {
+    id: ticket.id,
+    reference: ticket.id,
+    workspaceId: ticket.workspaceId ?? 'default',
+    title: ticket.title,
+    description: ticket.description,
+    customer: ticket.customer ?? 'Detected by monitoring',
+    reportedBy: ticket.reportedBy,
+    channel: ticket.channel,
+    priority: ticket.priority,
+    status: ticket.status,
+    category: ticket.categoryLabel ?? humanise(ticket.category),
+    impact: ticket.impact ?? '—',
+    issueQuote: ticket.issueQuote ?? [ticket.description],
+    attachment: ticket.attachment,
+    createdAt: ticket.createdAt,
+    updatedAt: ticket.updatedAt,
+    path: run?.path ?? undefined,
+    currentAgentId: ticket.currentAgentId ?? holderFrom(stage, run),
+    currentAgentAction:
+      ticket.currentAgentAction ?? (run ? RUN_STATE_ACTION[run.state] : undefined),
+    progress: progressFrom(stages, ticket.status),
+    stages,
+  }
+}
+
+function adaptListRow(row: TicketListRow & TicketExtras): Ticket {
+  const run = row.run ? ({ ...row.run, path: row.run.path ?? null } as Run) : null
+  return adaptTicket(row, run, row.stage)
+}
+
+/**
+ * Who holds the work, when the backend has not said. The contract names the
+ * agent that COMPLETED each stage, so the best that can be inferred is the
+ * one who finished last — which is right for a board column and honest about
+ * being an inference.
+ */
+function holderFrom(stage: ContractStage | null | undefined, run: Run | null): string | undefined {
+  if (!run) return undefined
+  if (run.state === 'AWAITING_APPROVAL') return 'human-approver'
+  if (!stage) return undefined
+
+  return stage.verify ?? stage.investigate ?? stage.context ?? undefined
+}
+
+function humanise(category: ContractTicket['category']): string {
+  if (!category) return 'Uncategorised'
+  return category.charAt(0) + category.slice(1).toLowerCase()
+}
+
+function buildDetail(
+  detail: {
+    ticket: ContractTicket & TicketExtras
+    run: Run | null
+    artifacts: Artifact[]
+    insight: { affectedTenants: number; affectedRecords: number } | null
+  },
+  activities: Activity[],
+  memoryMatches: MemoryMatch[],
+): TicketDetail {
+  const stage = stageFromActivities(activities)
+  const ticket = adaptTicket(detail.ticket, detail.run, stage)
+  const decision = decisionFrom(activities, detail.run)
+
+  return {
+    ticket,
+    stages: ticket.stages ?? [],
+    activity: activities,
+    artifacts: detail.artifacts,
+    memoryMatches,
+    approvalPolicy: detail.run?.policyReason
+      ? { id: 'policy', appliesTo: [], reason: detail.run.policyReason, risk: 'high' }
+      : undefined,
+    decision,
+  }
+}
+
+/**
+ * `GET /tickets/:id` does not carry the stage map — only the list does — so
+ * the detail page reconstructs it from the timeline, which is the same
+ * information by another route.
+ */
+function stageFromActivities(activities: Activity[]): ContractStage {
+  const stage: ContractStage = { context: null, investigate: null, verify: null, approve: null }
+
+  for (const row of activities) {
+    if (row.type !== 'a2a.response' || row.level === 'error' || !row.fromAgent) continue
+    if (!stage.context) stage.context = row.fromAgent
+    else if (!stage.investigate) stage.investigate = row.fromAgent
+    else if (!stage.verify) stage.verify = row.fromAgent
+  }
+
+  const closed = activities.find((row) => row.type === 'run.completed')
+  if (closed) stage.approve = 'human-approver'
+
+  return stage
+}
+
+/** The human's decision, read back off the audit trail. */
+function decisionFrom(activities: Activity[], run: Run | null): TicketDetail['decision'] {
+  const row = [...activities]
+    .reverse()
+    .find((candidate) => candidate.type === 'run.state' && candidate.fromAgent === 'human')
+
+  if (!row) return undefined
+
+  const approved = run?.state === 'RESOLVED' || /approved/i.test(row.title)
+  return {
+    outcome: approved ? 'APPROVED' : 'REJECTED',
+    by: row.title.replace(/\s+(approved|sent).*$/i, '').trim() || 'A person',
+    note: row.body ?? undefined,
+    at: row.createdAt,
+  }
+}
+
+/**
+ * A workspace assembled from what the contract does expose. A backend with no
+ * workspace extension still gets a named control tower, its registry and its
+ * connectors — the switcher simply has one entry.
+ */
+function buildImplicitWorkspace(agents: Agent[], connectors: Connector[]): Workspace {
+  return {
+    id: 'default',
+    name: 'Control tower',
+    product: 'Connected systems',
+    ticketPrefix: 'TKT',
+    tagline: 'Single tenant — this backend serves one control tower',
+    accent: 'violet',
+    supportEmailDomain: 'example.com',
+    agents: agents.map((agent) => ({
+      id: agent.id,
+      name: agent.name,
+      shortLabel: shortLabel(agent),
+      role: roleOf(agent),
+      summary: agent.description ?? '',
+      description: agent.description ?? '',
+      protocol: agent.protocol,
+      protocolNote: '',
+      capabilities: agent.capabilities,
+      tools: agent.tools.map((tool) => ({
+        name: tool.name,
+        via: tool.via,
+        description: '',
+      })),
+      status:
+        agent.status === 'ONLINE' ? 'connected' : agent.status === 'OFFLINE' ? 'offline' : 'degraded',
+      ownership: (agent as { ownership?: string }).ownership === 'customer' ? 'customer' : 'procol',
+    })),
+    connectors: connectors.map((connector) => ({
+      id: connector.id,
+      name: (connector as { name?: string }).name ?? connector.id,
+      kind: connector.kind,
+      dataMode:
+        ((connector as { dataMode?: string }).dataMode as 'query-in-place') ?? 'query-in-place',
+      capabilities: connector.capabilities,
+      status: connector.health.ok ? 'connected' : 'offline',
+      latencyMs: connector.health.latencyMs,
+    })),
+    approvalPolicies: [],
+  }
+}
+
+/** The contract's four kinds map onto the roles the UI paints. */
+function roleOf(agent: Agent): Workspace['agents'][number]['role'] {
+  const declared = (agent as { role?: string }).role
+  if (declared) return declared as Workspace['agents'][number]['role']
+
+  if (agent.id === 'brain' || agent.capabilities.includes('route_capability')) return 'orchestrator'
+  if (agent.capabilities.includes('approve_fix')) return 'approval'
+
+  switch (agent.kind) {
+    case 'knowledge':
+      return 'knowledge'
+    case 'engineering':
+      return 'engineering'
+    case 'validation':
+      return 'validation'
+    default:
+      return 'analytics'
+  }
+}
+
+function shortLabel(agent: Agent): string {
+  const words = agent.name.split(/\s+/)
+  if (words.length === 1) return agent.name.slice(0, 2).toUpperCase()
+  return words
+    .slice(0, 3)
+    .map((word) => word[0]!.toUpperCase())
+    .join('')
+}
+

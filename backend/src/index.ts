@@ -42,6 +42,14 @@ async function main() {
       workspaces: WORKSPACES.map((workspace) => workspace.id),
       tickets: store.listTickets().length,
       uptimeSeconds: Math.round(process.uptime()),
+      // Named here so an integration that 404s can find the right base path
+      // without reading the source.
+      mounts: {
+        console: '/api',
+        chatWidget: ['/api/chat', '/'],
+        agents: '/agents/<id>',
+        demo: '/api/demo',
+      },
     })
   })
 
@@ -56,20 +64,58 @@ async function main() {
   app.use('/api/demo', demoRouter())
   app.use('/api', consoleRouter())
 
-  app.use((_request, response) => {
-    response.status(404).json({ error: { code: 'not_found', message: 'No such endpoint' } })
+  // The same widget API, also at the root.
+  //
+  // docs/BACKEND_API_CONTRACT.md documents these paths as `{base}/issues/search`
+  // with the base being the service itself, and that is what a host app
+  // integrating the chat SDK will reach for first — `apiBaseUrl` set to the
+  // service origin, no sub-path. Serving both spellings costs one line and
+  // removes a 404 that looks exactly like "the backend is broken" from the
+  // outside. `/api/chat` stays the canonical prefix.
+  app.use('/', chatRouter())
+
+  /**
+   * A 404 that helps. Someone integrating from another repo is usually one
+   * path segment out, and "No such endpoint" tells them nothing — so name the
+   * two base paths and let them compare.
+   */
+  app.use((request, response) => {
+    response.status(404).json({
+      error: {
+        code: 'NOT_FOUND',
+        message: `No endpoint for ${request.method} ${request.path}`,
+        hint: 'The chat widget API is at / or /api/chat; the console API is at /api. GET /health lists what is mounted.',
+      },
+    })
   })
 
   // One error shape, always. Nothing with a stack trace in it reaches a client.
   app.use(
     (
-      error: Error,
+      error: Error & { type?: string; status?: number },
       _request: express.Request,
       response: express.Response,
       _next: express.NextFunction,
     ) => {
+      // A body the client could not serialise is the client's fault, and
+      // answering 500 sends a clumsy integrator hunting for a server problem
+      // that is not there.
+      if (error.type === 'entity.parse.failed') {
+        response
+          .status(400)
+          .json({ error: { code: 'BAD_REQUEST', message: 'Request body is not valid JSON' } })
+        return
+      }
+
+      if (error.type === 'entity.too.large') {
+        response
+          .status(413)
+          .json({ error: { code: 'PAYLOAD_TOO_LARGE', message: 'Request body is too large' } })
+        return
+      }
+
       console.error('[api]', error)
-      response.status(500).json({ error: { code: 'internal', message: 'Something went wrong' } })
+      response.status(500).json({ error: { code: 'INTERNAL', message: 'Something went wrong' } })
     },
   )
 

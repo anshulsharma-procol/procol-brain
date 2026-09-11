@@ -77,6 +77,50 @@ internal board immediately.
 **Anything · watch it refuse to guess**
 > The mobile app crashes when I rotate the screen on the approvals page.
 
+## Integrating from another repo
+
+The chat SDK lives in `frontend/src/brain-chat` and is published as
+`@procol/brain-chat`. In a host application — the real client dashboard, or
+anything else — point it at this service:
+
+```tsx
+import { ProcolBrain } from '@procol/brain-chat'
+import '@procol/brain-chat/styles.css'   // required: the SDK ships its CSS separately
+
+<ProcolBrain
+  companyId="procol"                         // the tenant; decides which control tower
+  userId={currentUser.email}
+  apiBaseUrl="http://localhost:4000/api/chat"
+  context={{ currentPage: 'grn-flexi', currentModule: 'GRN', recordId: grn.number }}
+/>
+```
+
+`apiBaseUrl="http://localhost:4000"` works too — the widget API is served at
+both the root and `/api/chat`. Anything else 404s, and the 404 body tells you
+the base paths.
+
+Three things that catch people out:
+
+- **The stylesheet is a separate entry point.** Without the `styles.css`
+  import the widget renders as unstyled text in the page flow. If it looks
+  broken rather than absent, this is why.
+- **`companyId` must match a workspace** (`procol`, `acmecloud`). An unknown
+  value falls back to the default tower rather than erroring, so a typo shows
+  up as tickets landing in the wrong place.
+- **CORS is open by default** (`CORS_ORIGIN=*`). Set it to your host's origin
+  before this is reachable by anything you do not control.
+
+Confirm the wiring in one command before touching the UI:
+
+```bash
+curl -s -X POST http://localhost:4000/issues/search \
+  -H 'Content-Type: application/json' -H 'Origin: http://localhost:3000' \
+  -d '{"identity":{"companyId":"procol"},"message":"Our invoices show GST of 12% instead of 18%"}'
+```
+
+A match with a confidence comes back if the service, the workspace and the
+memory index are all healthy.
+
 ## Driving it without a browser
 
 ```bash

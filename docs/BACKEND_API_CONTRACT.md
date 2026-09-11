@@ -1,14 +1,33 @@
 # Brain API contract
 
-What the chat widget sends and expects. Until these exist, the widget runs on
-`src/data/demoScenario.ts` and behaves identically — so the frontend is never
-blocked.
+What the chat widget sends and expects. **These endpoints are implemented** —
+see [`backend/`](../backend/). With no `apiBaseUrl` the widget runs on its
+bundled `data/demoScenario.ts` and behaves identically, so a host app is never
+blocked on the service being up.
 
 Switching over is one prop:
 
 ```tsx
 <ProcolBrain companyId="procol" apiBaseUrl="https://brain-api.procol.in" />
 ```
+
+## Base path
+
+Every path below is relative to `apiBaseUrl`. The service answers the widget
+API at **two** spellings, and they are the same routes:
+
+| `apiBaseUrl` | Resolves to |
+| --- | --- |
+| `http://localhost:4000` | `POST /issues/search` |
+| `http://localhost:4000/api/chat` | `POST /api/chat/issues/search` |
+
+`/api/chat` is canonical; the root is served because this document describes
+the paths relative to the service origin and that is what a host app reaches
+for first. The console's own API is a different surface under `/api` — see
+[CONSOLE_API_CONTRACT.md](CONSOLE_API_CONTRACT.md).
+
+If a call 404s, `GET /health` lists what is mounted where, and the 404 body
+names the base paths.
 
 Every request body carries identity and host context:
 

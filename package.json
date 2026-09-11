@@ -1,0 +1,13 @@
+{
+  "name": "procol-brain",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Procol Brain — orchestrator, console and embeddable chat SDK.",
+  "scripts": {
+    "contract:sync": "node contracts/sync.mjs",
+    "contract:check": "node contracts/sync.mjs --check",
+    "dev:api": "npm --prefix backend run dev",
+    "dev:web": "npm --prefix frontend run dev",
+    "typecheck": "npm --prefix backend run typecheck && npm --prefix frontend run build"
+  }
+}

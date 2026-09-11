@@ -5,6 +5,8 @@ export interface WorkspaceContextValue {
   workspace: Workspace
   workspaces: Workspace[]
   setWorkspaceId: (id: string) => void
+  /** True until the registry has been read from the backend. */
+  loading: boolean
 }
 
 export const WorkspaceContext = createContext<WorkspaceContextValue | null>(null)

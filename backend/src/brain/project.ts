@@ -17,7 +17,7 @@ export function widgetStatus(status: Ticket['status']): string {
   switch (status) {
     case 'NEW':
       return 'open'
-    case 'INVESTIGATING':
+    case 'RUNNING':
       return 'investigating'
     case 'AWAITING_APPROVAL':
       return 'awaiting_approval'
@@ -32,8 +32,8 @@ export function widgetStatus(status: Ticket['status']): string {
 
 export function widgetTicket(ticket: Ticket) {
   return {
-    id: ticket.reference,
-    reference: ticket.reference,
+    id: ticket.id,
+    reference: ticket.id,
     title: ticket.title,
     status: widgetStatus(ticket.status),
     createdAt: ticket.createdAt,
@@ -86,7 +86,7 @@ export function widgetProgress(detail: TicketDetail) {
   })
 
   return {
-    ticketId: ticket.reference,
+    ticketId: ticket.id,
     status: widgetStatus(ticket.status),
     steps,
     activity: activity.flatMap(widgetActivity),
@@ -100,16 +100,19 @@ export function widgetProgress(detail: TicketDetail) {
  * reason the widget is worth having.
  */
 function widgetActivity(row: TicketDetail['activity'][number]) {
+  // The widget's feed shows the conversation, not the machinery: a run.state
+  // line or an artifact row is noise to a customer watching their own ticket.
+  if (row.type === 'run.state' || row.type === 'artifact.created') return []
+
   const kind =
     row.type === 'a2a.request'
       ? 'request'
-      : row.type === 'a2a.response'
-        ? 'response'
-        : row.tool
-          ? 'tool'
-          : 'response'
+      : row.type === 'agent.log'
+        ? 'tool'
+        : 'response'
 
-  const text = [row.title, ...(row.body ?? [])].join(' ')
+  // The request row's body is the raw envelope; the customer gets the title.
+  const text = row.type === 'a2a.request' ? row.title : [row.title, row.body].filter(Boolean).join(' ')
   if (!text.trim()) return []
 
   return [
@@ -118,11 +121,10 @@ function widgetActivity(row: TicketDetail['activity'][number]) {
       from: row.fromAgent ?? 'brain',
       to: row.toAgent ?? 'brain',
       text,
-      via: row.tool ? 'MCP' : 'A2A',
+      via: row.type === 'agent.log' ? 'MCP' : 'A2A',
       kind,
-      taskId: row.taskId,
-      tool: row.tool ? { server: row.tool.server, call: row.tool.call } : undefined,
-      at: row.timestamp,
+      taskId: row.taskId ?? undefined,
+      at: row.createdAt,
     },
   ]
 }
@@ -153,7 +155,7 @@ function widgetResolution(detail: TicketDetail) {
   ].filter(Boolean)
 
   return {
-    ticketId: ticket.reference,
+    ticketId: ticket.id,
     summary:
       ticket.status === 'RESOLVED'
         ? String(reply?.data.subject ?? 'Your issue has been resolved.')

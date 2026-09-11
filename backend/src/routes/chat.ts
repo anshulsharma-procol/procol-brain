@@ -37,6 +37,18 @@ const context = z
   })
   .passthrough()
 
+/**
+ * Names the field that is actually wrong. Collapsing every validation failure
+ * to one hardcoded sentence sends an integrator to debug the one part of
+ * their request that was fine.
+ */
+function describe(error: z.ZodError): string {
+  const issue = error.issues[0]
+  if (!issue) return 'Invalid request body'
+  const path = issue.path.join('.')
+  return path ? `${path}: ${issue.message}` : issue.message
+}
+
 const messageBody = z.object({
   message: z.string().min(1),
   identity: identity.optional(),
@@ -45,6 +57,29 @@ const messageBody = z.object({
 
 export function chatRouter(): Router {
   const router = Router()
+
+  /**
+   * A ticket, but only if the caller is entitled to it.
+   *
+   * The widget is embedded in a customer's own dashboard and sends its
+   * `companyId`, so a by-reference route that ignores it will happily hand
+   * one tenant another tenant's agent transcript to anyone who can guess a
+   * reference. An unknown reference and a reference belonging to someone else
+   * answer identically — the 404 must not confirm that the ticket exists.
+   */
+  const readable = (reference: string, companyId: string | undefined) => {
+    const ticket = store.getTicket(reference)
+    if (!ticket) return undefined
+    if (companyId && ticket.workspaceId !== resolveWorkspace(companyId).id) return undefined
+    return ticket
+  }
+
+  const companyOf = (request: { query: Record<string, unknown>; body?: unknown }) => {
+    const fromQuery = request.query.companyId
+    if (typeof fromQuery === 'string' && fromQuery) return fromQuery
+    const body = request.body as { identity?: { companyId?: string } } | undefined
+    return body?.identity?.companyId
+  }
 
   // -- institutional memory, before any work is started -------------------
 
@@ -55,7 +90,7 @@ export function chatRouter(): Router {
    */
   router.post('/issues/search', (request, response) => {
     const parsed = messageBody.safeParse(request.body)
-    if (!parsed.success) return fail(response, 400, 'bad_request', 'A message is required')
+    if (!parsed.success) return fail(response, 400, 'bad_request', describe(parsed.error))
 
     const workspace = resolveWorkspace(parsed.data.identity?.companyId)
     const matches = store.searchMemory(workspace.id, parsed.data.message)
@@ -76,14 +111,14 @@ export function chatRouter(): Router {
 
   router.post('/tickets', (request, response) => {
     const parsed = messageBody.safeParse(request.body)
-    if (!parsed.success) return fail(response, 400, 'bad_request', 'A message is required')
+    if (!parsed.success) return fail(response, 400, 'bad_request', describe(parsed.error))
 
     const { message, identity: who, context: where } = parsed.data
 
     const ticket = createTicket({
       workspaceId: who?.companyId,
       message,
-      channel: 'chat',
+      channel: 'portal',
       origin: {
         userId: who?.userId,
         page: where?.currentPage,
@@ -103,7 +138,7 @@ export function chatRouter(): Router {
   })
 
   router.get('/tickets/:ref', (request, response) => {
-    const ticket = store.getTicket(request.params.ref)
+    const ticket = readable(request.params.ref, companyOf(request))
     if (!ticket) return fail(response, 404, 'not_found', 'No such ticket')
     response.json(widgetTicket(ticket))
   })
@@ -111,10 +146,10 @@ export function chatRouter(): Router {
   // -- the run ------------------------------------------------------------
 
   router.post('/tickets/:ref/investigate', (request, response) => {
-    const ticket = store.getTicket(request.params.ref)
+    const ticket = readable(request.params.ref, companyOf(request))
     if (!ticket) return fail(response, 404, 'not_found', 'No such ticket')
 
-    const started = startRun(ticket.reference)
+    const started = startRun(ticket.id)
     if ('error' in started) return fail(response, 409, 'conflict', started.error)
 
     response.status(202).json(started)
@@ -126,6 +161,10 @@ export function chatRouter(): Router {
    * are never looking at different versions of what happened.
    */
   router.get('/tickets/:ref/activity', (request, response) => {
+    if (!readable(request.params.ref, companyOf(request))) {
+      return fail(response, 404, 'not_found', 'No such ticket')
+    }
+
     const detail = store.getDetail(request.params.ref)
     if (!detail) return fail(response, 404, 'not_found', 'No such ticket')
     response.json(widgetProgress(detail))
@@ -151,8 +190,12 @@ export function chatRouter(): Router {
     const parsed = approveBody.safeParse(request.body ?? {})
     const approver = (parsed.success ? parsed.data.approver : undefined) ?? 'Manager'
 
+    if (!readable(request.params.ref, companyOf(request))) {
+      return fail(response, 404, 'not_found', 'No such ticket')
+    }
+
     const result = decide(request.params.ref, {
-      outcome: 'APPROVED',
+      decision: 'APPROVE',
       by: approver,
       note: parsed.success ? parsed.data.note : undefined,
     })
@@ -178,7 +221,7 @@ export function chatRouter(): Router {
    */
   router.post('/messages', (request, response) => {
     const parsed = messageBody.safeParse(request.body)
-    if (!parsed.success) return fail(response, 400, 'bad_request', 'A message is required')
+    if (!parsed.success) return fail(response, 400, 'bad_request', describe(parsed.error))
 
     const workspace = resolveWorkspace(parsed.data.identity?.companyId)
     const { playbook, recognised } = classify({

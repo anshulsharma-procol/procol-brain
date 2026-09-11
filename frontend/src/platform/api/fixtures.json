@@ -1,0 +1,3848 @@
+{
+  "GET /workspaces": {
+    "data": [
+      {
+        "id": "procol",
+        "name": "Procol",
+        "product": "Procol Procurement Cloud",
+        "ticketPrefix": "PRO",
+        "tagline": "Procurement platform · Clara is the resident AI",
+        "accent": "violet"
+      },
+      {
+        "id": "acmecloud",
+        "name": "AcmeCloud",
+        "product": "AcmeCloud Platform",
+        "ticketPrefix": "ACME",
+        "tagline": "Generic SaaS · their own knowledge agent, not ours",
+        "accent": "blue"
+      }
+    ]
+  },
+  "GET /agents": {
+    "data": [
+      {
+        "id": "brain",
+        "name": "Procol Brain",
+        "kind": "ops",
+        "baseUrl": "",
+        "protocol": "A2A",
+        "status": "ONLINE",
+        "capabilities": [
+          "classify_ticket",
+          "route_capability",
+          "draft_reply",
+          "summarise_resolution"
+        ],
+        "tools": [],
+        "description": "Receives every request, decides which capabilities it needs, delegates over A2A, collects the artifacts and stops at the human gate.",
+        "lastSeenAt": "2026-09-11T19:16:51.433Z",
+        "tasksToday": 0,
+        "role": "orchestrator",
+        "ownership": "procol"
+      },
+      {
+        "id": "clara",
+        "name": "Clara",
+        "kind": "knowledge",
+        "baseUrl": "http://127.0.0.1:4000/agents/clara",
+        "protocol": "A2A",
+        "status": "ONLINE",
+        "capabilities": [
+          "product_knowledge",
+          "customer_context",
+          "document_search"
+        ],
+        "tools": [
+          {
+            "name": "Product knowledge base",
+            "via": "MCP"
+          }
+        ],
+        "description": "Answers product and tenant configuration questions. Already deployed at Procol — Brain consumes it as an agent rather than rebuilding it.",
+        "lastSeenAt": "2026-09-11T19:16:51.433Z",
+        "tasksToday": 3,
+        "role": "knowledge",
+        "ownership": "customer"
+      },
+      {
+        "id": "dev-agent",
+        "name": "Development Agent",
+        "kind": "engineering",
+        "baseUrl": "http://127.0.0.1:4000/agents/dev-agent",
+        "protocol": "A2A",
+        "status": "ONLINE",
+        "capabilities": [
+          "bug_analysis",
+          "code_fix",
+          "create_pr"
+        ],
+        "tools": [
+          {
+            "name": "GitHub",
+            "via": "MCP"
+          }
+        ],
+        "description": "Reads the repository, traces the defect to a root cause, produces a minimal patch and opens a pull request.",
+        "lastSeenAt": "2026-09-11T19:16:51.433Z",
+        "tasksToday": 2,
+        "role": "engineering",
+        "ownership": "procol"
+      },
+      {
+        "id": "qa-agent",
+        "name": "QA Agent",
+        "kind": "validation",
+        "baseUrl": "http://127.0.0.1:4000/agents/qa-agent",
+        "protocol": "A2A",
+        "status": "ONLINE",
+        "capabilities": [
+          "run_tests",
+          "validate_fix"
+        ],
+        "tools": [
+          {
+            "name": "Test runner",
+            "via": "MCP"
+          }
+        ],
+        "description": "Executes the test suite against the patched branch and reports pass/fail. A failure sends the work back to engineering, capped at two attempts.",
+        "lastSeenAt": "2026-09-11T19:16:51.433Z",
+        "tasksToday": 2,
+        "role": "validation",
+        "ownership": "procol"
+      },
+      {
+        "id": "lens",
+        "name": "Lens",
+        "kind": "ops",
+        "baseUrl": "",
+        "protocol": "A2A",
+        "status": "ONLINE",
+        "capabilities": [
+          "impact_analysis",
+          "answer_question"
+        ],
+        "tools": [
+          {
+            "name": "Procurement database",
+            "via": "CONNECTOR"
+          }
+        ],
+        "description": "Answers \"who else is affected?\" by compiling a canonical query against the connector layer. No SQL is ever written by a model.",
+        "lastSeenAt": "2026-09-11T19:16:51.433Z",
+        "tasksToday": 0,
+        "role": "analytics",
+        "ownership": "procol"
+      },
+      {
+        "id": "human-approver",
+        "name": "Human approver",
+        "kind": "ops",
+        "baseUrl": "",
+        "protocol": "A2A",
+        "status": "ONLINE",
+        "capabilities": [
+          "approve_fix",
+          "reject_fix"
+        ],
+        "tools": [],
+        "description": "A named person approves or rejects, and their decision lands on the same timeline as the agents, in the same visual language.",
+        "lastSeenAt": "2026-09-11T19:16:51.433Z",
+        "tasksToday": 0,
+        "role": "approval",
+        "ownership": "customer"
+      },
+      {
+        "id": "brain",
+        "name": "Procol Brain",
+        "kind": "ops",
+        "baseUrl": "",
+        "protocol": "A2A",
+        "status": "ONLINE",
+        "capabilities": [
+          "classify_ticket",
+          "route_capability",
+          "draft_reply",
+          "summarise_resolution"
+        ],
+        "tools": [],
+        "description": "Identical to the Procol deployment. It routes by declared capability, so it never needed to know that this company has no Clara.",
+        "lastSeenAt": "2026-09-11T19:16:51.433Z",
+        "tasksToday": 0,
+        "role": "orchestrator",
+        "ownership": "procol"
+      },
+      {
+        "id": "acme-knowledge",
+        "name": "Company Knowledge Agent",
+        "kind": "knowledge",
+        "baseUrl": "http://127.0.0.1:4000/agents/acme-knowledge",
+        "protocol": "A2A",
+        "status": "ONLINE",
+        "capabilities": [
+          "product_knowledge",
+          "customer_context",
+          "document_search",
+          "incident_history"
+        ],
+        "tools": [
+          {
+            "name": "Internal documentation",
+            "via": "MCP"
+          },
+          {
+            "name": "Incident history",
+            "via": "CONNECTOR"
+          }
+        ],
+        "description": "Runs inside AcmeCloud. Serves internal documentation, API references, runbooks and previous incidents. Brain reaches it over A2A exactly as it reaches Clara.",
+        "lastSeenAt": "2026-09-11T19:16:51.433Z",
+        "tasksToday": 2,
+        "role": "knowledge",
+        "ownership": "customer"
+      },
+      {
+        "id": "dev-agent",
+        "name": "Development Agent",
+        "kind": "engineering",
+        "baseUrl": "http://127.0.0.1:4000/agents/dev-agent",
+        "protocol": "A2A",
+        "status": "ONLINE",
+        "capabilities": [
+          "bug_analysis",
+          "code_fix",
+          "create_pr"
+        ],
+        "tools": [
+          {
+            "name": "GitHub",
+            "via": "MCP"
+          }
+        ],
+        "description": "Same agent, pointed at AcmeCloud’s repository through their own code host credentials.",
+        "lastSeenAt": "2026-09-11T19:16:51.433Z",
+        "tasksToday": 2,
+        "role": "engineering",
+        "ownership": "procol"
+      },
+      {
+        "id": "qa-agent",
+        "name": "QA Agent",
+        "kind": "validation",
+        "baseUrl": "http://127.0.0.1:4000/agents/qa-agent",
+        "protocol": "A2A",
+        "status": "ONLINE",
+        "capabilities": [
+          "run_tests",
+          "validate_fix"
+        ],
+        "tools": [
+          {
+            "name": "Test runner",
+            "via": "MCP"
+          }
+        ],
+        "description": "Executes the customer’s own test suite against the patched branch.",
+        "lastSeenAt": "2026-09-11T19:16:51.433Z",
+        "tasksToday": 2,
+        "role": "validation",
+        "ownership": "procol"
+      },
+      {
+        "id": "human-approver",
+        "name": "Human approver",
+        "kind": "ops",
+        "baseUrl": "",
+        "protocol": "A2A",
+        "status": "ONLINE",
+        "capabilities": [
+          "approve_fix",
+          "reject_fix"
+        ],
+        "tools": [],
+        "description": "Production changes stop here. The policy that required the stop is shown above the button.",
+        "lastSeenAt": "2026-09-11T19:16:51.433Z",
+        "tasksToday": 0,
+        "role": "approval",
+        "ownership": "customer"
+      }
+    ]
+  },
+  "GET /connectors": {
+    "data": [
+      {
+        "id": "procurement-db",
+        "kind": "database",
+        "capabilities": [
+          "describe_schema",
+          "query",
+          "fetch_record"
+        ],
+        "health": {
+          "ok": true,
+          "latencyMs": 34
+        },
+        "name": "Procurement database",
+        "dataMode": "query-in-place"
+      },
+      {
+        "id": "github",
+        "kind": "saas-api",
+        "capabilities": [
+          "read_file",
+          "create_branch",
+          "commit",
+          "create_pr"
+        ],
+        "health": {
+          "ok": true,
+          "latencyMs": 210
+        },
+        "name": "GitHub",
+        "dataMode": "query-in-place"
+      },
+      {
+        "id": "product-db",
+        "kind": "mcp",
+        "capabilities": [
+          "search_docs",
+          "get_customer_config"
+        ],
+        "health": {
+          "ok": true,
+          "latencyMs": 58
+        },
+        "name": "Product knowledge index",
+        "dataMode": "metadata-only"
+      },
+      {
+        "id": "incident-db",
+        "kind": "database",
+        "capabilities": [
+          "describe_schema",
+          "query"
+        ],
+        "health": {
+          "ok": true,
+          "latencyMs": 41
+        },
+        "name": "Incident history",
+        "dataMode": "query-in-place"
+      },
+      {
+        "id": "github",
+        "kind": "saas-api",
+        "capabilities": [
+          "read_file",
+          "create_branch",
+          "commit",
+          "create_pr"
+        ],
+        "health": {
+          "ok": true,
+          "latencyMs": 186
+        },
+        "name": "GitHub",
+        "dataMode": "query-in-place"
+      },
+      {
+        "id": "confluence",
+        "kind": "saas-api",
+        "capabilities": [
+          "search_docs"
+        ],
+        "health": {
+          "ok": true,
+          "latencyMs": 320
+        },
+        "name": "Internal documentation",
+        "dataMode": "metadata-only"
+      }
+    ]
+  },
+  "GET /processes": {
+    "data": [
+      {
+        "key": "vendor-onboarding",
+        "name": "Onboard vendor",
+        "trigger": "event",
+        "steps": [
+          {
+            "id": "verify",
+            "requiredCapability": "document_search"
+          },
+          {
+            "id": "create",
+            "requiredCapability": "create_record"
+          },
+          {
+            "id": "assign",
+            "requiredCapability": "product_knowledge"
+          },
+          {
+            "id": "notify",
+            "requiredCapability": "notify"
+          }
+        ],
+        "approvals": [
+          {
+            "after": "verify",
+            "reason": "Process actions that write to your systems require approval."
+          }
+        ]
+      },
+      {
+        "key": "reissue-invoices",
+        "name": "Re-issue invoices for affected tenants",
+        "trigger": "manual",
+        "steps": [
+          {
+            "id": "list",
+            "requiredCapability": "impact_analysis"
+          },
+          {
+            "id": "regenerate",
+            "requiredCapability": "create_record"
+          },
+          {
+            "id": "notify",
+            "requiredCapability": "notify"
+          }
+        ],
+        "approvals": [
+          {
+            "after": "list",
+            "reason": "Re-issuing invoices writes to a live tenant and requires approval."
+          }
+        ]
+      }
+    ]
+  },
+  "GET /stats?workspace=procol": {
+    "active": 3,
+    "aiWorking": 0,
+    "needsApproval": 2,
+    "resolvedToday": 1,
+    "avgResolutionMins": 34
+  },
+  "GET /agents?workspace=procol": {
+    "data": [
+      {
+        "id": "brain",
+        "name": "Procol Brain",
+        "kind": "ops",
+        "baseUrl": "",
+        "protocol": "A2A",
+        "status": "ONLINE",
+        "capabilities": [
+          "classify_ticket",
+          "route_capability",
+          "draft_reply",
+          "summarise_resolution"
+        ],
+        "tools": [],
+        "description": "Receives every request, decides which capabilities it needs, delegates over A2A, collects the artifacts and stops at the human gate.",
+        "lastSeenAt": "2026-09-11T19:16:51.433Z",
+        "tasksToday": 0,
+        "role": "orchestrator",
+        "ownership": "procol"
+      },
+      {
+        "id": "clara",
+        "name": "Clara",
+        "kind": "knowledge",
+        "baseUrl": "http://127.0.0.1:4000/agents/clara",
+        "protocol": "A2A",
+        "status": "ONLINE",
+        "capabilities": [
+          "product_knowledge",
+          "customer_context",
+          "document_search"
+        ],
+        "tools": [
+          {
+            "name": "Product knowledge base",
+            "via": "MCP"
+          }
+        ],
+        "description": "Answers product and tenant configuration questions. Already deployed at Procol — Brain consumes it as an agent rather than rebuilding it.",
+        "lastSeenAt": "2026-09-11T19:16:51.433Z",
+        "tasksToday": 3,
+        "role": "knowledge",
+        "ownership": "customer"
+      },
+      {
+        "id": "dev-agent",
+        "name": "Development Agent",
+        "kind": "engineering",
+        "baseUrl": "http://127.0.0.1:4000/agents/dev-agent",
+        "protocol": "A2A",
+        "status": "ONLINE",
+        "capabilities": [
+          "bug_analysis",
+          "code_fix",
+          "create_pr"
+        ],
+        "tools": [
+          {
+            "name": "GitHub",
+            "via": "MCP"
+          }
+        ],
+        "description": "Reads the repository, traces the defect to a root cause, produces a minimal patch and opens a pull request.",
+        "lastSeenAt": "2026-09-11T19:16:51.433Z",
+        "tasksToday": 2,
+        "role": "engineering",
+        "ownership": "procol"
+      },
+      {
+        "id": "qa-agent",
+        "name": "QA Agent",
+        "kind": "validation",
+        "baseUrl": "http://127.0.0.1:4000/agents/qa-agent",
+        "protocol": "A2A",
+        "status": "ONLINE",
+        "capabilities": [
+          "run_tests",
+          "validate_fix"
+        ],
+        "tools": [
+          {
+            "name": "Test runner",
+            "via": "MCP"
+          }
+        ],
+        "description": "Executes the test suite against the patched branch and reports pass/fail. A failure sends the work back to engineering, capped at two attempts.",
+        "lastSeenAt": "2026-09-11T19:16:51.433Z",
+        "tasksToday": 2,
+        "role": "validation",
+        "ownership": "procol"
+      },
+      {
+        "id": "lens",
+        "name": "Lens",
+        "kind": "ops",
+        "baseUrl": "",
+        "protocol": "A2A",
+        "status": "ONLINE",
+        "capabilities": [
+          "impact_analysis",
+          "answer_question"
+        ],
+        "tools": [
+          {
+            "name": "Procurement database",
+            "via": "CONNECTOR"
+          }
+        ],
+        "description": "Answers \"who else is affected?\" by compiling a canonical query against the connector layer. No SQL is ever written by a model.",
+        "lastSeenAt": "2026-09-11T19:16:51.433Z",
+        "tasksToday": 0,
+        "role": "analytics",
+        "ownership": "procol"
+      },
+      {
+        "id": "human-approver",
+        "name": "Human approver",
+        "kind": "ops",
+        "baseUrl": "",
+        "protocol": "A2A",
+        "status": "ONLINE",
+        "capabilities": [
+          "approve_fix",
+          "reject_fix"
+        ],
+        "tools": [],
+        "description": "A named person approves or rejects, and their decision lands on the same timeline as the agents, in the same visual language.",
+        "lastSeenAt": "2026-09-11T19:16:51.433Z",
+        "tasksToday": 0,
+        "role": "approval",
+        "ownership": "customer"
+      }
+    ]
+  },
+  "GET /connectors?workspace=procol": {
+    "data": [
+      {
+        "id": "procurement-db",
+        "kind": "database",
+        "capabilities": [
+          "describe_schema",
+          "query",
+          "fetch_record"
+        ],
+        "health": {
+          "ok": true,
+          "latencyMs": 34
+        },
+        "name": "Procurement database",
+        "dataMode": "query-in-place"
+      },
+      {
+        "id": "github",
+        "kind": "saas-api",
+        "capabilities": [
+          "read_file",
+          "create_branch",
+          "commit",
+          "create_pr"
+        ],
+        "health": {
+          "ok": true,
+          "latencyMs": 210
+        },
+        "name": "GitHub",
+        "dataMode": "query-in-place"
+      },
+      {
+        "id": "product-db",
+        "kind": "mcp",
+        "capabilities": [
+          "search_docs",
+          "get_customer_config"
+        ],
+        "health": {
+          "ok": true,
+          "latencyMs": 58
+        },
+        "name": "Product knowledge index",
+        "dataMode": "metadata-only"
+      }
+    ]
+  },
+  "GET /memory?workspace=procol": {
+    "data": [
+      {
+        "title": "Extending a live auction deadline",
+        "symptom": "A buyer asks how to move an auction’s closing time",
+        "rootCause": "Not a defect — a documentation question.",
+        "resolution": "Sourcing → Auctions → open the auction → Extend. Participants are notified automatically.",
+        "tags": [
+          "auction",
+          "deadline",
+          "extend",
+          "how-to",
+          "documentation"
+        ],
+        "minutesSavedPerReuse": 12,
+        "relatedKnowledgeIds": [
+          "auction-participants"
+        ],
+        "id": "mem-auction-howto",
+        "workspaceId": "procol",
+        "sourceTicketRef": "PRO-1251",
+        "path": "ANSWER_ONLY",
+        "reuseCount": 0,
+        "learnedAt": "2026-09-11"
+      },
+      {
+        "id": "mem-pro-1189",
+        "workspaceId": "procol",
+        "sourceTicketRef": "PRO-1189",
+        "title": "GST omitted entirely on renewal invoices",
+        "symptom": "Invoice generated with no tax line for a tenant that has GST configured",
+        "rootCause": "The renewal invoice path built its own line items and never called the tax step, so GST was skipped rather than miscalculated.",
+        "resolution": "Route renewal invoices through the same calculator as new invoices. PR #331.",
+        "path": "CODE_FIX",
+        "tags": [
+          "gst",
+          "tax",
+          "invoice",
+          "renewal",
+          "billing"
+        ],
+        "reuseCount": 2,
+        "minutesSavedPerReuse": 150,
+        "learnedAt": "2026-08-21",
+        "relatedKnowledgeIds": [
+          "gst-configuration",
+          "invoice-process"
+        ]
+      },
+      {
+        "id": "mem-pro-1102",
+        "workspaceId": "procol",
+        "sourceTicketRef": "PRO-1102",
+        "title": "Approval matrix ignores the delegated approver",
+        "symptom": "Purchase orders sit unapproved while the delegate reports seeing nothing to approve",
+        "rootCause": "Delegation was stored on the user but the approval query filtered on the original approver id only.",
+        "resolution": "Include active delegations in the approver lookup. PR #287.",
+        "path": "CODE_FIX",
+        "tags": [
+          "approval",
+          "delegation",
+          "purchase-order",
+          "workflow"
+        ],
+        "reuseCount": 4,
+        "minutesSavedPerReuse": 120,
+        "learnedAt": "2026-07-14",
+        "relatedKnowledgeIds": [
+          "approval-matrix"
+        ]
+      },
+      {
+        "id": "mem-pro-0997",
+        "workspaceId": "procol",
+        "sourceTicketRef": "PRO-0997",
+        "title": "Vendor cannot upload documents over 10 MB",
+        "symptom": "Document upload fails silently for large files",
+        "rootCause": "The gateway body limit was lower than the limit advertised in the product.",
+        "resolution": "Raise the gateway limit to match the documented 25 MB and surface a clear error above it.",
+        "path": "CONFIG_FIX",
+        "tags": [
+          "upload",
+          "document",
+          "vendor",
+          "limit"
+        ],
+        "reuseCount": 6,
+        "minutesSavedPerReuse": 40,
+        "learnedAt": "2026-06-02",
+        "relatedKnowledgeIds": []
+      }
+    ]
+  },
+  "GET /knowledge?workspace=procol": {
+    "data": [
+      {
+        "id": "gst-configuration",
+        "workspaceId": "procol",
+        "title": "GST configuration",
+        "description": "Tax configuration and calculation rules by tenant",
+        "type": "Customer Config",
+        "version": "v1.2",
+        "updatedAt": "10 Sep 2026",
+        "usedBy": [
+          "clara",
+          "dev-agent"
+        ],
+        "content": [
+          {
+            "heading": "Calculation rules",
+            "bullets": [
+              "Default GST rate: 12% (platform fallback only)",
+              "Calculation: (base − discount) + gst",
+              "Tenant-specific rates override the default",
+              "Applies to every invoice type, including renewals"
+            ]
+          },
+          {
+            "heading": "ABC Corp",
+            "bullets": [
+              "GST rate: 18%",
+              "Discount: 10%",
+              "Currency: INR",
+              "Region: India (intra-state)"
+            ]
+          }
+        ],
+        "relatedTicketRefs": [
+          "PRO-1245",
+          "PRO-1189"
+        ]
+      },
+      {
+        "id": "invoice-process",
+        "workspaceId": "procol",
+        "title": "Invoice generation process",
+        "description": "End-to-end invoice flow from confirmed order to delivered PDF",
+        "type": "Product Doc",
+        "version": "v2.0",
+        "updatedAt": "8 Sep 2026",
+        "usedBy": [
+          "clara",
+          "dev-agent",
+          "qa-agent"
+        ],
+        "content": [
+          {
+            "heading": "Flow",
+            "bullets": [
+              "Order confirmed and line items locked",
+              "Discounts applied per tenant configuration",
+              "GST calculated from the tenant’s tax settings",
+              "Invoice PDF generated and delivered to the billing contact"
+            ]
+          }
+        ],
+        "relatedTicketRefs": [
+          "PRO-1245"
+        ]
+      },
+      {
+        "id": "auction-participants",
+        "workspaceId": "procol",
+        "title": "Auction participants and visibility",
+        "description": "Who can see an auction, and why a vendor might not",
+        "type": "Business Rule",
+        "version": "v1.1",
+        "updatedAt": "1 Sep 2026",
+        "usedBy": [
+          "clara"
+        ],
+        "content": [
+          {
+            "heading": "Visibility rules",
+            "bullets": [
+              "An auction is visible only to vendors on its participant list",
+              "Being a vendor on the tenant is not sufficient",
+              "Participants can be added until the auction closes",
+              "Adding a participant queues an invitation to their registered contact"
+            ]
+          }
+        ],
+        "relatedTicketRefs": [
+          "PRO-1238"
+        ]
+      },
+      {
+        "id": "approval-matrix",
+        "workspaceId": "procol",
+        "title": "Approval matrix",
+        "description": "Thresholds, approvers and delegation",
+        "type": "Business Rule",
+        "version": "v3.0",
+        "updatedAt": "14 Jul 2026",
+        "usedBy": [
+          "clara",
+          "dev-agent"
+        ],
+        "content": [
+          {
+            "heading": "Rules",
+            "bullets": [
+              "Value thresholds determine the approver level",
+              "Delegations are active for a date range and apply to every pending item",
+              "Delegated approvals are recorded against both people"
+            ]
+          }
+        ],
+        "relatedTicketRefs": [
+          "PRO-1102"
+        ]
+      }
+    ]
+  },
+  "GET /tickets?workspace=procol": {
+    "data": [
+      {
+        "id": "PRO-1238",
+        "customer": "XYZ Metals",
+        "title": "Vendor cannot see the auction",
+        "description": "We invited Sharma Steels to the MS Plate auction but they say nothing shows in their dashboard. The auction closes Friday and we need them bidding before then.",
+        "channel": "portal",
+        "priority": "MEDIUM",
+        "status": "AWAITING_APPROVAL",
+        "category": "CONFIG",
+        "processKey": null,
+        "createdAt": "2026-09-11T19:17:15.550Z",
+        "updatedAt": "2026-09-11T19:17:15.552Z",
+        "categoryLabel": "Auctions",
+        "workspaceId": "procol",
+        "reportedBy": "Rahul Menon · Sourcing",
+        "impact": "One auction, closing this week",
+        "issueQuote": [
+          "We invited Sharma Steels to the MS Plate auction but they say nothing shows in their dashboard. The auction closes Friday and we need them bidding before then."
+        ],
+        "currentAgentId": "human-approver",
+        "currentAgentAction": "Waiting for your approval",
+        "run": {
+          "id": "run_mtxc8jha005fd0b27721",
+          "state": "AWAITING_APPROVAL",
+          "path": "CONFIG_FIX",
+          "attempt": 1,
+          "startedAt": "2026-09-11T19:17:15.550Z"
+        },
+        "stage": {
+          "context": "clara",
+          "investigate": null,
+          "verify": null,
+          "approve": null
+        }
+      },
+      {
+        "id": "PRO-1245",
+        "customer": "ABC Corp",
+        "title": "Invoice GST calculation incorrect",
+        "description": "Our March invoices are showing GST of 12% instead of 18%. The discount looks right but the tax is wrong on every PO raised this month. This is holding up our payment run.",
+        "channel": "portal",
+        "priority": "HIGH",
+        "status": "AWAITING_APPROVAL",
+        "category": "BUG",
+        "processKey": null,
+        "createdAt": "2026-09-11T19:17:15.546Z",
+        "updatedAt": "2026-09-11T19:17:15.550Z",
+        "categoryLabel": "Billing & invoicing",
+        "workspaceId": "procol",
+        "reportedBy": "John Doe · Finance",
+        "impact": "Every purchase order raised this month",
+        "issueQuote": [
+          "Our March invoices are showing GST of 12% instead of 18%. The discount looks right but the tax is wrong on every PO raised this month. This is holding up our payment run."
+        ],
+        "currentAgentId": "human-approver",
+        "currentAgentAction": "Waiting for your approval",
+        "run": {
+          "id": "run_mtxc8jh6004hf334bfef",
+          "state": "AWAITING_APPROVAL",
+          "path": "CODE_FIX",
+          "attempt": 1,
+          "startedAt": "2026-09-11T19:17:15.546Z"
+        },
+        "stage": {
+          "context": "clara",
+          "investigate": "dev-agent",
+          "verify": "qa-agent",
+          "approve": null
+        }
+      },
+      {
+        "id": "PRO-1242",
+        "customer": "Detected by monitoring",
+        "title": "PO approval webhook failing",
+        "description": "143 PO approval webhook deliveries failed across 6 tenants since 02:14. No customer has reported it yet.",
+        "channel": "signal",
+        "priority": "CRITICAL",
+        "status": "NEW",
+        "category": null,
+        "processKey": null,
+        "createdAt": "2026-09-11T19:17:15.554Z",
+        "updatedAt": "2026-09-11T19:17:15.554Z",
+        "categoryLabel": "Uncategorised",
+        "workspaceId": "procol",
+        "reportedBy": "Monitoring",
+        "impact": "Not yet assessed",
+        "issueQuote": [
+          "143 PO approval webhook deliveries failed across 6 tenants since 02:14. No customer has reported it yet."
+        ],
+        "run": null,
+        "stage": {
+          "context": null,
+          "investigate": null,
+          "verify": null,
+          "approve": null
+        }
+      },
+      {
+        "id": "PRO-1251",
+        "customer": "Kanti Metals",
+        "title": "How do I extend an auction deadline?",
+        "description": "How do I extend an auction deadline once it is already live?",
+        "channel": "portal",
+        "priority": "LOW",
+        "status": "RESOLVED",
+        "category": "QUESTION",
+        "processKey": null,
+        "createdAt": "2026-09-11T19:17:15.552Z",
+        "updatedAt": "2026-09-11T19:17:15.554Z",
+        "categoryLabel": "How-to",
+        "workspaceId": "procol",
+        "reportedBy": "Buyer",
+        "impact": "One user",
+        "issueQuote": [
+          "How do I extend an auction deadline once it is already live?"
+        ],
+        "currentAgentAction": "Closed",
+        "run": {
+          "id": "run_mtxc8jhc005xfc724e36",
+          "state": "RESOLVED",
+          "path": "ANSWER_ONLY",
+          "attempt": 1,
+          "startedAt": "2026-09-11T19:17:15.552Z"
+        },
+        "stage": {
+          "context": "clara",
+          "investigate": null,
+          "verify": null,
+          "approve": "human-approver"
+        }
+      }
+    ]
+  },
+  "GET /tickets/PRO-1238": {
+    "ticket": {
+      "id": "PRO-1238",
+      "customer": "XYZ Metals",
+      "title": "Vendor cannot see the auction",
+      "description": "We invited Sharma Steels to the MS Plate auction but they say nothing shows in their dashboard. The auction closes Friday and we need them bidding before then.",
+      "channel": "portal",
+      "priority": "MEDIUM",
+      "status": "AWAITING_APPROVAL",
+      "category": "CONFIG",
+      "processKey": null,
+      "createdAt": "2026-09-11T19:17:15.550Z",
+      "updatedAt": "2026-09-11T19:17:15.552Z",
+      "categoryLabel": "Auctions",
+      "workspaceId": "procol",
+      "reportedBy": "Rahul Menon · Sourcing",
+      "impact": "One auction, closing this week",
+      "issueQuote": [
+        "We invited Sharma Steels to the MS Plate auction but they say nothing shows in their dashboard. The auction closes Friday and we need them bidding before then."
+      ],
+      "currentAgentId": "human-approver",
+      "currentAgentAction": "Waiting for your approval"
+    },
+    "run": {
+      "id": "run_mtxc8jha005fd0b27721",
+      "ticketId": "PRO-1238",
+      "state": "AWAITING_APPROVAL",
+      "path": "CONFIG_FIX",
+      "attempt": 1,
+      "summary": null,
+      "policyReason": "Configuration changes to a live tenant require human approval.",
+      "startedAt": "2026-09-11T19:17:15.550Z",
+      "endedAt": null
+    },
+    "artifacts": [
+      {
+        "id": "PRO-1238-config_fix",
+        "ticketId": "PRO-1238",
+        "kind": "CONFIG_FIX",
+        "title": "Configuration remediation",
+        "data": {
+          "summary": "Add the vendor to the auction participant list.",
+          "steps": [
+            "Open the auction in the sourcing console",
+            "Go to Participants and add the vendor",
+            "Confirm the invitation email is queued to their registered contact",
+            "The auction appears on their dashboard within one minute"
+          ],
+          "system": "Procol sourcing console"
+        },
+        "createdAt": "2026-09-11T19:17:15.552Z",
+        "createdBy": "brain"
+      },
+      {
+        "id": "PRO-1238-customer_reply",
+        "ticketId": "PRO-1238",
+        "kind": "CUSTOMER_REPLY",
+        "title": "Customer reply",
+        "data": {
+          "subject": "Vendor auction visibility — PRO-1238",
+          "body": "Hi XYZ Metals,\n\nThe vendor was not on the invited participant list for this auction, which is why nothing appeared on their dashboard.\n\nWe have added them under Auction → Participants and their invitation is on its way. The auction will show on their dashboard within a minute of them signing in.\n\nNo product change was needed here, so nothing else on your account is affected.",
+          "sentTo": "xyz.metals@example.com"
+        },
+        "createdAt": "2026-09-11T19:17:15.552Z",
+        "createdBy": "brain"
+      }
+    ],
+    "insight": null
+  },
+  "GET /tickets/PRO-1238/activities": {
+    "data": [
+      {
+        "id": "act_mtxc8jha005d6d80e369",
+        "ticketId": "PRO-1238",
+        "runId": null,
+        "seq": 1,
+        "type": "ticket.created",
+        "fromAgent": "customer",
+        "toAgent": null,
+        "title": "PRO-1238 raised via the customer portal",
+        "body": "We invited Sharma Steels to the MS Plate auction but they say nothing shows in their dashboard. The auction closes Friday and we need them bidding before then.",
+        "level": "info",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.550Z"
+      },
+      {
+        "id": "act_mtxc8jha005ecba4646a",
+        "ticketId": "PRO-1238",
+        "runId": null,
+        "seq": 2,
+        "type": "brain.thought",
+        "fromAgent": "brain",
+        "toAgent": null,
+        "title": "Recognised as “Vendor cannot see the auction”",
+        "body": "Matched on auction, invited, invite, dashboard with 88% confidence. I will confirm it against product context before acting on it.",
+        "level": "info",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.550Z"
+      },
+      {
+        "id": "act_mtxc8jha005g217d3c1f",
+        "ticketId": "PRO-1238",
+        "runId": "run_mtxc8jha005fd0b27721",
+        "seq": 3,
+        "type": "run.started",
+        "fromAgent": "brain",
+        "toAgent": null,
+        "title": "Investigation started",
+        "body": "Classified as an auction visibility issue, medium priority. Before I wake engineering I want to know whether the vendor was actually added to the invited list.",
+        "level": "info",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.550Z"
+      },
+      {
+        "id": "act_mtxc8jha005h3a0f6c18",
+        "ticketId": "PRO-1238",
+        "runId": "run_mtxc8jha005fd0b27721",
+        "seq": 4,
+        "type": "run.state",
+        "fromAgent": "brain",
+        "toAgent": null,
+        "title": "Classifying",
+        "body": null,
+        "level": "info",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.550Z"
+      },
+      {
+        "id": "act_mtxc8jha005i85b970a5",
+        "ticketId": "PRO-1238",
+        "runId": "run_mtxc8jha005fd0b27721",
+        "seq": 5,
+        "type": "brain.thought",
+        "fromAgent": "brain",
+        "toAgent": null,
+        "title": "Looking for an agent that can answer product questions",
+        "body": "Asking whoever declares product_knowledge in this workspace.",
+        "level": "info",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.550Z"
+      },
+      {
+        "id": "act_mtxc8jha005ja2947981",
+        "ticketId": "PRO-1238",
+        "runId": "run_mtxc8jha005fd0b27721",
+        "seq": 6,
+        "type": "run.state",
+        "fromAgent": "brain",
+        "toAgent": null,
+        "title": "Fetching product context",
+        "body": null,
+        "level": "info",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.550Z"
+      },
+      {
+        "id": "act_mtxc8jha005kb9b010ca",
+        "ticketId": "PRO-1238",
+        "runId": "run_mtxc8jha005fd0b27721",
+        "seq": 7,
+        "type": "a2a.request",
+        "fromAgent": "brain",
+        "toAgent": "clara",
+        "title": "Is this vendor on the invited list for the auction?",
+        "body": "{\n  \"taskId\": \"TASK-e5b53a04\",\n  \"from\": \"brain\",\n  \"to\": \"clara\",\n  \"type\": \"GET_PRODUCT_CONTEXT\",\n  \"context\": {\n    \"ticketId\": \"PRO-1238\",\n    \"customer\": \"XYZ Metals\",\n    \"issue\": \"Vendor cannot see the auction\",\n    \"message\": \"We invited Sharma Steels to the MS Plate auction but they say nothing shows in their dashboard. The auction closes Friday and we need them bidding before then.\",\n    \"playbookId\": \"vendor-access\"\n  }\n}",
+        "level": "info",
+        "taskId": "TASK-e5b53a04",
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.550Z"
+      },
+      {
+        "id": "act_mtxc8jhc005l449f2f87",
+        "ticketId": "PRO-1238",
+        "runId": "run_mtxc8jha005fd0b27721",
+        "seq": 8,
+        "type": "agent.log",
+        "fromAgent": "clara",
+        "toAgent": null,
+        "title": "matched 1 knowledge document",
+        "body": null,
+        "level": "info",
+        "taskId": "TASK-e5b53a04",
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.552Z"
+      },
+      {
+        "id": "act_mtxc8jhc005m69be9e23",
+        "ticketId": "PRO-1238",
+        "runId": "run_mtxc8jha005fd0b27721",
+        "seq": 9,
+        "type": "agent.log",
+        "fromAgent": "clara",
+        "toAgent": null,
+        "title": "read auctions.md#participants",
+        "body": null,
+        "level": "info",
+        "taskId": "TASK-e5b53a04",
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.552Z"
+      },
+      {
+        "id": "act_mtxc8jhc005n72a5a7f6",
+        "ticketId": "PRO-1238",
+        "runId": "run_mtxc8jha005fd0b27721",
+        "seq": 10,
+        "type": "agent.log",
+        "fromAgent": "clara",
+        "toAgent": null,
+        "title": "checked participant list — 4 vendors, the named vendor absent",
+        "body": null,
+        "level": "info",
+        "taskId": "TASK-e5b53a04",
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.552Z"
+      },
+      {
+        "id": "act_mtxc8jhc005oa6a8183d",
+        "ticketId": "PRO-1238",
+        "runId": "run_mtxc8jha005fd0b27721",
+        "seq": 11,
+        "type": "a2a.response",
+        "fromAgent": "clara",
+        "toAgent": "brain",
+        "title": "The vendor was never added to the auction’s invited list",
+        "body": "Auction visibility is driven by the participant list. The vendor exists on this tenant but is not a participant on the auction, so the dashboard is behaving correctly. This is a configuration gap, not a product defect.",
+        "level": "success",
+        "taskId": "TASK-e5b53a04",
+        "durationMs": 690,
+        "createdAt": "2026-09-11T19:17:15.552Z"
+      },
+      {
+        "id": "act_mtxc8jhc005p9c331816",
+        "ticketId": "PRO-1238",
+        "runId": "run_mtxc8jha005fd0b27721",
+        "seq": 12,
+        "type": "run.state",
+        "fromAgent": "brain",
+        "toAgent": null,
+        "title": "Deciding",
+        "body": null,
+        "level": "info",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.552Z"
+      },
+      {
+        "id": "act_mtxc8jhc005qb1997430",
+        "ticketId": "PRO-1238",
+        "runId": "run_mtxc8jha005fd0b27721",
+        "seq": 13,
+        "type": "brain.thought",
+        "fromAgent": "brain",
+        "toAgent": null,
+        "title": "Decision: configuration fix — engineering is not involved",
+        "body": "The product is behaving as designed, so there is nothing for the development or QA agents to do. I am drafting the remediation and the customer reply instead. Restraint is the decision here.",
+        "level": "info",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.552Z"
+      },
+      {
+        "id": "act_mtxc8jhc005r0a86438b",
+        "ticketId": "PRO-1238",
+        "runId": "run_mtxc8jha005fd0b27721",
+        "seq": 14,
+        "type": "run.state",
+        "fromAgent": "brain",
+        "toAgent": null,
+        "title": "Drafting the remediation",
+        "body": null,
+        "level": "info",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.552Z"
+      },
+      {
+        "id": "act_mtxc8jhc005sf2c8d101",
+        "ticketId": "PRO-1238",
+        "runId": "run_mtxc8jha005fd0b27721",
+        "seq": 15,
+        "type": "artifact.created",
+        "fromAgent": "brain",
+        "toAgent": null,
+        "title": "Configuration remediation recorded",
+        "body": null,
+        "level": "success",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.552Z"
+      },
+      {
+        "id": "act_mtxc8jhc005t045db97d",
+        "ticketId": "PRO-1238",
+        "runId": "run_mtxc8jha005fd0b27721",
+        "seq": 16,
+        "type": "artifact.created",
+        "fromAgent": "brain",
+        "toAgent": null,
+        "title": "Customer reply recorded",
+        "body": null,
+        "level": "success",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.552Z"
+      },
+      {
+        "id": "act_mtxc8jhc005ufeb8be78",
+        "ticketId": "PRO-1238",
+        "runId": "run_mtxc8jha005fd0b27721",
+        "seq": 17,
+        "type": "run.awaiting_approval",
+        "fromAgent": "brain",
+        "toAgent": null,
+        "title": "Stopping for human approval",
+        "body": "Configuration changes to a live tenant require human approval. One step, no code, no tests — and the same gate.",
+        "level": "warn",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.552Z"
+      }
+    ]
+  },
+  "POST /memory/search?workspace=procol": {
+    "data": [
+      {
+        "entry": {
+          "title": "Extending a live auction deadline",
+          "symptom": "A buyer asks how to move an auction’s closing time",
+          "rootCause": "Not a defect — a documentation question.",
+          "resolution": "Sourcing → Auctions → open the auction → Extend. Participants are notified automatically.",
+          "tags": [
+            "auction",
+            "deadline",
+            "extend",
+            "how-to",
+            "documentation"
+          ],
+          "minutesSavedPerReuse": 12,
+          "relatedKnowledgeIds": [
+            "auction-participants"
+          ],
+          "id": "mem-auction-howto",
+          "workspaceId": "procol",
+          "sourceTicketRef": "PRO-1251",
+          "path": "ANSWER_ONLY",
+          "reuseCount": 0,
+          "learnedAt": "2026-09-11"
+        },
+        "confidence": 0.95,
+        "reason": "Matched on extend, auction, deadline"
+      }
+    ]
+  },
+  "GET /tickets/PRO-1245": {
+    "ticket": {
+      "id": "PRO-1245",
+      "customer": "ABC Corp",
+      "title": "Invoice GST calculation incorrect",
+      "description": "Our March invoices are showing GST of 12% instead of 18%. The discount looks right but the tax is wrong on every PO raised this month. This is holding up our payment run.",
+      "channel": "portal",
+      "priority": "HIGH",
+      "status": "AWAITING_APPROVAL",
+      "category": "BUG",
+      "processKey": null,
+      "createdAt": "2026-09-11T19:17:15.546Z",
+      "updatedAt": "2026-09-11T19:17:15.550Z",
+      "categoryLabel": "Billing & invoicing",
+      "workspaceId": "procol",
+      "reportedBy": "John Doe · Finance",
+      "impact": "Every purchase order raised this month",
+      "issueQuote": [
+        "Our March invoices are showing GST of 12% instead of 18%. The discount looks right but the tax is wrong on every PO raised this month. This is holding up our payment run."
+      ],
+      "currentAgentId": "human-approver",
+      "currentAgentAction": "Waiting for your approval"
+    },
+    "run": {
+      "id": "run_mtxc8jh6004hf334bfef",
+      "ticketId": "PRO-1245",
+      "state": "AWAITING_APPROVAL",
+      "path": "CODE_FIX",
+      "attempt": 1,
+      "summary": null,
+      "policyReason": "Code changes to billing always require human approval.",
+      "startedAt": "2026-09-11T19:17:15.546Z",
+      "endedAt": null
+    },
+    "artifacts": [
+      {
+        "id": "PRO-1245-root_cause",
+        "ticketId": "PRO-1245",
+        "kind": "ROOT_CAUSE",
+        "title": "Root cause",
+        "data": {
+          "summary": "Tenant context is never passed into the GST calculator.",
+          "detail": "calculateInvoice() applies the module-level DEFAULT_GST_RATE constant instead of the tenant’s configured gstPercent, so every tenant falls back to the default 12% slab regardless of their settings.",
+          "confidence": 0.94,
+          "evidence": [
+            "src/invoiceCalculator.js:7 — const gst = taxable * (DEFAULT_GST_RATE / 100)",
+            "src/customerConfig.js — ABC Corp: { gstPercent: 18, discountPercent: 10 }",
+            "tenantConfig is accepted as a parameter but only read for the discount"
+          ]
+        },
+        "createdAt": "2026-09-11T19:17:15.549Z",
+        "createdBy": "dev-agent"
+      },
+      {
+        "id": "PRO-1245-pr",
+        "ticketId": "PRO-1245",
+        "kind": "PR",
+        "title": "PR #452",
+        "data": {
+          "number": 452,
+          "title": "Use the tenant’s configured GST rate in calculateInvoice",
+          "url": "https://github.com/procol-hack/demo-repo/pull/452",
+          "branch": "fix/gst-tenant-rate",
+          "files": [
+            "src/invoiceCalculator.js"
+          ],
+          "additions": 7,
+          "deletions": 3,
+          "patch": "--- a/src/invoiceCalculator.js\n+++ b/src/invoiceCalculator.js\n@@ -4,7 +4,8 @@ function calculateInvoice(lineItems, tenantConfig) {\n   const taxable = base - discount;\n-  const gst = taxable * (DEFAULT_GST_RATE / 100);\n+  const rate = tenantConfig?.gstPercent ?? DEFAULT_GST_RATE;\n+  const gst = taxable * (rate / 100);\n   return { base, discount, taxable, gst, total: taxable + gst };",
+          "state": "mock"
+        },
+        "createdAt": "2026-09-11T19:17:15.549Z",
+        "createdBy": "dev-agent"
+      },
+      {
+        "id": "PRO-1245-test_result",
+        "ticketId": "PRO-1245",
+        "kind": "TEST_RESULT",
+        "title": "Test results",
+        "data": {
+          "status": "passed",
+          "suites": [
+            "invoice",
+            "tax",
+            "discount"
+          ],
+          "total": 47,
+          "passed": 47,
+          "failed": 0,
+          "durationMs": 1830,
+          "cases": [
+            "GST applied at the tenant’s configured rate",
+            "Discount applied before tax",
+            "Default rate used when the tenant has no override",
+            "Multi-currency rounding unchanged",
+            "Credit notes unchanged"
+          ],
+          "failures": []
+        },
+        "createdAt": "2026-09-11T19:17:15.549Z",
+        "createdBy": "qa-agent"
+      },
+      {
+        "id": "PRO-1245-impact",
+        "ticketId": "PRO-1245",
+        "kind": "IMPACT",
+        "title": "Blast radius",
+        "data": {
+          "affectedTenants": 14,
+          "affectedRecords": 312,
+          "firstSeen": "2 March"
+        },
+        "createdAt": "2026-09-11T19:17:15.550Z",
+        "createdBy": "lens"
+      },
+      {
+        "id": "PRO-1245-customer_reply",
+        "ticketId": "PRO-1245",
+        "kind": "CUSTOMER_REPLY",
+        "title": "Customer reply",
+        "data": {
+          "subject": "Invoice GST issue resolved — PRO-1245",
+          "body": "Hi ABC Corp,\n\nWe have identified and fixed the issue causing GST to be billed at 12% instead of your configured 18%. The calculation was falling back to a default rate instead of reading your tenant configuration.\n\nThe fix has passed our full invoice regression suite and has been approved for release. Your affected invoices are being re-issued — you do not need to raise them again.\n\nIf anything still looks wrong on your next invoice, reply to this ticket and it will come straight back to us.",
+          "sentTo": "abc.corp@example.com"
+        },
+        "createdAt": "2026-09-11T19:17:15.550Z",
+        "createdBy": "brain"
+      }
+    ],
+    "insight": {
+      "affectedTenants": 14,
+      "affectedRecords": 312
+    }
+  },
+  "GET /tickets/PRO-1245/activities": {
+    "data": [
+      {
+        "id": "act_mtxc8jh6004f5be69a2b",
+        "ticketId": "PRO-1245",
+        "runId": null,
+        "seq": 1,
+        "type": "ticket.created",
+        "fromAgent": "customer",
+        "toAgent": null,
+        "title": "PRO-1245 raised via the customer portal",
+        "body": "Our March invoices are showing GST of 12% instead of 18%. The discount looks right but the tax is wrong on every PO raised this month. This is holding up our payment run.",
+        "level": "info",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.546Z"
+      },
+      {
+        "id": "act_mtxc8jh6004g55e22ea4",
+        "ticketId": "PRO-1245",
+        "runId": null,
+        "seq": 2,
+        "type": "brain.thought",
+        "fromAgent": "brain",
+        "toAgent": null,
+        "title": "Recognised as “Invoice GST calculation incorrect”",
+        "body": "Matched on gst, tax, invoice, 18% with 97% confidence. I will confirm it against product context before acting on it.",
+        "level": "info",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.546Z"
+      },
+      {
+        "id": "act_mtxc8jh6004i27a2bfb4",
+        "ticketId": "PRO-1245",
+        "runId": "run_mtxc8jh6004hf334bfef",
+        "seq": 3,
+        "type": "run.started",
+        "fromAgent": "brain",
+        "toAgent": null,
+        "title": "Investigation started",
+        "body": "Classified as a billing defect, high priority. I do not have this tenant’s tax configuration, so I need product context before anyone touches code.",
+        "level": "info",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.546Z"
+      },
+      {
+        "id": "act_mtxc8jh6004j4ab26924",
+        "ticketId": "PRO-1245",
+        "runId": "run_mtxc8jh6004hf334bfef",
+        "seq": 4,
+        "type": "run.state",
+        "fromAgent": "brain",
+        "toAgent": null,
+        "title": "Classifying",
+        "body": null,
+        "level": "info",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.546Z"
+      },
+      {
+        "id": "act_mtxc8jh6004k08295676",
+        "ticketId": "PRO-1245",
+        "runId": "run_mtxc8jh6004hf334bfef",
+        "seq": 5,
+        "type": "brain.thought",
+        "fromAgent": "brain",
+        "toAgent": null,
+        "title": "Looking for an agent that can answer product questions",
+        "body": "I am not calling Clara because I know Clara exists. I am asking the registry who declares product_knowledge — in this workspace, that is Clara.",
+        "level": "info",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.546Z"
+      },
+      {
+        "id": "act_mtxc8jh6004l84b4b639",
+        "ticketId": "PRO-1245",
+        "runId": "run_mtxc8jh6004hf334bfef",
+        "seq": 6,
+        "type": "run.state",
+        "fromAgent": "brain",
+        "toAgent": null,
+        "title": "Fetching product context",
+        "body": null,
+        "level": "info",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.546Z"
+      },
+      {
+        "id": "act_mtxc8jh6004mf3811a8f",
+        "ticketId": "PRO-1245",
+        "runId": "run_mtxc8jh6004hf334bfef",
+        "seq": 7,
+        "type": "a2a.request",
+        "fromAgent": "brain",
+        "toAgent": "clara",
+        "title": "What is the expected tax configuration for this tenant?",
+        "body": "{\n  \"taskId\": \"TASK-ab6c6c74\",\n  \"from\": \"brain\",\n  \"to\": \"clara\",\n  \"type\": \"GET_PRODUCT_CONTEXT\",\n  \"context\": {\n    \"ticketId\": \"PRO-1245\",\n    \"customer\": \"ABC Corp\",\n    \"issue\": \"Invoice GST calculation incorrect\",\n    \"message\": \"Our March invoices are showing GST of 12% instead of 18%. The discount looks right but the tax is wrong on every PO raised this month. This is holding up our payment run.\",\n    \"playbookId\": \"invoice-tax\"\n  }\n}",
+        "level": "info",
+        "taskId": "TASK-ab6c6c74",
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.546Z"
+      },
+      {
+        "id": "act_mtxc8jh7004nae82c33c",
+        "ticketId": "PRO-1245",
+        "runId": "run_mtxc8jh6004hf334bfef",
+        "seq": 8,
+        "type": "agent.log",
+        "fromAgent": "clara",
+        "toAgent": null,
+        "title": "matched 2 knowledge documents",
+        "body": null,
+        "level": "info",
+        "taskId": "TASK-ab6c6c74",
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.547Z"
+      },
+      {
+        "id": "act_mtxc8jh7004o949909c2",
+        "ticketId": "PRO-1245",
+        "runId": "run_mtxc8jh6004hf334bfef",
+        "seq": 9,
+        "type": "agent.log",
+        "fromAgent": "clara",
+        "toAgent": null,
+        "title": "read billing-config.md#gst",
+        "body": null,
+        "level": "info",
+        "taskId": "TASK-ab6c6c74",
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.547Z"
+      },
+      {
+        "id": "act_mtxc8jh7004p6dcf7372",
+        "ticketId": "PRO-1245",
+        "runId": "run_mtxc8jh6004hf334bfef",
+        "seq": 10,
+        "type": "agent.log",
+        "fromAgent": "clara",
+        "toAgent": null,
+        "title": "read tenant settings v1.4",
+        "body": null,
+        "level": "info",
+        "taskId": "TASK-ab6c6c74",
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.547Z"
+      },
+      {
+        "id": "act_mtxc8jh7004qdc64c23f",
+        "ticketId": "PRO-1245",
+        "runId": "run_mtxc8jh6004hf334bfef",
+        "seq": 11,
+        "type": "a2a.response",
+        "fromAgent": "clara",
+        "toAgent": "brain",
+        "title": "Expected GST 18%, discount 10%, formula base − discount + gst",
+        "body": "The tenant is configured correctly for intra-state GST at 18%. The billed rate does not match the configured rate, so this is a product defect rather than a tenant misconfiguration.",
+        "level": "success",
+        "taskId": "TASK-ab6c6c74",
+        "durationMs": 820,
+        "createdAt": "2026-09-11T19:17:15.547Z"
+      },
+      {
+        "id": "act_mtxc8jh7004r65ebc8e0",
+        "ticketId": "PRO-1245",
+        "runId": "run_mtxc8jh6004hf334bfef",
+        "seq": 12,
+        "type": "run.state",
+        "fromAgent": "brain",
+        "toAgent": null,
+        "title": "Deciding",
+        "body": null,
+        "level": "info",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.547Z"
+      },
+      {
+        "id": "act_mtxc8jh7004s1d572127",
+        "ticketId": "PRO-1245",
+        "runId": "run_mtxc8jh6004hf334bfef",
+        "seq": 13,
+        "type": "brain.thought",
+        "fromAgent": "brain",
+        "toAgent": null,
+        "title": "Decision: this is a code fix, not a configuration change",
+        "body": "The tenant is configured correctly and the defect is in product behaviour, so I am routing to engineering. If the configuration had been wrong I would have stopped here and drafted a remediation instead.",
+        "level": "info",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.547Z"
+      },
+      {
+        "id": "act_mtxc8jh7004ta9d9a74a",
+        "ticketId": "PRO-1245",
+        "runId": "run_mtxc8jh6004hf334bfef",
+        "seq": 14,
+        "type": "run.state",
+        "fromAgent": "brain",
+        "toAgent": null,
+        "title": "Investigating the code",
+        "body": null,
+        "level": "info",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.547Z"
+      },
+      {
+        "id": "act_mtxc8jh7004ud028e9ec",
+        "ticketId": "PRO-1245",
+        "runId": "run_mtxc8jh6004hf334bfef",
+        "seq": 15,
+        "type": "a2a.request",
+        "fromAgent": "brain",
+        "toAgent": "dev-agent",
+        "title": "Trace the defect and open a pull request",
+        "body": "{\n  \"taskId\": \"TASK-501eab77\",\n  \"from\": \"brain\",\n  \"to\": \"dev-agent\",\n  \"type\": \"INVESTIGATE_BUG\",\n  \"context\": {\n    \"ticketId\": \"PRO-1245\",\n    \"issue\": \"Invoice GST calculation incorrect\",\n    \"productContext\": {\n      \"summary\": \"Expected GST 18%, discount 10%, formula base − discount + gst\",\n      \"detail\": [\n        \"The tenant is configured correctly for intra-state GST at 18%. The billed rate does not match the configured rate, so this is a product defect rather than a tenant misconfiguration.\"\n      ],\n      \"customer\": \"ABC Corp\",\n      \"citations\": [\n        \"billing-config.md#gst\"\n      ],\n      \"expectedGst\": 18,\n      \"discount\": 10,\n      \"formula\": \"base - discount + gst\",\n      \"configNotes\": \"Tenant configured for intra-state GST at 18%.\",\n      \"isProductDefect\": true,\n      \"remediation\": null\n    },\n    \"playbookId\": \"invoice-tax\"\n  }\n}",
+        "level": "info",
+        "taskId": "TASK-501eab77",
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.547Z"
+      },
+      {
+        "id": "act_mtxc8jh9004v20f44114",
+        "ticketId": "PRO-1245",
+        "runId": "run_mtxc8jh6004hf334bfef",
+        "seq": 16,
+        "type": "agent.log",
+        "fromAgent": "dev-agent",
+        "toAgent": null,
+        "title": "indexed 3 files in src/billing",
+        "body": null,
+        "level": "info",
+        "taskId": "TASK-501eab77",
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.549Z"
+      },
+      {
+        "id": "act_mtxc8jh9004wb9d09448",
+        "ticketId": "PRO-1245",
+        "runId": "run_mtxc8jh6004hf334bfef",
+        "seq": 17,
+        "type": "agent.log",
+        "fromAgent": "dev-agent",
+        "toAgent": null,
+        "title": "located calculateInvoice() in invoiceCalculator.js:7",
+        "body": null,
+        "level": "info",
+        "taskId": "TASK-501eab77",
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.549Z"
+      },
+      {
+        "id": "act_mtxc8jh9004x889f2f5a",
+        "ticketId": "PRO-1245",
+        "runId": "run_mtxc8jh6004hf334bfef",
+        "seq": 18,
+        "type": "agent.log",
+        "fromAgent": "dev-agent",
+        "toAgent": null,
+        "title": "confirmed customerConfig.js holds gstPercent: 18 for this tenant",
+        "body": null,
+        "level": "info",
+        "taskId": "TASK-501eab77",
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.549Z"
+      },
+      {
+        "id": "act_mtxc8jh9004y643de988",
+        "ticketId": "PRO-1245",
+        "runId": "run_mtxc8jh6004hf334bfef",
+        "seq": 19,
+        "type": "agent.log",
+        "fromAgent": "dev-agent",
+        "toAgent": null,
+        "title": "opened PR #452 against main",
+        "body": null,
+        "level": "info",
+        "taskId": "TASK-501eab77",
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.549Z"
+      },
+      {
+        "id": "act_mtxc8jh9004z977f6c0b",
+        "ticketId": "PRO-1245",
+        "runId": "run_mtxc8jh6004hf334bfef",
+        "seq": 20,
+        "type": "a2a.response",
+        "fromAgent": "dev-agent",
+        "toAgent": "brain",
+        "title": "Root cause: tenant context never reaches the GST calculator",
+        "body": "calculateInvoice() reads the module-level DEFAULT_GST_RATE constant instead of the tenant’s configured rate, so every tenant is billed at the 12% default regardless of their settings.",
+        "level": "success",
+        "taskId": "TASK-501eab77",
+        "durationMs": 4180,
+        "createdAt": "2026-09-11T19:17:15.549Z"
+      },
+      {
+        "id": "act_mtxc8jh90050123f4c2c",
+        "ticketId": "PRO-1245",
+        "runId": "run_mtxc8jh6004hf334bfef",
+        "seq": 21,
+        "type": "artifact.created",
+        "fromAgent": "dev-agent",
+        "toAgent": null,
+        "title": "Root cause recorded",
+        "body": null,
+        "level": "success",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.549Z"
+      },
+      {
+        "id": "act_mtxc8jh900518e501597",
+        "ticketId": "PRO-1245",
+        "runId": "run_mtxc8jh6004hf334bfef",
+        "seq": 22,
+        "type": "artifact.created",
+        "fromAgent": "dev-agent",
+        "toAgent": null,
+        "title": "PR #452 recorded",
+        "body": null,
+        "level": "success",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.549Z"
+      },
+      {
+        "id": "act_mtxc8jh9005262706b4b",
+        "ticketId": "PRO-1245",
+        "runId": "run_mtxc8jh6004hf334bfef",
+        "seq": 23,
+        "type": "run.state",
+        "fromAgent": "brain",
+        "toAgent": null,
+        "title": "Running the suite",
+        "body": null,
+        "level": "info",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.549Z"
+      },
+      {
+        "id": "act_mtxc8jh90053ba868f8b",
+        "ticketId": "PRO-1245",
+        "runId": "run_mtxc8jh6004hf334bfef",
+        "seq": 24,
+        "type": "a2a.request",
+        "fromAgent": "brain",
+        "toAgent": "qa-agent",
+        "title": "Validate the fix against the regression suite",
+        "body": "{\n  \"taskId\": \"TASK-a1d8fa29\",\n  \"from\": \"brain\",\n  \"to\": \"qa-agent\",\n  \"type\": \"VALIDATE_FIX\",\n  \"context\": {\n    \"ticketId\": \"PRO-1245\",\n    \"playbookId\": \"invoice-tax\"\n  }\n}",
+        "level": "info",
+        "taskId": "TASK-a1d8fa29",
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.549Z"
+      },
+      {
+        "id": "act_mtxc8jh90054d8768bc2",
+        "ticketId": "PRO-1245",
+        "runId": "run_mtxc8jh6004hf334bfef",
+        "seq": 25,
+        "type": "agent.log",
+        "fromAgent": "qa-agent",
+        "toAgent": null,
+        "title": "checked out fix/gst-tenant-rate",
+        "body": null,
+        "level": "info",
+        "taskId": "TASK-a1d8fa29",
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.549Z"
+      },
+      {
+        "id": "act_mtxc8jh900557c6f7e0a",
+        "ticketId": "PRO-1245",
+        "runId": "run_mtxc8jh6004hf334bfef",
+        "seq": 26,
+        "type": "agent.log",
+        "fromAgent": "qa-agent",
+        "toAgent": null,
+        "title": "ran 47 assertions across 3 suites",
+        "body": null,
+        "level": "info",
+        "taskId": "TASK-a1d8fa29",
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.549Z"
+      },
+      {
+        "id": "act_mtxc8jh900562ed02a5f",
+        "ticketId": "PRO-1245",
+        "runId": "run_mtxc8jh6004hf334bfef",
+        "seq": 27,
+        "type": "agent.log",
+        "fromAgent": "qa-agent",
+        "toAgent": null,
+        "title": "no regressions in discount or rounding",
+        "body": null,
+        "level": "info",
+        "taskId": "TASK-a1d8fa29",
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.549Z"
+      },
+      {
+        "id": "act_mtxc8jh900570d15bfc1",
+        "ticketId": "PRO-1245",
+        "runId": "run_mtxc8jh6004hf334bfef",
+        "seq": 28,
+        "type": "a2a.response",
+        "fromAgent": "qa-agent",
+        "toAgent": "brain",
+        "title": "47 of 47 tests passed",
+        "body": "The invoice, tax and discount suites all pass against the patched branch.",
+        "level": "success",
+        "taskId": "TASK-a1d8fa29",
+        "durationMs": 1830,
+        "createdAt": "2026-09-11T19:17:15.549Z"
+      },
+      {
+        "id": "act_mtxc8jh90058a0a70d15",
+        "ticketId": "PRO-1245",
+        "runId": "run_mtxc8jh6004hf334bfef",
+        "seq": 29,
+        "type": "artifact.created",
+        "fromAgent": "qa-agent",
+        "toAgent": null,
+        "title": "Test results recorded",
+        "body": null,
+        "level": "success",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.549Z"
+      },
+      {
+        "id": "act_mtxc8jha0059fff793f4",
+        "ticketId": "PRO-1245",
+        "runId": "run_mtxc8jh6004hf334bfef",
+        "seq": 30,
+        "type": "brain.thought",
+        "fromAgent": "lens",
+        "toAgent": null,
+        "title": "14 tenants and 312 invoices carry the same defect",
+        "body": "Every tenant whose configured GST rate differs from the default has been billed at 12% since 2 March. A support tool would have closed this ticket; the other thirteen customers would have found out on their own.",
+        "level": "warn",
+        "taskId": null,
+        "durationMs": 760,
+        "createdAt": "2026-09-11T19:17:15.550Z"
+      },
+      {
+        "id": "act_mtxc8jha005aa443fe28",
+        "ticketId": "PRO-1245",
+        "runId": "run_mtxc8jh6004hf334bfef",
+        "seq": 31,
+        "type": "artifact.created",
+        "fromAgent": "lens",
+        "toAgent": null,
+        "title": "Blast radius recorded",
+        "body": null,
+        "level": "warn",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.550Z"
+      },
+      {
+        "id": "act_mtxc8jha005bd2bc02b3",
+        "ticketId": "PRO-1245",
+        "runId": "run_mtxc8jh6004hf334bfef",
+        "seq": 32,
+        "type": "artifact.created",
+        "fromAgent": "brain",
+        "toAgent": null,
+        "title": "Customer reply recorded",
+        "body": null,
+        "level": "success",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.550Z"
+      },
+      {
+        "id": "act_mtxc8jha005ca4bde27b",
+        "ticketId": "PRO-1245",
+        "runId": "run_mtxc8jh6004hf334bfef",
+        "seq": 33,
+        "type": "run.awaiting_approval",
+        "fromAgent": "brain",
+        "toAgent": null,
+        "title": "Stopping for human approval",
+        "body": "Code changes to billing always require human approval. I have a root cause, a pull request, a passing suite and a blast radius — the decision is yours.",
+        "level": "warn",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.550Z"
+      }
+    ]
+  },
+  "GET /tickets/PRO-1242": {
+    "ticket": {
+      "id": "PRO-1242",
+      "customer": "Detected by monitoring",
+      "title": "PO approval webhook failing",
+      "description": "143 PO approval webhook deliveries failed across 6 tenants since 02:14. No customer has reported it yet.",
+      "channel": "signal",
+      "priority": "CRITICAL",
+      "status": "NEW",
+      "category": null,
+      "processKey": null,
+      "createdAt": "2026-09-11T19:17:15.554Z",
+      "updatedAt": "2026-09-11T19:17:15.554Z",
+      "categoryLabel": "Uncategorised",
+      "workspaceId": "procol",
+      "reportedBy": "Monitoring",
+      "impact": "Not yet assessed",
+      "issueQuote": [
+        "143 PO approval webhook deliveries failed across 6 tenants since 02:14. No customer has reported it yet."
+      ]
+    },
+    "run": null,
+    "artifacts": [],
+    "insight": null
+  },
+  "GET /tickets/PRO-1242/activities": {
+    "data": [
+      {
+        "id": "act_mtxc8jhe006d35f0a4e2",
+        "ticketId": "PRO-1242",
+        "runId": null,
+        "seq": 1,
+        "type": "ticket.created",
+        "fromAgent": "customer",
+        "toAgent": null,
+        "title": "PRO-1242 raised via a monitoring signal",
+        "body": "143 PO approval webhook deliveries failed across 6 tenants since 02:14. No customer has reported it yet.",
+        "level": "info",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.554Z"
+      },
+      {
+        "id": "act_mtxc8jhe006e69df5533",
+        "ticketId": "PRO-1242",
+        "runId": null,
+        "seq": 2,
+        "type": "brain.thought",
+        "fromAgent": "brain",
+        "toAgent": null,
+        "title": "I do not recognise this symptom",
+        "body": "Nothing in this control tower matches these symptoms, so I am working from the customer’s description alone and will say plainly what I am unsure about.",
+        "level": "warn",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.554Z"
+      }
+    ]
+  },
+  "GET /tickets/PRO-1251": {
+    "ticket": {
+      "id": "PRO-1251",
+      "customer": "Kanti Metals",
+      "title": "How do I extend an auction deadline?",
+      "description": "How do I extend an auction deadline once it is already live?",
+      "channel": "portal",
+      "priority": "LOW",
+      "status": "RESOLVED",
+      "category": "QUESTION",
+      "processKey": null,
+      "createdAt": "2026-09-11T19:17:15.552Z",
+      "updatedAt": "2026-09-11T19:17:15.554Z",
+      "categoryLabel": "How-to",
+      "workspaceId": "procol",
+      "reportedBy": "Buyer",
+      "impact": "One user",
+      "issueQuote": [
+        "How do I extend an auction deadline once it is already live?"
+      ],
+      "currentAgentAction": "Closed"
+    },
+    "run": {
+      "id": "run_mtxc8jhc005xfc724e36",
+      "ticketId": "PRO-1251",
+      "state": "RESOLVED",
+      "path": "ANSWER_ONLY",
+      "attempt": 1,
+      "summary": "Extending an auction deadline",
+      "policyReason": null,
+      "startedAt": "2026-09-11T19:17:15.552Z",
+      "endedAt": "2026-09-11T19:17:15.554Z"
+    },
+    "artifacts": [
+      {
+        "id": "PRO-1251-customer_reply",
+        "ticketId": "PRO-1251",
+        "kind": "CUSTOMER_REPLY",
+        "title": "Customer reply",
+        "data": {
+          "subject": "Extending an auction deadline — PRO-1251",
+          "body": "Hi Kanti Metals,\n\nYou can extend a live auction from Sourcing → Auctions: open the auction, choose Extend on the header, and set the new closing time.\n\nParticipants are notified automatically, and the change is recorded on the auction’s audit trail. An auction that has already closed cannot be extended — clone it into a new round instead.",
+          "sentTo": "kanti.metals@example.com"
+        },
+        "createdAt": "2026-09-11T19:17:15.554Z",
+        "createdBy": "brain"
+      }
+    ],
+    "insight": null
+  },
+  "GET /tickets/PRO-1251/activities": {
+    "data": [
+      {
+        "id": "act_mtxc8jhc005vc5440ada",
+        "ticketId": "PRO-1251",
+        "runId": null,
+        "seq": 1,
+        "type": "ticket.created",
+        "fromAgent": "customer",
+        "toAgent": null,
+        "title": "PRO-1251 raised via the customer portal",
+        "body": "How do I extend an auction deadline once it is already live?",
+        "level": "info",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.552Z"
+      },
+      {
+        "id": "act_mtxc8jhc005w0b47af94",
+        "ticketId": "PRO-1251",
+        "runId": null,
+        "seq": 2,
+        "type": "brain.thought",
+        "fromAgent": "brain",
+        "toAgent": null,
+        "title": "Recognised as “How do I extend an auction deadline?”",
+        "body": "Matched on how do i, extend, deadline, auction with 75% confidence. I will confirm it against product context before acting on it.",
+        "level": "info",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.552Z"
+      },
+      {
+        "id": "act_mtxc8jhc005y1f775503",
+        "ticketId": "PRO-1251",
+        "runId": "run_mtxc8jhc005xfc724e36",
+        "seq": 3,
+        "type": "run.started",
+        "fromAgent": "brain",
+        "toAgent": null,
+        "title": "Investigation started",
+        "body": "This reads as a question rather than a defect. I am going to check the documentation before I wake anybody up.",
+        "level": "info",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.552Z"
+      },
+      {
+        "id": "act_mtxc8jhc005zc2e4f6ed",
+        "ticketId": "PRO-1251",
+        "runId": "run_mtxc8jhc005xfc724e36",
+        "seq": 4,
+        "type": "run.state",
+        "fromAgent": "brain",
+        "toAgent": null,
+        "title": "Classifying",
+        "body": null,
+        "level": "info",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.552Z"
+      },
+      {
+        "id": "act_mtxc8jhc006077674c67",
+        "ticketId": "PRO-1251",
+        "runId": "run_mtxc8jhc005xfc724e36",
+        "seq": 5,
+        "type": "brain.thought",
+        "fromAgent": "brain",
+        "toAgent": null,
+        "title": "Looking for an agent that can answer product questions",
+        "body": "Asking whoever declares document_search in this workspace.",
+        "level": "info",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.552Z"
+      },
+      {
+        "id": "act_mtxc8jhc006125ea8c18",
+        "ticketId": "PRO-1251",
+        "runId": "run_mtxc8jhc005xfc724e36",
+        "seq": 6,
+        "type": "run.state",
+        "fromAgent": "brain",
+        "toAgent": null,
+        "title": "Fetching product context",
+        "body": null,
+        "level": "info",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.552Z"
+      },
+      {
+        "id": "act_mtxc8jhc0062c9520df7",
+        "ticketId": "PRO-1251",
+        "runId": "run_mtxc8jhc005xfc724e36",
+        "seq": 7,
+        "type": "a2a.request",
+        "fromAgent": "brain",
+        "toAgent": "clara",
+        "title": "How is an auction deadline extended?",
+        "body": "{\n  \"taskId\": \"TASK-9d941261\",\n  \"from\": \"brain\",\n  \"to\": \"clara\",\n  \"type\": \"GET_PRODUCT_CONTEXT\",\n  \"context\": {\n    \"ticketId\": \"PRO-1251\",\n    \"customer\": \"Kanti Metals\",\n    \"issue\": \"How do I extend an auction deadline?\",\n    \"message\": \"How do I extend an auction deadline once it is already live?\",\n    \"playbookId\": \"auction-howto\"\n  }\n}",
+        "level": "info",
+        "taskId": "TASK-9d941261",
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.552Z"
+      },
+      {
+        "id": "act_mtxc8jhe00632c3d9359",
+        "ticketId": "PRO-1251",
+        "runId": "run_mtxc8jhc005xfc724e36",
+        "seq": 8,
+        "type": "agent.log",
+        "fromAgent": "clara",
+        "toAgent": null,
+        "title": "matched 1 knowledge document",
+        "body": null,
+        "level": "info",
+        "taskId": "TASK-9d941261",
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.554Z"
+      },
+      {
+        "id": "act_mtxc8jhe0064a865e7c9",
+        "ticketId": "PRO-1251",
+        "runId": "run_mtxc8jhc005xfc724e36",
+        "seq": 9,
+        "type": "agent.log",
+        "fromAgent": "clara",
+        "toAgent": null,
+        "title": "read auctions.md#extending-a-live-auction",
+        "body": null,
+        "level": "info",
+        "taskId": "TASK-9d941261",
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.554Z"
+      },
+      {
+        "id": "act_mtxc8jhe0065d051d6ba",
+        "ticketId": "PRO-1251",
+        "runId": "run_mtxc8jhc005xfc724e36",
+        "seq": 10,
+        "type": "a2a.response",
+        "fromAgent": "clara",
+        "toAgent": "brain",
+        "title": "An auction can be extended until it closes, from the auction header",
+        "body": "A live auction’s closing time can be changed by the buyer who created it, up until the moment it closes. Participants are notified automatically and the extension is recorded on the auction’s audit trail.",
+        "level": "success",
+        "taskId": "TASK-9d941261",
+        "durationMs": 610,
+        "createdAt": "2026-09-11T19:17:15.554Z"
+      },
+      {
+        "id": "act_mtxc8jhe0066a9678c12",
+        "ticketId": "PRO-1251",
+        "runId": "run_mtxc8jhc005xfc724e36",
+        "seq": 11,
+        "type": "run.state",
+        "fromAgent": "brain",
+        "toAgent": null,
+        "title": "Deciding",
+        "body": null,
+        "level": "info",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.554Z"
+      },
+      {
+        "id": "act_mtxc8jhe00673dde299a",
+        "ticketId": "PRO-1251",
+        "runId": "run_mtxc8jhc005xfc724e36",
+        "seq": 12,
+        "type": "brain.thought",
+        "fromAgent": "brain",
+        "toAgent": null,
+        "title": "Decision: this needs an answer, not a change",
+        "body": "The customer needs information, not a change. No code, no configuration, no approval gate — I am answering and closing. Waking three agents for this would be theatre.",
+        "level": "info",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.554Z"
+      },
+      {
+        "id": "act_mtxc8jhe0068480aebcf",
+        "ticketId": "PRO-1251",
+        "runId": "run_mtxc8jhc005xfc724e36",
+        "seq": 13,
+        "type": "run.state",
+        "fromAgent": "brain",
+        "toAgent": null,
+        "title": "Drafting the answer",
+        "body": null,
+        "level": "info",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.554Z"
+      },
+      {
+        "id": "act_mtxc8jhe006959484231",
+        "ticketId": "PRO-1251",
+        "runId": "run_mtxc8jhc005xfc724e36",
+        "seq": 14,
+        "type": "brain.thought",
+        "fromAgent": "brain",
+        "toAgent": null,
+        "title": "Open the auction, choose Extend, and set the new closing time.",
+        "body": "Open the auction from Sourcing → Auctions, choose Extend on the auction header, and set the new closing time. It can be extended any number of times while the auction is still live. Every participant is emailed the new deadline automatically, and the change is recorded on the auction’s audit trail with your name against it. Once an auction has closed it cannot be extended — you would need to clone it into a new round instead.",
+        "level": "success",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.554Z"
+      },
+      {
+        "id": "act_mtxc8jhe006a2c447c5d",
+        "ticketId": "PRO-1251",
+        "runId": "run_mtxc8jhc005xfc724e36",
+        "seq": 15,
+        "type": "artifact.created",
+        "fromAgent": "brain",
+        "toAgent": null,
+        "title": "Customer reply recorded",
+        "body": null,
+        "level": "success",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.554Z"
+      },
+      {
+        "id": "act_mtxc8jhe006b739e0239",
+        "ticketId": "PRO-1251",
+        "runId": "run_mtxc8jhc005xfc724e36",
+        "seq": 16,
+        "type": "run.state",
+        "fromAgent": "brain",
+        "toAgent": null,
+        "title": "Customer notified — Extending an auction deadline — PRO-1251",
+        "body": "Sent to kanti.metals@example.com. The reply drafted at the gate has gone out unchanged.",
+        "level": "success",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.554Z"
+      },
+      {
+        "id": "act_mtxc8jhe006cbd8c02b6",
+        "ticketId": "PRO-1251",
+        "runId": "run_mtxc8jhc005xfc724e36",
+        "seq": 17,
+        "type": "run.completed",
+        "fromAgent": "brain",
+        "toAgent": null,
+        "title": "Ticket closed, and what we learned is kept",
+        "body": "Nothing was changed in the product or the tenant’s configuration, so there is nothing for a person to approve. The answer has gone to the customer.",
+        "level": "success",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.554Z"
+      }
+    ]
+  },
+  "GET /stats?workspace=acmecloud": {
+    "active": 2,
+    "aiWorking": 0,
+    "needsApproval": 1,
+    "resolvedToday": 1,
+    "avgResolutionMins": 34
+  },
+  "GET /agents?workspace=acmecloud": {
+    "data": [
+      {
+        "id": "brain",
+        "name": "Procol Brain",
+        "kind": "ops",
+        "baseUrl": "",
+        "protocol": "A2A",
+        "status": "ONLINE",
+        "capabilities": [
+          "classify_ticket",
+          "route_capability",
+          "draft_reply",
+          "summarise_resolution"
+        ],
+        "tools": [],
+        "description": "Identical to the Procol deployment. It routes by declared capability, so it never needed to know that this company has no Clara.",
+        "lastSeenAt": "2026-09-11T19:16:51.433Z",
+        "tasksToday": 0,
+        "role": "orchestrator",
+        "ownership": "procol"
+      },
+      {
+        "id": "acme-knowledge",
+        "name": "Company Knowledge Agent",
+        "kind": "knowledge",
+        "baseUrl": "http://127.0.0.1:4000/agents/acme-knowledge",
+        "protocol": "A2A",
+        "status": "ONLINE",
+        "capabilities": [
+          "product_knowledge",
+          "customer_context",
+          "document_search",
+          "incident_history"
+        ],
+        "tools": [
+          {
+            "name": "Internal documentation",
+            "via": "MCP"
+          },
+          {
+            "name": "Incident history",
+            "via": "CONNECTOR"
+          }
+        ],
+        "description": "Runs inside AcmeCloud. Serves internal documentation, API references, runbooks and previous incidents. Brain reaches it over A2A exactly as it reaches Clara.",
+        "lastSeenAt": "2026-09-11T19:16:51.433Z",
+        "tasksToday": 2,
+        "role": "knowledge",
+        "ownership": "customer"
+      },
+      {
+        "id": "dev-agent",
+        "name": "Development Agent",
+        "kind": "engineering",
+        "baseUrl": "http://127.0.0.1:4000/agents/dev-agent",
+        "protocol": "A2A",
+        "status": "ONLINE",
+        "capabilities": [
+          "bug_analysis",
+          "code_fix",
+          "create_pr"
+        ],
+        "tools": [
+          {
+            "name": "GitHub",
+            "via": "MCP"
+          }
+        ],
+        "description": "Same agent, pointed at AcmeCloud’s repository through their own code host credentials.",
+        "lastSeenAt": "2026-09-11T19:16:51.433Z",
+        "tasksToday": 2,
+        "role": "engineering",
+        "ownership": "procol"
+      },
+      {
+        "id": "qa-agent",
+        "name": "QA Agent",
+        "kind": "validation",
+        "baseUrl": "http://127.0.0.1:4000/agents/qa-agent",
+        "protocol": "A2A",
+        "status": "ONLINE",
+        "capabilities": [
+          "run_tests",
+          "validate_fix"
+        ],
+        "tools": [
+          {
+            "name": "Test runner",
+            "via": "MCP"
+          }
+        ],
+        "description": "Executes the customer’s own test suite against the patched branch.",
+        "lastSeenAt": "2026-09-11T19:16:51.433Z",
+        "tasksToday": 2,
+        "role": "validation",
+        "ownership": "procol"
+      },
+      {
+        "id": "human-approver",
+        "name": "Human approver",
+        "kind": "ops",
+        "baseUrl": "",
+        "protocol": "A2A",
+        "status": "ONLINE",
+        "capabilities": [
+          "approve_fix",
+          "reject_fix"
+        ],
+        "tools": [],
+        "description": "Production changes stop here. The policy that required the stop is shown above the button.",
+        "lastSeenAt": "2026-09-11T19:16:51.433Z",
+        "tasksToday": 0,
+        "role": "approval",
+        "ownership": "customer"
+      }
+    ]
+  },
+  "GET /connectors?workspace=acmecloud": {
+    "data": [
+      {
+        "id": "incident-db",
+        "kind": "database",
+        "capabilities": [
+          "describe_schema",
+          "query"
+        ],
+        "health": {
+          "ok": true,
+          "latencyMs": 41
+        },
+        "name": "Incident history",
+        "dataMode": "query-in-place"
+      },
+      {
+        "id": "github",
+        "kind": "saas-api",
+        "capabilities": [
+          "read_file",
+          "create_branch",
+          "commit",
+          "create_pr"
+        ],
+        "health": {
+          "ok": true,
+          "latencyMs": 186
+        },
+        "name": "GitHub",
+        "dataMode": "query-in-place"
+      },
+      {
+        "id": "confluence",
+        "kind": "saas-api",
+        "capabilities": [
+          "search_docs"
+        ],
+        "health": {
+          "ok": true,
+          "latencyMs": 320
+        },
+        "name": "Internal documentation",
+        "dataMode": "metadata-only"
+      }
+    ]
+  },
+  "GET /memory?workspace=acmecloud": {
+    "data": [
+      {
+        "title": "Webhook deliveries abandoned when the retry budget is below endpoint latency",
+        "symptom": "Events stop arriving at a customer endpoint with no error reported to them",
+        "rootCause": "The per-tenant retry budget was shorter than the endpoint’s p99 response time, so healthy deliveries were abandoned.",
+        "resolution": "Raise the tenant’s retry budget and alert on the abandon rate. No code change required.",
+        "tags": [
+          "webhook",
+          "retry",
+          "delivery",
+          "integration",
+          "timeout",
+          "events"
+        ],
+        "minutesSavedPerReuse": 90,
+        "relatedKnowledgeIds": [],
+        "id": "mem-webhook-retry",
+        "workspaceId": "acmecloud",
+        "sourceTicketRef": "ACME-7804",
+        "path": "CONFIG_FIX",
+        "reuseCount": 0,
+        "learnedAt": "2026-09-11"
+      },
+      {
+        "id": "mem-acme-7612",
+        "workspaceId": "acmecloud",
+        "sourceTicketRef": "ACME-7612",
+        "title": "Webhook deliveries dropped after a retry budget change",
+        "symptom": "Downstream systems stop receiving events without any error surfacing to the customer",
+        "rootCause": "The retry budget was reduced below the p99 downstream latency, so slow endpoints were abandoned.",
+        "resolution": "Restore the retry budget and alert when the abandon rate crosses 1%.",
+        "path": "CONFIG_FIX",
+        "tags": [
+          "webhook",
+          "retry",
+          "integration",
+          "delivery"
+        ],
+        "reuseCount": 2,
+        "minutesSavedPerReuse": 90,
+        "learnedAt": "2026-05-08",
+        "relatedKnowledgeIds": []
+      },
+      {
+        "id": "mem-acme-inc-382",
+        "workspaceId": "acmecloud",
+        "sourceTicketRef": "INC-382",
+        "title": "Tenant-wide 401s traced to an environment variable drift",
+        "symptom": "All users rejected at login shortly after a release",
+        "rootCause": "A deployment changed an authentication environment variable and nothing asserted the value at boot.",
+        "resolution": "Restore the value and add a boot-time assertion so the service refuses to start on a mismatch.",
+        "path": "CODE_FIX",
+        "tags": [
+          "401",
+          "auth",
+          "jwt",
+          "deployment",
+          "environment",
+          "login"
+        ],
+        "reuseCount": 1,
+        "minutesSavedPerReuse": 240,
+        "learnedAt": "2026-01-19",
+        "relatedKnowledgeIds": [
+          "auth-runbook",
+          "incident-inc-382"
+        ]
+      }
+    ]
+  },
+  "GET /knowledge?workspace=acmecloud": {
+    "data": [
+      {
+        "id": "auth-runbook",
+        "workspaceId": "acmecloud",
+        "title": "Authentication service runbook",
+        "description": "Token issuance, validation and the failure modes that produce 401s",
+        "type": "Runbook",
+        "version": "v4.2",
+        "updatedAt": "10 Sep 2026",
+        "usedBy": [
+          "acme-knowledge",
+          "dev-agent",
+          "qa-agent"
+        ],
+        "content": [
+          {
+            "heading": "Token validation",
+            "bullets": [
+              "Tokens are minted by the auth service with issuer auth.acmecloud.com",
+              "Every service validates the issuer strictly against JWT_ISSUER",
+              "A mismatch returns 401 for every request, including admin sessions",
+              "JWT_ISSUER is set per environment in deploy/<env>.yaml"
+            ]
+          },
+          {
+            "heading": "First checks on a tenant-wide 401",
+            "bullets": [
+              "Compare JWT_ISSUER against the last known-good release",
+              "Confirm clock skew is within tolerance",
+              "Check whether the signing key rotated in the same window"
+            ]
+          }
+        ],
+        "relatedTicketRefs": [
+          "ACME-7821",
+          "INC-382"
+        ]
+      },
+      {
+        "id": "incident-inc-382",
+        "workspaceId": "acmecloud",
+        "title": "INC-382 — tenant-wide login failure",
+        "description": "January incident with the same signature as ACME-7821",
+        "type": "Incident",
+        "version": "final",
+        "updatedAt": "19 Jan 2026",
+        "usedBy": [
+          "acme-knowledge"
+        ],
+        "content": [
+          {
+            "heading": "Summary",
+            "bullets": [
+              "All users on all tenants received 401 for 41 minutes",
+              "Cause: an environment variable drift introduced by a release",
+              "Detection: customer report, not monitoring",
+              "Action item: assert authentication configuration at boot (not completed)"
+            ]
+          }
+        ],
+        "relatedTicketRefs": [
+          "INC-382"
+        ]
+      },
+      {
+        "id": "release-notes-0910",
+        "workspaceId": "acmecloud",
+        "title": "Release notes — 2026.09.10",
+        "description": "The deployment that preceded the outage",
+        "type": "Product Doc",
+        "version": "2026.09.10",
+        "updatedAt": "10 Sep 2026",
+        "usedBy": [
+          "acme-knowledge",
+          "dev-agent"
+        ],
+        "content": [
+          {
+            "heading": "Changes",
+            "bullets": [
+              "Consolidated gateway and auth hostnames in the deployment manifest",
+              "Upgraded the token library to 4.1.0",
+              "Enabled structured request logging in production"
+            ]
+          }
+        ],
+        "relatedTicketRefs": [
+          "ACME-7821"
+        ]
+      }
+    ]
+  },
+  "GET /tickets?workspace=acmecloud": {
+    "data": [
+      {
+        "id": "ACME-7821",
+        "customer": "XYZ Corp",
+        "title": "All users receiving 401 Unauthorized after deployment",
+        "description": "Since yesterday’s deployment, all our users are getting 401 Unauthorized when trying to log into AcmeCloud. Nothing changed on our side.",
+        "channel": "portal",
+        "priority": "CRITICAL",
+        "status": "AWAITING_APPROVAL",
+        "category": "BUG",
+        "processKey": null,
+        "createdAt": "2026-09-11T19:17:15.554Z",
+        "updatedAt": "2026-09-11T19:17:15.560Z",
+        "categoryLabel": "Authentication",
+        "workspaceId": "acmecloud",
+        "reportedBy": "Priya Raman · IT Operations",
+        "impact": "All users on the tenant — complete login outage",
+        "issueQuote": [
+          "Since yesterday’s deployment, all our users are getting 401 Unauthorized when trying to log into AcmeCloud. Nothing changed on our side."
+        ],
+        "currentAgentId": "human-approver",
+        "currentAgentAction": "Waiting for your approval",
+        "run": {
+          "id": "run_mtxc8jhe006he7cf94a9",
+          "state": "AWAITING_APPROVAL",
+          "path": "CODE_FIX",
+          "attempt": 1,
+          "startedAt": "2026-09-11T19:17:15.554Z"
+        },
+        "stage": {
+          "context": "acme-knowledge",
+          "investigate": "dev-agent",
+          "verify": "qa-agent",
+          "approve": null
+        }
+      },
+      {
+        "id": "ACME-7833",
+        "customer": "XYZ Corp",
+        "title": "CSV export missing the last column",
+        "description": "The CSV export is missing the last column when we download more than 500 rows.",
+        "channel": "portal",
+        "priority": "LOW",
+        "status": "NEW",
+        "category": null,
+        "processKey": null,
+        "createdAt": "2026-09-11T19:17:15.563Z",
+        "updatedAt": "2026-09-11T19:17:15.563Z",
+        "categoryLabel": "Uncategorised",
+        "workspaceId": "acmecloud",
+        "reportedBy": "Reporting team",
+        "impact": "Not yet assessed",
+        "issueQuote": [
+          "The CSV export is missing the last column when we download more than 500 rows."
+        ],
+        "run": null,
+        "stage": {
+          "context": null,
+          "investigate": null,
+          "verify": null,
+          "approve": null
+        }
+      },
+      {
+        "id": "ACME-7804",
+        "customer": "Northwind Ltd",
+        "title": "Webhook deliveries stopped reaching our endpoint",
+        "description": "Our webhook endpoint stopped receiving events for tenant northwind. We are not getting any error, the deliveries just stop.",
+        "channel": "email",
+        "priority": "HIGH",
+        "status": "RESOLVED",
+        "category": "CONFIG",
+        "processKey": null,
+        "createdAt": "2026-09-11T19:17:15.560Z",
+        "updatedAt": "2026-09-11T19:17:15.563Z",
+        "categoryLabel": "Integrations",
+        "workspaceId": "acmecloud",
+        "reportedBy": "Platform team",
+        "impact": "Every event for the affected tenant",
+        "issueQuote": [
+          "Our webhook endpoint stopped receiving events for tenant northwind. We are not getting any error, the deliveries just stop."
+        ],
+        "currentAgentAction": "Closed",
+        "run": {
+          "id": "run_mtxc8jhk007e70451532",
+          "state": "RESOLVED",
+          "path": "CONFIG_FIX",
+          "attempt": 1,
+          "startedAt": "2026-09-11T19:17:15.560Z"
+        },
+        "stage": {
+          "context": "acme-knowledge",
+          "investigate": null,
+          "verify": null,
+          "approve": "human-approver"
+        }
+      }
+    ]
+  },
+  "GET /tickets/ACME-7821": {
+    "ticket": {
+      "id": "ACME-7821",
+      "customer": "XYZ Corp",
+      "title": "All users receiving 401 Unauthorized after deployment",
+      "description": "Since yesterday’s deployment, all our users are getting 401 Unauthorized when trying to log into AcmeCloud. Nothing changed on our side.",
+      "channel": "portal",
+      "priority": "CRITICAL",
+      "status": "AWAITING_APPROVAL",
+      "category": "BUG",
+      "processKey": null,
+      "createdAt": "2026-09-11T19:17:15.554Z",
+      "updatedAt": "2026-09-11T19:17:15.560Z",
+      "categoryLabel": "Authentication",
+      "workspaceId": "acmecloud",
+      "reportedBy": "Priya Raman · IT Operations",
+      "impact": "All users on the tenant — complete login outage",
+      "issueQuote": [
+        "Since yesterday’s deployment, all our users are getting 401 Unauthorized when trying to log into AcmeCloud. Nothing changed on our side."
+      ],
+      "currentAgentId": "human-approver",
+      "currentAgentAction": "Waiting for your approval"
+    },
+    "run": {
+      "id": "run_mtxc8jhe006he7cf94a9",
+      "ticketId": "ACME-7821",
+      "state": "AWAITING_APPROVAL",
+      "path": "CODE_FIX",
+      "attempt": 1,
+      "summary": null,
+      "policyReason": "Changes to authentication in production always require human approval.",
+      "startedAt": "2026-09-11T19:17:15.554Z",
+      "endedAt": null
+    },
+    "artifacts": [
+      {
+        "id": "ACME-7821-root_cause",
+        "ticketId": "ACME-7821",
+        "kind": "ROOT_CAUSE",
+        "title": "Root cause",
+        "data": {
+          "summary": "JWT_ISSUER was changed to the API host during deployment.",
+          "confidence": 0.97,
+          "detail": "Tokens are minted with issuer auth.acmecloud.com, but the deployed auth service validates against api.acmecloud.com. Every token fails the issuer check, so the service returns 401 for every user on every tenant.",
+          "evidence": [
+            "deploy/production.yaml — JWT_ISSUER: api.acmecloud.com",
+            "services/auth/jwt.js:34 — issuer compared strictly against process.env.JWT_ISSUER",
+            "Incident INC-382 (January) — identical signature, identical cause"
+          ]
+        },
+        "createdAt": "2026-09-11T19:17:15.558Z",
+        "createdBy": "dev-agent"
+      },
+      {
+        "id": "ACME-7821-pr",
+        "ticketId": "ACME-7821",
+        "kind": "PR",
+        "title": "PR #892",
+        "data": {
+          "number": 892,
+          "title": "Fix JWT issuer configuration",
+          "url": "https://github.com/acmecloud/platform/pull/892",
+          "branch": "fix/jwt-issuer",
+          "files": [
+            "deploy/production.yaml",
+            "services/auth/jwt.js"
+          ],
+          "additions": 6,
+          "deletions": 2,
+          "patch": "--- a/deploy/production.yaml\n+++ b/deploy/production.yaml\n@@ -18,7 +18,7 @@ services:\n   env:\n-    JWT_ISSUER: api.acmecloud.com\n+    JWT_ISSUER: auth.acmecloud.com\n\n--- a/services/auth/jwt.js\n+++ b/services/auth/jwt.js\n@@ -32,6 +32,7 @@ export function verifyToken(token) {\n+  assertIssuerConfigured(process.env.JWT_ISSUER);\n   const claims = decode(token);",
+          "state": "mock"
+        },
+        "createdAt": "2026-09-11T19:17:15.558Z",
+        "createdBy": "dev-agent"
+      },
+      {
+        "id": "ACME-7821-test_result",
+        "ticketId": "ACME-7821",
+        "kind": "TEST_RESULT",
+        "title": "Test results",
+        "data": {
+          "status": "passed",
+          "suites": [
+            "login",
+            "tokens",
+            "multi-tenant"
+          ],
+          "total": 32,
+          "passed": 32,
+          "failed": 0,
+          "durationMs": 2240,
+          "cases": [
+            "Login",
+            "Logout",
+            "Token refresh",
+            "Invalid token rejected",
+            "Expired token rejected",
+            "Multi-tenant authentication"
+          ],
+          "failures": []
+        },
+        "createdAt": "2026-09-11T19:17:15.560Z",
+        "createdBy": "qa-agent"
+      },
+      {
+        "id": "ACME-7821-customer_reply",
+        "ticketId": "ACME-7821",
+        "kind": "CUSTOMER_REPLY",
+        "title": "Customer reply",
+        "data": {
+          "subject": "Authentication issue resolved — ACME-7821",
+          "body": "Hi XYZ Corp,\n\nWe have identified and fixed the authentication issue that was causing 401 errors after our recent deployment. A configuration value for token validation was pointing at the wrong host, so valid tokens were being rejected.\n\nThe fix has passed our full authentication regression suite and has been approved for deployment.\n\nPlease try logging in again. If you continue to experience any issues, reply to this ticket.",
+          "sentTo": "xyz.corp@example.com"
+        },
+        "createdAt": "2026-09-11T19:17:15.560Z",
+        "createdBy": "brain"
+      }
+    ],
+    "insight": null
+  },
+  "GET /tickets/ACME-7821/activities": {
+    "data": [
+      {
+        "id": "act_mtxc8jhe006f0d88de48",
+        "ticketId": "ACME-7821",
+        "runId": null,
+        "seq": 1,
+        "type": "ticket.created",
+        "fromAgent": "customer",
+        "toAgent": null,
+        "title": "ACME-7821 raised via the customer portal",
+        "body": "Since yesterday’s deployment, all our users are getting 401 Unauthorized when trying to log into AcmeCloud. Nothing changed on our side.",
+        "level": "info",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.554Z"
+      },
+      {
+        "id": "act_mtxc8jhe006g196d8530",
+        "ticketId": "ACME-7821",
+        "runId": null,
+        "seq": 2,
+        "type": "brain.thought",
+        "fromAgent": "brain",
+        "toAgent": null,
+        "title": "Recognised as “All users receiving 401 Unauthorized after deployment”",
+        "body": "Matched on 401, unauthorized, log in, auth with 97% confidence. I will confirm it against product context before acting on it.",
+        "level": "info",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.554Z"
+      },
+      {
+        "id": "act_mtxc8jhe006ib8f64bd6",
+        "ticketId": "ACME-7821",
+        "runId": "run_mtxc8jhe006he7cf94a9",
+        "seq": 3,
+        "type": "run.started",
+        "fromAgent": "brain",
+        "toAgent": null,
+        "title": "Investigation started",
+        "body": "Classified as an authentication failure, critical, tenant-wide. A total login outage that began after a deployment is almost never a customer configuration problem, but I am not going to assume that — I need the deployment history first.",
+        "level": "info",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.554Z"
+      },
+      {
+        "id": "act_mtxc8jhe006ja9b5839c",
+        "ticketId": "ACME-7821",
+        "runId": "run_mtxc8jhe006he7cf94a9",
+        "seq": 4,
+        "type": "run.state",
+        "fromAgent": "brain",
+        "toAgent": null,
+        "title": "Classifying",
+        "body": null,
+        "level": "info",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.554Z"
+      },
+      {
+        "id": "act_mtxc8jhe006k19b076d3",
+        "ticketId": "ACME-7821",
+        "runId": "run_mtxc8jhe006he7cf94a9",
+        "seq": 5,
+        "type": "brain.thought",
+        "fromAgent": "brain",
+        "toAgent": null,
+        "title": "Looking for an agent that can answer product questions",
+        "body": "This workspace has no Clara. It declares an agent with product_knowledge and incident_history — the customer’s own Company Knowledge Agent. I route to the capability, so nothing about this run is different.",
+        "level": "info",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.554Z"
+      },
+      {
+        "id": "act_mtxc8jhe006l29c3e4b1",
+        "ticketId": "ACME-7821",
+        "runId": "run_mtxc8jhe006he7cf94a9",
+        "seq": 6,
+        "type": "run.state",
+        "fromAgent": "brain",
+        "toAgent": null,
+        "title": "Fetching product context",
+        "body": null,
+        "level": "info",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.554Z"
+      },
+      {
+        "id": "act_mtxc8jhe006mdfadee1d",
+        "ticketId": "ACME-7821",
+        "runId": "run_mtxc8jhe006he7cf94a9",
+        "seq": 7,
+        "type": "a2a.request",
+        "fromAgent": "brain",
+        "toAgent": "acme-knowledge",
+        "title": "What changed in the last deployment, and have we seen this before?",
+        "body": "{\n  \"taskId\": \"TASK-891bc976\",\n  \"from\": \"brain\",\n  \"to\": \"acme-knowledge\",\n  \"type\": \"GET_PRODUCT_CONTEXT\",\n  \"context\": {\n    \"ticketId\": \"ACME-7821\",\n    \"customer\": \"XYZ Corp\",\n    \"issue\": \"All users receiving 401 Unauthorized after deployment\",\n    \"message\": \"Since yesterday’s deployment, all our users are getting 401 Unauthorized when trying to log into AcmeCloud. Nothing changed on our side.\",\n    \"playbookId\": \"auth-401\"\n  }\n}",
+        "level": "info",
+        "taskId": "TASK-891bc976",
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.554Z"
+      },
+      {
+        "id": "act_mtxc8jhg006n10afcf38",
+        "ticketId": "ACME-7821",
+        "runId": "run_mtxc8jhe006he7cf94a9",
+        "seq": 8,
+        "type": "agent.log",
+        "fromAgent": "acme-knowledge",
+        "toAgent": null,
+        "title": "searched internal documentation — 3 matches",
+        "body": null,
+        "level": "info",
+        "taskId": "TASK-891bc976",
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.556Z"
+      },
+      {
+        "id": "act_mtxc8jhg006o4606b168",
+        "ticketId": "ACME-7821",
+        "runId": "run_mtxc8jhe006he7cf94a9",
+        "seq": 9,
+        "type": "agent.log",
+        "fromAgent": "acme-knowledge",
+        "toAgent": null,
+        "title": "read auth-service runbook §4 (token validation)",
+        "body": null,
+        "level": "info",
+        "taskId": "TASK-891bc976",
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.556Z"
+      },
+      {
+        "id": "act_mtxc8jhg006p52707de2",
+        "ticketId": "ACME-7821",
+        "runId": "run_mtxc8jhe006he7cf94a9",
+        "seq": 10,
+        "type": "agent.log",
+        "fromAgent": "acme-knowledge",
+        "toAgent": null,
+        "title": "read release notes 2026.09.10",
+        "body": null,
+        "level": "info",
+        "taskId": "TASK-891bc976",
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.556Z"
+      },
+      {
+        "id": "act_mtxc8jhg006qe3aa08db",
+        "ticketId": "ACME-7821",
+        "runId": "run_mtxc8jhe006he7cf94a9",
+        "seq": 11,
+        "type": "agent.log",
+        "fromAgent": "acme-knowledge",
+        "toAgent": null,
+        "title": "matched previous incident INC-382",
+        "body": null,
+        "level": "info",
+        "taskId": "TASK-891bc976",
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.556Z"
+      },
+      {
+        "id": "act_mtxc8jhg006r46ceaf9a",
+        "ticketId": "ACME-7821",
+        "runId": "run_mtxc8jhe006he7cf94a9",
+        "seq": 12,
+        "type": "a2a.response",
+        "fromAgent": "acme-knowledge",
+        "toAgent": "brain",
+        "title": "Authentication uses JWT; the last release changed the issuer configuration",
+        "body": "The authentication service validates JWTs against a configured issuer. Release 2026.09.10 altered the JWT_ISSUER environment variable. Incident INC-382 had the same signature in January and was also an issuer mismatch.",
+        "level": "success",
+        "taskId": "TASK-891bc976",
+        "durationMs": 940,
+        "createdAt": "2026-09-11T19:17:15.556Z"
+      },
+      {
+        "id": "act_mtxc8jhg006sba51f51f",
+        "ticketId": "ACME-7821",
+        "runId": "run_mtxc8jhe006he7cf94a9",
+        "seq": 13,
+        "type": "run.state",
+        "fromAgent": "brain",
+        "toAgent": null,
+        "title": "Deciding",
+        "body": null,
+        "level": "info",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.556Z"
+      },
+      {
+        "id": "act_mtxc8jhg006tf533fb7c",
+        "ticketId": "ACME-7821",
+        "runId": "run_mtxc8jhe006he7cf94a9",
+        "seq": 14,
+        "type": "brain.thought",
+        "fromAgent": "brain",
+        "toAgent": null,
+        "title": "Decision: this is a code fix, not a configuration change",
+        "body": "The tenant is configured correctly and the regression came from our own release, so this goes to engineering. Same decision rule as every other workspace.",
+        "level": "info",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.556Z"
+      },
+      {
+        "id": "act_mtxc8jhg006ufe6231c7",
+        "ticketId": "ACME-7821",
+        "runId": "run_mtxc8jhe006he7cf94a9",
+        "seq": 15,
+        "type": "run.state",
+        "fromAgent": "brain",
+        "toAgent": null,
+        "title": "Investigating the code",
+        "body": null,
+        "level": "info",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.556Z"
+      },
+      {
+        "id": "act_mtxc8jhg006v7215503c",
+        "ticketId": "ACME-7821",
+        "runId": "run_mtxc8jhe006he7cf94a9",
+        "seq": 16,
+        "type": "a2a.request",
+        "fromAgent": "brain",
+        "toAgent": "dev-agent",
+        "title": "Trace the defect and open a pull request",
+        "body": "{\n  \"taskId\": \"TASK-5408bb5a\",\n  \"from\": \"brain\",\n  \"to\": \"dev-agent\",\n  \"type\": \"INVESTIGATE_BUG\",\n  \"context\": {\n    \"ticketId\": \"ACME-7821\",\n    \"issue\": \"All users receiving 401 Unauthorized after deployment\",\n    \"productContext\": {\n      \"summary\": \"Authentication uses JWT; the last release changed the issuer configuration\",\n      \"detail\": [\n        \"The authentication service validates JWTs against a configured issuer. Release 2026.09.10 altered the JWT_ISSUER environment variable. Incident INC-382 had the same signature in January and was also an issuer mismatch.\"\n      ],\n      \"customer\": \"XYZ Corp\",\n      \"citations\": [\n        \"auth-service-runbook.md#token-validation\",\n        \"release-notes-2026-09-10.md\"\n      ],\n      \"authMechanism\": \"JWT\",\n      \"expectedIssuer\": \"auth.acmecloud.com\",\n      \"changedIn\": \"release 2026.09.10\",\n      \"isProductDefect\": true,\n      \"priorIncidents\": [\n        \"INC-382\"\n      ]\n    },\n    \"playbookId\": \"auth-401\"\n  }\n}",
+        "level": "info",
+        "taskId": "TASK-5408bb5a",
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.556Z"
+      },
+      {
+        "id": "act_mtxc8jhi006w690cdaa8",
+        "ticketId": "ACME-7821",
+        "runId": "run_mtxc8jhe006he7cf94a9",
+        "seq": 17,
+        "type": "agent.log",
+        "fromAgent": "dev-agent",
+        "toAgent": null,
+        "title": "indexed 4 files in services/auth",
+        "body": null,
+        "level": "info",
+        "taskId": "TASK-5408bb5a",
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.558Z"
+      },
+      {
+        "id": "act_mtxc8jhi006x63f518b3",
+        "ticketId": "ACME-7821",
+        "runId": "run_mtxc8jhe006he7cf94a9",
+        "seq": 18,
+        "type": "agent.log",
+        "fromAgent": "dev-agent",
+        "toAgent": null,
+        "title": "diffed deploy/production.yaml against the previous release",
+        "body": null,
+        "level": "info",
+        "taskId": "TASK-5408bb5a",
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.558Z"
+      },
+      {
+        "id": "act_mtxc8jhi006ye854f5f4",
+        "ticketId": "ACME-7821",
+        "runId": "run_mtxc8jhe006he7cf94a9",
+        "seq": 19,
+        "type": "agent.log",
+        "fromAgent": "dev-agent",
+        "toAgent": null,
+        "title": "located verifyToken() in services/auth/jwt.js:34",
+        "body": null,
+        "level": "info",
+        "taskId": "TASK-5408bb5a",
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.558Z"
+      },
+      {
+        "id": "act_mtxc8jhi006z8d1aa852",
+        "ticketId": "ACME-7821",
+        "runId": "run_mtxc8jhe006he7cf94a9",
+        "seq": 20,
+        "type": "agent.log",
+        "fromAgent": "dev-agent",
+        "toAgent": null,
+        "title": "opened PR #892 against main",
+        "body": null,
+        "level": "info",
+        "taskId": "TASK-5408bb5a",
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.558Z"
+      },
+      {
+        "id": "act_mtxc8jhi00706185f648",
+        "ticketId": "ACME-7821",
+        "runId": "run_mtxc8jhe006he7cf94a9",
+        "seq": 21,
+        "type": "a2a.response",
+        "fromAgent": "dev-agent",
+        "toAgent": "brain",
+        "title": "Root cause: JWT_ISSUER was set to the API host instead of the auth host",
+        "body": "The deployment manifest sets JWT_ISSUER to api.acmecloud.com. Tokens are minted with issuer auth.acmecloud.com, so every token fails the issuer check and the service returns 401 — correctly, against the wrong expectation.",
+        "level": "success",
+        "taskId": "TASK-5408bb5a",
+        "durationMs": 3960,
+        "createdAt": "2026-09-11T19:17:15.558Z"
+      },
+      {
+        "id": "act_mtxc8jhi007168789181",
+        "ticketId": "ACME-7821",
+        "runId": "run_mtxc8jhe006he7cf94a9",
+        "seq": 22,
+        "type": "artifact.created",
+        "fromAgent": "dev-agent",
+        "toAgent": null,
+        "title": "Root cause recorded",
+        "body": null,
+        "level": "success",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.558Z"
+      },
+      {
+        "id": "act_mtxc8jhi0072f34839a9",
+        "ticketId": "ACME-7821",
+        "runId": "run_mtxc8jhe006he7cf94a9",
+        "seq": 23,
+        "type": "artifact.created",
+        "fromAgent": "dev-agent",
+        "toAgent": null,
+        "title": "PR #892 recorded",
+        "body": null,
+        "level": "success",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.558Z"
+      },
+      {
+        "id": "act_mtxc8jhi0073a337f7a1",
+        "ticketId": "ACME-7821",
+        "runId": "run_mtxc8jhe006he7cf94a9",
+        "seq": 24,
+        "type": "run.state",
+        "fromAgent": "brain",
+        "toAgent": null,
+        "title": "Running the suite",
+        "body": null,
+        "level": "info",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.558Z"
+      },
+      {
+        "id": "act_mtxc8jhi00749ecf8f01",
+        "ticketId": "ACME-7821",
+        "runId": "run_mtxc8jhe006he7cf94a9",
+        "seq": 25,
+        "type": "a2a.request",
+        "fromAgent": "brain",
+        "toAgent": "qa-agent",
+        "title": "Validate the fix against the regression suite",
+        "body": "{\n  \"taskId\": \"TASK-cd9b71b3\",\n  \"from\": \"brain\",\n  \"to\": \"qa-agent\",\n  \"type\": \"VALIDATE_FIX\",\n  \"context\": {\n    \"ticketId\": \"ACME-7821\",\n    \"playbookId\": \"auth-401\"\n  }\n}",
+        "level": "info",
+        "taskId": "TASK-cd9b71b3",
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.558Z"
+      },
+      {
+        "id": "act_mtxc8jhk007508986f54",
+        "ticketId": "ACME-7821",
+        "runId": "run_mtxc8jhe006he7cf94a9",
+        "seq": 26,
+        "type": "agent.log",
+        "fromAgent": "qa-agent",
+        "toAgent": null,
+        "title": "checked out fix/jwt-issuer",
+        "body": null,
+        "level": "info",
+        "taskId": "TASK-cd9b71b3",
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.560Z"
+      },
+      {
+        "id": "act_mtxc8jhk00767e09143e",
+        "ticketId": "ACME-7821",
+        "runId": "run_mtxc8jhe006he7cf94a9",
+        "seq": 27,
+        "type": "agent.log",
+        "fromAgent": "qa-agent",
+        "toAgent": null,
+        "title": "ran 32 assertions across 6 suites",
+        "body": null,
+        "level": "info",
+        "taskId": "TASK-cd9b71b3",
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.560Z"
+      },
+      {
+        "id": "act_mtxc8jhk00775de51303",
+        "ticketId": "ACME-7821",
+        "runId": "run_mtxc8jhe006he7cf94a9",
+        "seq": 28,
+        "type": "agent.log",
+        "fromAgent": "qa-agent",
+        "toAgent": null,
+        "title": "verified tokens minted before the fix still validate",
+        "body": null,
+        "level": "info",
+        "taskId": "TASK-cd9b71b3",
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.560Z"
+      },
+      {
+        "id": "act_mtxc8jhk0078b25fca04",
+        "ticketId": "ACME-7821",
+        "runId": "run_mtxc8jhe006he7cf94a9",
+        "seq": 29,
+        "type": "a2a.response",
+        "fromAgent": "qa-agent",
+        "toAgent": "brain",
+        "title": "32 of 32 tests passed",
+        "body": "Login, logout, token refresh, invalid token, expired token and multi-tenant authentication all pass against the patched branch.",
+        "level": "success",
+        "taskId": "TASK-cd9b71b3",
+        "durationMs": 2240,
+        "createdAt": "2026-09-11T19:17:15.560Z"
+      },
+      {
+        "id": "act_mtxc8jhk007912b6a5f1",
+        "ticketId": "ACME-7821",
+        "runId": "run_mtxc8jhe006he7cf94a9",
+        "seq": 30,
+        "type": "artifact.created",
+        "fromAgent": "qa-agent",
+        "toAgent": null,
+        "title": "Test results recorded",
+        "body": null,
+        "level": "success",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.560Z"
+      },
+      {
+        "id": "act_mtxc8jhk007a6f3b7e6c",
+        "ticketId": "ACME-7821",
+        "runId": "run_mtxc8jhe006he7cf94a9",
+        "seq": 31,
+        "type": "artifact.created",
+        "fromAgent": "brain",
+        "toAgent": null,
+        "title": "Customer reply recorded",
+        "body": null,
+        "level": "success",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.560Z"
+      },
+      {
+        "id": "act_mtxc8jhk007bf30f04f9",
+        "ticketId": "ACME-7821",
+        "runId": "run_mtxc8jhe006he7cf94a9",
+        "seq": 32,
+        "type": "run.awaiting_approval",
+        "fromAgent": "brain",
+        "toAgent": null,
+        "title": "Stopping for human approval",
+        "body": "Changes to authentication in production always require human approval. Root cause, pull request and a passing suite are attached — the decision is yours.",
+        "level": "warn",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.560Z"
+      }
+    ]
+  },
+  "POST /memory/search?workspace=acmecloud": {
+    "data": [
+      {
+        "entry": {
+          "title": "Webhook deliveries abandoned when the retry budget is below endpoint latency",
+          "symptom": "Events stop arriving at a customer endpoint with no error reported to them",
+          "rootCause": "The per-tenant retry budget was shorter than the endpoint’s p99 response time, so healthy deliveries were abandoned.",
+          "resolution": "Raise the tenant’s retry budget and alert on the abandon rate. No code change required.",
+          "tags": [
+            "webhook",
+            "retry",
+            "delivery",
+            "integration",
+            "timeout",
+            "events"
+          ],
+          "minutesSavedPerReuse": 90,
+          "relatedKnowledgeIds": [],
+          "id": "mem-webhook-retry",
+          "workspaceId": "acmecloud",
+          "sourceTicketRef": "ACME-7804",
+          "path": "CONFIG_FIX",
+          "reuseCount": 0,
+          "learnedAt": "2026-09-11"
+        },
+        "confidence": 0.95,
+        "reason": "Matched on webhook, delivery, endpoint"
+      },
+      {
+        "entry": {
+          "id": "mem-acme-7612",
+          "workspaceId": "acmecloud",
+          "sourceTicketRef": "ACME-7612",
+          "title": "Webhook deliveries dropped after a retry budget change",
+          "symptom": "Downstream systems stop receiving events without any error surfacing to the customer",
+          "rootCause": "The retry budget was reduced below the p99 downstream latency, so slow endpoints were abandoned.",
+          "resolution": "Restore the retry budget and alert when the abandon rate crosses 1%.",
+          "path": "CONFIG_FIX",
+          "tags": [
+            "webhook",
+            "retry",
+            "integration",
+            "delivery"
+          ],
+          "reuseCount": 2,
+          "minutesSavedPerReuse": 90,
+          "learnedAt": "2026-05-08",
+          "relatedKnowledgeIds": []
+        },
+        "confidence": 0.95,
+        "reason": "Matched on webhook, delivery, receiving"
+      }
+    ]
+  },
+  "GET /tickets/ACME-7833": {
+    "ticket": {
+      "id": "ACME-7833",
+      "customer": "XYZ Corp",
+      "title": "CSV export missing the last column",
+      "description": "The CSV export is missing the last column when we download more than 500 rows.",
+      "channel": "portal",
+      "priority": "LOW",
+      "status": "NEW",
+      "category": null,
+      "processKey": null,
+      "createdAt": "2026-09-11T19:17:15.563Z",
+      "updatedAt": "2026-09-11T19:17:15.563Z",
+      "categoryLabel": "Uncategorised",
+      "workspaceId": "acmecloud",
+      "reportedBy": "Reporting team",
+      "impact": "Not yet assessed",
+      "issueQuote": [
+        "The CSV export is missing the last column when we download more than 500 rows."
+      ]
+    },
+    "run": null,
+    "artifacts": [],
+    "insight": null
+  },
+  "GET /tickets/ACME-7833/activities": {
+    "data": [
+      {
+        "id": "act_mtxc8jhn007x836960df",
+        "ticketId": "ACME-7833",
+        "runId": null,
+        "seq": 1,
+        "type": "ticket.created",
+        "fromAgent": "customer",
+        "toAgent": null,
+        "title": "ACME-7833 raised via the customer portal",
+        "body": "The CSV export is missing the last column when we download more than 500 rows.",
+        "level": "info",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.563Z"
+      },
+      {
+        "id": "act_mtxc8jhn007y070f0524",
+        "ticketId": "ACME-7833",
+        "runId": null,
+        "seq": 2,
+        "type": "brain.thought",
+        "fromAgent": "brain",
+        "toAgent": null,
+        "title": "I do not recognise this symptom",
+        "body": "Nothing in this control tower matches these symptoms, so I am working from the customer’s description alone and will say plainly what I am unsure about.",
+        "level": "warn",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.563Z"
+      }
+    ]
+  },
+  "GET /tickets/ACME-7804": {
+    "ticket": {
+      "id": "ACME-7804",
+      "customer": "Northwind Ltd",
+      "title": "Webhook deliveries stopped reaching our endpoint",
+      "description": "Our webhook endpoint stopped receiving events for tenant northwind. We are not getting any error, the deliveries just stop.",
+      "channel": "email",
+      "priority": "HIGH",
+      "status": "RESOLVED",
+      "category": "CONFIG",
+      "processKey": null,
+      "createdAt": "2026-09-11T19:17:15.560Z",
+      "updatedAt": "2026-09-11T19:17:15.563Z",
+      "categoryLabel": "Integrations",
+      "workspaceId": "acmecloud",
+      "reportedBy": "Platform team",
+      "impact": "Every event for the affected tenant",
+      "issueQuote": [
+        "Our webhook endpoint stopped receiving events for tenant northwind. We are not getting any error, the deliveries just stop."
+      ],
+      "currentAgentAction": "Closed"
+    },
+    "run": {
+      "id": "run_mtxc8jhk007e70451532",
+      "ticketId": "ACME-7804",
+      "state": "RESOLVED",
+      "path": "CONFIG_FIX",
+      "attempt": 1,
+      "summary": "Webhook delivery issue resolved",
+      "policyReason": "Configuration changes to a live environment require human approval.",
+      "startedAt": "2026-09-11T19:17:15.560Z",
+      "endedAt": "2026-09-11T19:17:15.563Z"
+    },
+    "artifacts": [
+      {
+        "id": "ACME-7804-config_fix",
+        "ticketId": "ACME-7804",
+        "kind": "CONFIG_FIX",
+        "title": "Configuration remediation",
+        "data": {
+          "summary": "Raise the tenant’s webhook retry budget from 3s to 10s.",
+          "steps": [
+            "Open the tenant in the admin console",
+            "Under Integrations, set the retry budget to 10s",
+            "Replay the 212 abandoned deliveries from the delivery log",
+            "Add an alert when the abandon rate for a tenant crosses 1%"
+          ],
+          "system": "AcmeCloud admin console"
+        },
+        "createdAt": "2026-09-11T19:17:15.563Z",
+        "createdBy": "brain"
+      },
+      {
+        "id": "ACME-7804-customer_reply",
+        "ticketId": "ACME-7804",
+        "kind": "CUSTOMER_REPLY",
+        "title": "Customer reply",
+        "data": {
+          "subject": "Webhook delivery issue resolved — ACME-7804",
+          "body": "Hi Northwind Ltd,\n\nYour events were being abandoned because your endpoint’s response time is longer than the retry budget configured on your tenant, so slow-but-successful deliveries were dropped before they completed.\n\nWe have raised the budget on your tenant and replayed the deliveries that were abandoned, so nothing is lost. We have also added an alert so this surfaces to us next time instead of to you.\n\nNo change to your integration is needed on your side.",
+          "sentTo": "northwind.ltd@example.com"
+        },
+        "createdAt": "2026-09-11T19:17:15.563Z",
+        "createdBy": "brain"
+      }
+    ],
+    "insight": null
+  },
+  "GET /tickets/ACME-7804/activities": {
+    "data": [
+      {
+        "id": "act_mtxc8jhk007c961a11b8",
+        "ticketId": "ACME-7804",
+        "runId": null,
+        "seq": 1,
+        "type": "ticket.created",
+        "fromAgent": "customer",
+        "toAgent": null,
+        "title": "ACME-7804 raised via email",
+        "body": "Our webhook endpoint stopped receiving events for tenant northwind. We are not getting any error, the deliveries just stop.",
+        "level": "info",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.560Z"
+      },
+      {
+        "id": "act_mtxc8jhk007d6a16098b",
+        "ticketId": "ACME-7804",
+        "runId": null,
+        "seq": 2,
+        "type": "brain.thought",
+        "fromAgent": "brain",
+        "toAgent": null,
+        "title": "Recognised as “Webhook deliveries stopped reaching our endpoint”",
+        "body": "Matched on webhook, deliveries, events, endpoint with 75% confidence. I will confirm it against product context before acting on it.",
+        "level": "info",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.560Z"
+      },
+      {
+        "id": "act_mtxc8jhk007fede1cb95",
+        "ticketId": "ACME-7804",
+        "runId": "run_mtxc8jhk007e70451532",
+        "seq": 3,
+        "type": "run.started",
+        "fromAgent": "brain",
+        "toAgent": null,
+        "title": "Investigation started",
+        "body": "Classified as an integration failure, high priority. Deliveries that stop silently are usually a budget or a threshold rather than a defect, so I want the delivery history before I involve engineering.",
+        "level": "info",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.560Z"
+      },
+      {
+        "id": "act_mtxc8jhk007g33410710",
+        "ticketId": "ACME-7804",
+        "runId": "run_mtxc8jhk007e70451532",
+        "seq": 4,
+        "type": "run.state",
+        "fromAgent": "brain",
+        "toAgent": null,
+        "title": "Classifying",
+        "body": null,
+        "level": "info",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.560Z"
+      },
+      {
+        "id": "act_mtxc8jhk007haac95f4b",
+        "ticketId": "ACME-7804",
+        "runId": "run_mtxc8jhk007e70451532",
+        "seq": 5,
+        "type": "brain.thought",
+        "fromAgent": "brain",
+        "toAgent": null,
+        "title": "Looking for an agent that can answer product questions",
+        "body": "Asking whoever declares product_knowledge and incident_history in this workspace.",
+        "level": "info",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.560Z"
+      },
+      {
+        "id": "act_mtxc8jhk007i596a6c52",
+        "ticketId": "ACME-7804",
+        "runId": "run_mtxc8jhk007e70451532",
+        "seq": 6,
+        "type": "run.state",
+        "fromAgent": "brain",
+        "toAgent": null,
+        "title": "Fetching product context",
+        "body": null,
+        "level": "info",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.560Z"
+      },
+      {
+        "id": "act_mtxc8jhk007j4c6a21dd",
+        "ticketId": "ACME-7804",
+        "runId": "run_mtxc8jhk007e70451532",
+        "seq": 7,
+        "type": "a2a.request",
+        "fromAgent": "brain",
+        "toAgent": "acme-knowledge",
+        "title": "What does the delivery log say, and what is this tenant’s retry budget?",
+        "body": "{\n  \"taskId\": \"TASK-793ba57d\",\n  \"from\": \"brain\",\n  \"to\": \"acme-knowledge\",\n  \"type\": \"GET_PRODUCT_CONTEXT\",\n  \"context\": {\n    \"ticketId\": \"ACME-7804\",\n    \"customer\": \"Northwind Ltd\",\n    \"issue\": \"Webhook deliveries stopped reaching our endpoint\",\n    \"message\": \"Our webhook endpoint stopped receiving events for tenant northwind. We are not getting any error, the deliveries just stop.\",\n    \"playbookId\": \"webhook-retry\"\n  }\n}",
+        "level": "info",
+        "taskId": "TASK-793ba57d",
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.560Z"
+      },
+      {
+        "id": "act_mtxc8jhn007k63519010",
+        "ticketId": "ACME-7804",
+        "runId": "run_mtxc8jhk007e70451532",
+        "seq": 8,
+        "type": "agent.log",
+        "fromAgent": "acme-knowledge",
+        "toAgent": null,
+        "title": "searched internal documentation — 2 matches",
+        "body": null,
+        "level": "info",
+        "taskId": "TASK-793ba57d",
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.563Z"
+      },
+      {
+        "id": "act_mtxc8jhn007led2c0658",
+        "ticketId": "ACME-7804",
+        "runId": "run_mtxc8jhk007e70451532",
+        "seq": 9,
+        "type": "agent.log",
+        "fromAgent": "acme-knowledge",
+        "toAgent": null,
+        "title": "read webhook-delivery runbook §2 (retry budget)",
+        "body": null,
+        "level": "info",
+        "taskId": "TASK-793ba57d",
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.563Z"
+      },
+      {
+        "id": "act_mtxc8jhn007m370e21e5",
+        "ticketId": "ACME-7804",
+        "runId": "run_mtxc8jhk007e70451532",
+        "seq": 10,
+        "type": "agent.log",
+        "fromAgent": "acme-knowledge",
+        "toAgent": null,
+        "title": "read delivery log — 212 abandoned, 0 rejected",
+        "body": null,
+        "level": "info",
+        "taskId": "TASK-793ba57d",
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.563Z"
+      },
+      {
+        "id": "act_mtxc8jhn007n528d25da",
+        "ticketId": "ACME-7804",
+        "runId": "run_mtxc8jhk007e70451532",
+        "seq": 11,
+        "type": "a2a.response",
+        "fromAgent": "acme-knowledge",
+        "toAgent": "brain",
+        "title": "The retry budget is lower than this endpoint’s p99 response time",
+        "body": "Deliveries are abandoned after the configured retry budget is exhausted. This tenant’s endpoint answers in 4.2s at p99 while the budget allows 3s, so slow-but-healthy deliveries are being dropped. The platform is behaving exactly as configured.",
+        "level": "success",
+        "taskId": "TASK-793ba57d",
+        "durationMs": 780,
+        "createdAt": "2026-09-11T19:17:15.563Z"
+      },
+      {
+        "id": "act_mtxc8jhn007o9e80c976",
+        "ticketId": "ACME-7804",
+        "runId": "run_mtxc8jhk007e70451532",
+        "seq": 12,
+        "type": "run.state",
+        "fromAgent": "brain",
+        "toAgent": null,
+        "title": "Deciding",
+        "body": null,
+        "level": "info",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.563Z"
+      },
+      {
+        "id": "act_mtxc8jhn007p8496ceb0",
+        "ticketId": "ACME-7804",
+        "runId": "run_mtxc8jhk007e70451532",
+        "seq": 13,
+        "type": "brain.thought",
+        "fromAgent": "brain",
+        "toAgent": null,
+        "title": "Decision: configuration fix — engineering is not involved",
+        "body": "The platform behaved as configured — the retry budget is simply below this endpoint’s response time. That is a configuration change on the tenant, not a code change, so engineering stays out of it.",
+        "level": "info",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.563Z"
+      },
+      {
+        "id": "act_mtxc8jhn007q187700ed",
+        "ticketId": "ACME-7804",
+        "runId": "run_mtxc8jhk007e70451532",
+        "seq": 14,
+        "type": "run.state",
+        "fromAgent": "brain",
+        "toAgent": null,
+        "title": "Drafting the remediation",
+        "body": null,
+        "level": "info",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.563Z"
+      },
+      {
+        "id": "act_mtxc8jhn007r9eb0e815",
+        "ticketId": "ACME-7804",
+        "runId": "run_mtxc8jhk007e70451532",
+        "seq": 15,
+        "type": "artifact.created",
+        "fromAgent": "brain",
+        "toAgent": null,
+        "title": "Configuration remediation recorded",
+        "body": null,
+        "level": "success",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.563Z"
+      },
+      {
+        "id": "act_mtxc8jhn007s55a24982",
+        "ticketId": "ACME-7804",
+        "runId": "run_mtxc8jhk007e70451532",
+        "seq": 16,
+        "type": "artifact.created",
+        "fromAgent": "brain",
+        "toAgent": null,
+        "title": "Customer reply recorded",
+        "body": null,
+        "level": "success",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.563Z"
+      },
+      {
+        "id": "act_mtxc8jhn007td9122c9a",
+        "ticketId": "ACME-7804",
+        "runId": "run_mtxc8jhk007e70451532",
+        "seq": 17,
+        "type": "run.awaiting_approval",
+        "fromAgent": "brain",
+        "toAgent": null,
+        "title": "Stopping for human approval",
+        "body": "Configuration changes to a live environment require human approval. One change, no code, no tests — and the same gate.",
+        "level": "warn",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.563Z"
+      },
+      {
+        "id": "act_mtxc8jhn007u41d3baf1",
+        "ticketId": "ACME-7804",
+        "runId": "run_mtxc8jhk007e70451532",
+        "seq": 18,
+        "type": "run.state",
+        "fromAgent": "human",
+        "toAgent": null,
+        "title": "Dana Whitfield approved the fix",
+        "body": "Budget raised and deliveries replayed. Alert added.",
+        "level": "success",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.563Z"
+      },
+      {
+        "id": "act_mtxc8jhn007vfc0bf084",
+        "ticketId": "ACME-7804",
+        "runId": "run_mtxc8jhk007e70451532",
+        "seq": 19,
+        "type": "run.state",
+        "fromAgent": "brain",
+        "toAgent": null,
+        "title": "Customer notified — Webhook delivery issue resolved — ACME-7804",
+        "body": "Sent to northwind.ltd@example.com. The reply drafted at the gate has gone out unchanged.",
+        "level": "success",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.563Z"
+      },
+      {
+        "id": "act_mtxc8jhn007w7f8fa873",
+        "ticketId": "ACME-7804",
+        "runId": "run_mtxc8jhk007e70451532",
+        "seq": 20,
+        "type": "run.completed",
+        "fromAgent": "brain",
+        "toAgent": null,
+        "title": "Ticket closed, and what we learned is kept",
+        "body": "Written to institutional memory as “Webhook deliveries abandoned when the retry budget is below endpoint latency”. The next ticket with this symptom starts from the answer instead of the beginning.",
+        "level": "success",
+        "taskId": null,
+        "durationMs": null,
+        "createdAt": "2026-09-11T19:17:15.563Z"
+      }
+    ]
+  }
+}

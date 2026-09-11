@@ -1,7 +1,7 @@
 import { Brain, Code, FlaskConical, Network, ScanSearch, User, Workflow } from 'lucide-react'
 import type { ColorToken } from '../../components/colorClasses'
 import type { AgentDef, AgentRole, Workspace } from '../types'
-import { findAgent } from '../workspaces'
+
 
 /**
  * Colour and icon come from an agent's ROLE, never from its id.
@@ -80,7 +80,7 @@ export function agentVisual(workspace: Workspace, agentId: string | undefined): 
   if (agentId === 'human') return HUMAN
   if (agentId === 'customer') return CUSTOMER
 
-  const agent = findAgent(workspace, agentId)
+  const agent = workspace.agents.find((candidate) => candidate.id === agentId)
   if (!agent) {
     // An agent the workspace has not declared still renders calmly rather than
     // crashing a timeline — the registry can be behind the run.

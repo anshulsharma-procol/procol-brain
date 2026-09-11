@@ -16,7 +16,7 @@ import type { Ticket } from '../platform/types'
  */
 const STATUS_DOT: Record<Ticket['status'], string> = {
   AWAITING_APPROVAL: 'bg-amber-500',
-  INVESTIGATING: 'bg-blue-500',
+  RUNNING: 'bg-blue-500',
   NEW: 'bg-gray-300',
   NEEDS_HUMAN: 'bg-red-500',
   REJECTED: 'bg-red-500',

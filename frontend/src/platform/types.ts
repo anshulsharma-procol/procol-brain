@@ -67,7 +67,14 @@ export interface AgentDef {
 // Connectors — how data reaches the agents
 // ---------------------------------------------------------------------------
 
-export type ConnectorKind = 'database' | 'warehouse' | 'saas-api' | 'code-host' | 'mcp' | 'file'
+export type ConnectorKind =
+  | 'database'
+  | 'warehouse'
+  | 'saas-api'
+  | 'code-host'
+  | 'mcp'
+  | 'file'
+  | 'event-stream'
 
 export interface ConnectorDef {
   id: string
@@ -122,36 +129,70 @@ export interface Workspace {
 // Tickets and runs
 // ---------------------------------------------------------------------------
 
-export type TicketStatus =
-  | 'NEW'
-  | 'INVESTIGATING'
-  | 'AWAITING_APPROVAL'
-  | 'RESOLVED'
-  | 'NEEDS_HUMAN'
-  | 'REJECTED'
+/**
+ * Anything that crosses the wire is the contract's, re-exported so no screen
+ * invents a second spelling of a value the backend owns.
+ */
+export type {
+  Activity as ActivityEvent,
+  ActivityType,
+  Artifact,
+  ArtifactKind,
+  Channel as TicketChannel,
+  ConfigFixData,
+  CustomerReplyData,
+  ImpactData,
+  Priority as TicketPriority,
+  PrData,
+  RootCauseData,
+  RunPath as ResolutionPath,
+  RunState,
+  TestResultData,
+  TicketStatus,
+} from './contract'
 
-export type TicketPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'
-
-/** How the ticket reached Brain. `signal` and `event` start without a human. */
-export type TicketChannel = 'chat' | 'email' | 'portal' | 'signal' | 'event'
+import type {
+  Activity,
+  Artifact,
+  ArtifactKind,
+  ArtifactOf,
+  Channel,
+  Priority,
+  RunPath,
+  TicketStatus,
+} from './contract'
 
 /**
- * The path Brain chose. Proving that different tickets take different paths is
- * what separates an orchestrator from a hardcoded pipeline.
+ * `Artifact.data` is a union the contract does not discriminate on the
+ * artifact itself, so narrowing is explicit. One guard, used everywhere,
+ * beats a cast per call site.
  */
-export type ResolutionPath = 'CODE_FIX' | 'CONFIG_FIX' | 'ANSWER_ONLY' | 'PROCESS'
+export function isArtifact<K extends ArtifactKind>(
+  artifact: Artifact,
+  kind: K,
+): artifact is ArtifactOf<K> {
+  return artifact.kind === kind
+}
+
+/** The first artifact of a kind, already narrowed. */
+export function findArtifact<K extends ArtifactKind>(
+  artifacts: Artifact[],
+  kind: K,
+): ArtifactOf<K> | undefined {
+  return artifacts.find((artifact): artifact is ArtifactOf<K> => artifact.kind === kind)
+}
 
 export interface Ticket {
   id: string
-  /** Display reference, e.g. 'PRO-1245'. */
+  /** The contract's id, kept under the name the screens already use. */
   reference: string
   workspaceId: string
   title: string
   description: string
   customer: string
   reportedBy?: string
-  channel: TicketChannel
-  priority: TicketPriority
+  channel: Channel
+  priority: Priority
   status: TicketStatus
   category: string
   impact: string
@@ -161,7 +202,7 @@ export interface Ticket {
   createdAt: string
   updatedAt: string
   /** Null until Brain decides. */
-  path?: ResolutionPath
+  path?: RunPath
   /** id of the agent currently holding the work. */
   currentAgentId?: string
   currentAgentAction?: string
@@ -184,134 +225,6 @@ export interface Ticket {
  * so switching from the mock to a live stream is a transport change, not a
  * rendering change.
  */
-export type ActivityType =
-  | 'ticket.created'
-  | 'run.started'
-  | 'brain.thought'
-  | 'a2a.request'
-  | 'a2a.response'
-  | 'agent.log'
-  | 'artifact.created'
-  | 'run.awaiting_approval'
-  | 'human.decision'
-  | 'customer.notified'
-  | 'run.completed'
-
-export interface ActivityEvent {
-  id: string
-  ticketId: string
-  /** Monotonic per ticket. Order by this, never by timestamp. */
-  seq: number
-  type: ActivityType
-  /** Agent id, or 'human' for a person's action. */
-  fromAgent?: string
-  toAgent?: string
-  /** A2A task type, e.g. 'GET_PRODUCT_CONTEXT'. Rendered in mono. */
-  taskType?: string
-  /** The one line shown in the timeline. */
-  title: string
-  /** Body paragraphs. */
-  body?: string[]
-  /** Indented sub-lines the agent emitted while working. */
-  logs?: string[]
-  level: 'info' | 'success' | 'warn' | 'error'
-  /** Real latency, shown on screen. Reads as authentic in a way bars do not. */
-  durationMs?: number
-  /** Raw A2A payload revealed by the "show payload" disclosure. */
-  payload?: unknown
-  timestamp: string
-}
-
-// ---------------------------------------------------------------------------
-// Artifacts — what the run produced
-// ---------------------------------------------------------------------------
-
-export type ArtifactKind =
-  | 'ROOT_CAUSE'
-  | 'PR'
-  | 'TEST_RESULT'
-  | 'CONFIG_FIX'
-  | 'CUSTOMER_REPLY'
-  | 'IMPACT'
-  | 'PROCESS_RESULT'
-
-interface ArtifactBase {
-  id: string
-  ticketId: string
-  title: string
-  createdBy: string
-  createdAt: string
-}
-
-export interface RootCauseArtifact extends ArtifactBase {
-  kind: 'ROOT_CAUSE'
-  data: { headline: string; detail: string; evidence?: string[] }
-}
-
-export interface PrArtifact extends ArtifactBase {
-  kind: 'PR'
-  data: {
-    number: string
-    title: string
-    url?: string
-    repository: string
-    filesChanged: string[]
-    additions: number
-    deletions: number
-    /** Unified diff lines, rendered red/green. */
-    diff: { type: 'add' | 'remove' | 'context'; text: string }[]
-    state: 'open' | 'merged'
-  }
-}
-
-export interface TestResultArtifact extends ArtifactBase {
-  kind: 'TEST_RESULT'
-  data: {
-    suite: string
-    total: number
-    passed: number
-    failed: number
-    durationMs: number
-    cases: string[]
-    failures?: string[]
-  }
-}
-
-export interface ConfigFixArtifact extends ArtifactBase {
-  kind: 'CONFIG_FIX'
-  data: { summary: string; change: string; steps: string[] }
-}
-
-export interface CustomerReplyArtifact extends ArtifactBase {
-  kind: 'CUSTOMER_REPLY'
-  data: { subject: string; body: string[]; signature: string; sent: boolean }
-}
-
-export interface ImpactArtifact extends ArtifactBase {
-  kind: 'IMPACT'
-  data: {
-    affectedTenants: number
-    affectedRecords: number
-    recordLabel: string
-    firstSeen: string
-    trend: { date: string; count: number }[]
-  }
-}
-
-export interface ProcessResultArtifact extends ArtifactBase {
-  kind: 'PROCESS_RESULT'
-  data: { processKey: string; steps: { label: string; outcome: string }[] }
-}
-
-export type Artifact =
-  | RootCauseArtifact
-  | PrArtifact
-  | TestResultArtifact
-  | ConfigFixArtifact
-  | CustomerReplyArtifact
-  | ImpactArtifact
-  | ProcessResultArtifact
-
 // ---------------------------------------------------------------------------
 // Stages — the four dots every ticket walks, whatever the path
 // ---------------------------------------------------------------------------
@@ -346,7 +259,7 @@ export interface MemoryEntry {
   symptom: string
   rootCause: string
   resolution: string
-  path: ResolutionPath
+  path: RunPath
   /** Free-text tags used by the mock matcher and by real embeddings later. */
   tags: string[]
   /** How many times this memory has been reused to shortcut a ticket. */
@@ -405,7 +318,7 @@ export interface WorkspaceStats {
 export interface TicketDetail {
   ticket: Ticket
   stages: Stage[]
-  activity: ActivityEvent[]
+  activity: Activity[]
   artifacts: Artifact[]
   memoryMatches: MemoryMatch[]
   /** Policy that required a human, once the run reaches the gate. */

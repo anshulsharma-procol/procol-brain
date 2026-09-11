@@ -5,8 +5,19 @@ import { EventEmitter } from 'node:events'
  * just a subscriber — which is why the console and the customer's chat widget
  * cannot drift apart: they are watching the same events, not two code paths.
  */
+import type { ActivityEvent } from './domain/types.js'
+
 export type BrainEvent =
-  | { type: 'ticket.updated'; ticketRef: string; workspaceId: string }
+  /** One row was appended to a ticket's audit trail. */
+  | {
+      type: 'activity'
+      ticketRef: string
+      workspaceId: string
+      activity: ActivityEvent
+      /** Extra fields the contract's payload for this event type carries. */
+      wire: Record<string, unknown>
+    }
+  /** Something changed that a board would want to re-read. */
   | { type: 'board.updated'; workspaceId: string }
 
 class Bus {

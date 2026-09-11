@@ -9,6 +9,7 @@ import StageRail from '../components/StageRail'
 import StatusPill from '../components/StatusPill'
 import TopBar from '../components/TopBar'
 import TranscriptEntry from '../components/TranscriptEntry'
+import { toExchanges } from '../utils/exchanges'
 import { isDemoData } from '../platform/api'
 import { useTicketDetail, useWorkspace } from '../platform/react'
 import type { Tone } from '../types'
@@ -188,7 +189,7 @@ export default function TicketDetail() {
               <MessageSquare className="h-4 w-4 text-violet-500" />
               Live transcript
             </h2>
-            {ticket.status === 'INVESTIGATING' ? (
+            {ticket.status === 'RUNNING' ? (
               <StatusPill label="Streaming" tone="info" withDot />
             ) : (
               <span className="font-mono text-[11px] text-gray-400">{activity.length} entries</span>
@@ -278,8 +279,8 @@ function Transcript({ activity }: { activity: import('../platform/types').Activi
         className="max-h-[32rem] overflow-y-auto pr-1"
       >
         <ol aria-live="polite" className="space-y-0">
-          {activity.map((event) => (
-            <TranscriptEntry key={event.id} event={event} />
+          {toExchanges(activity).map((exchange) => (
+            <TranscriptEntry key={exchange.head.id} exchange={exchange} />
           ))}
         </ol>
       </div>

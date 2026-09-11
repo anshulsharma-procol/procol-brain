@@ -57,18 +57,18 @@ export function demoRouter(): Router {
       workspaceId: parsed.data.workspaceId,
       message: parsed.data.message,
       customer: parsed.data.customer,
-      channel: 'chat',
+      channel: 'portal',
     })
 
-    if (parsed.data.investigate) startRun(ticket.reference)
+    if (parsed.data.investigate) startRun(ticket.id)
 
 
     response.status(201).json({
       ticket,
       watch: {
-        console: `/api/tickets/${ticket.reference}`,
-        stream: `/api/tickets/${ticket.reference}/stream`,
-        chat: `/api/chat/tickets/${ticket.reference}/activity`,
+        console: `/api/tickets/${ticket.id}`,
+        stream: `/api/tickets/${ticket.id}/stream`,
+        chat: `/api/chat/tickets/${ticket.id}/activity`,
       },
     })
   })

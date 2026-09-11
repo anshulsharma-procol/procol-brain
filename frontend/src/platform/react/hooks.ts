@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { consoleApi } from '../api'
-import type { StreamTarget } from '../api/types'
+import type { StreamMessage, StreamTarget } from '../api/types'
 import type {
+  ActivityEvent,
   DecisionOutcome,
   KnowledgeEntry,
   MemoryEntry,
@@ -78,7 +79,7 @@ function useAsync<T>(key: string, load: () => Promise<T>): AsyncState<T> & { rel
 }
 
 /** Live-updating stream subscription, shared by the board and the ticket page. */
-function useStream(target: StreamTarget | undefined, onMessage: (detail?: TicketDetail) => void) {
+function useStream(target: StreamTarget | undefined, onMessage: (message: StreamMessage) => void) {
   const handler = useRef(onMessage)
   useEffect(() => {
     handler.current = onMessage
@@ -93,17 +94,23 @@ function useStream(target: StreamTarget | undefined, onMessage: (detail?: Ticket
     const resolved: StreamTarget =
       kind === 'ticket' ? { kind: 'ticket', ticketRef: key } : { kind: 'workspace', workspaceId: key }
 
-    return consoleApi.subscribe(resolved, (message) => {
-      handler.current(message.type === 'ticket.updated' ? message.detail : undefined)
-    })
+    return consoleApi.subscribe(resolved, (message) => handler.current(message))
   }, [kind, key])
 }
 
+/**
+ * The board re-reads when a run advances.
+ *
+ * A ticket list is a summary of many runs, and the contract's events describe
+ * one step of one run — reconstructing the list from them would be a second,
+ * subtly different implementation of the backend's own ordering. Re-reading is
+ * cheap and cannot drift. The ticket page, where the timeline matters, appends
+ * instead.
+ */
 export function useTickets(): AsyncState<Ticket[]> & { reload: () => void } {
   const { workspace } = useWorkspace()
   const state = useAsync(`tickets:${workspace.id}`, () => consoleApi.listTickets(workspace.id))
 
-  // Any run that advances anywhere in the workspace refreshes the board.
   useStream({ kind: 'workspace', workspaceId: workspace.id }, state.reload)
 
   return state
@@ -125,15 +132,26 @@ export function useTicketDetail(ticketRef: string | undefined) {
   const key = ticketRef ?? ''
   const { workspace, setWorkspaceId } = useWorkspace()
   const [result, setResult] = useState<Result<TicketDetail>>({ key: '' })
+  /**
+   * Activity ids already on screen, from the history fetch and from the
+   * stream alike. The contract puts `activityId` on every event for exactly
+   * this: without it the entry at the boundary between the two renders twice,
+   * which is the commonest bug in a timeline like this one.
+   */
+  const seen = useRef(new Set<string>())
 
   useEffect(() => {
     if (!ticketRef) return
     let live = true
 
+    seen.current = new Set()
+
     consoleApi
       .getTicket(ticketRef)
       .then((detail) => {
-        if (live) setResult({ key: ticketRef, data: detail })
+        if (!live) return
+        for (const row of detail.activity) seen.current.add(row.id)
+        setResult({ key: ticketRef, data: detail })
       })
       .catch((cause: unknown) => {
         if (!live) return
@@ -148,13 +166,48 @@ export function useTicketDetail(ticketRef: string | undefined) {
     }
   }, [ticketRef])
 
+  const refresh = useCallback(() => {
+    if (!ticketRef) return
+
+    void consoleApi.getTicket(ticketRef).then((detail) => {
+      for (const row of detail.activity) seen.current.add(row.id)
+      setResult({ key: ticketRef, data: detail })
+    })
+  }, [ticketRef])
+
   useStream(
     ticketRef ? { kind: 'ticket', ticketRef } : undefined,
     useCallback(
-      (detail?: TicketDetail) => {
-        if (detail) setResult({ key: detail.ticket.reference, data: detail })
+      (message: StreamMessage) => {
+        if (message.type !== 'activity' || !message.activityId) return
+        if (seen.current.has(message.activityId)) return
+        seen.current.add(message.activityId)
+
+        // Events that change more than the timeline — an artifact appearing,
+        // a run reaching the gate or closing — are re-read rather than
+        // reconstructed, so the page and the backend cannot disagree about a
+        // ticket's state.
+        if (RE_READ.has(message.name)) {
+          refresh()
+          return
+        }
+
+        setResult((current) => {
+          if (!current.data) return current
+
+          const row = activityFrom(message, current.data)
+          if (!row) return current
+
+          return {
+            ...current,
+            data: {
+              ...current.data,
+              activity: [...current.data.activity, row].sort((a, b) => a.seq - b.seq),
+            },
+          }
+        })
       },
-      [],
+      [refresh],
     ),
   )
 
@@ -190,6 +243,85 @@ export function useTicketDetail(ticketRef: string | undefined) {
     loading: current === undefined,
     startInvestigation,
     decide,
+  }
+}
+
+/**
+ * Events whose consequence is not just another line on the timeline. The
+ * cheapest correct response to these is to re-read the ticket.
+ */
+const RE_READ = new Set([
+  'artifact.created',
+  'run.awaiting_approval',
+  'run.completed',
+  'ticket.created',
+])
+
+/**
+ * Builds a timeline row from a contract event.
+ *
+ * The stream carries what changed, not the stored row, so the fields the UI
+ * reads are assembled here from the payload the contract defines for each
+ * event name. Anything not named by the contract stays null rather than being
+ * guessed at.
+ */
+function activityFrom(
+  message: Extract<StreamMessage, { type: 'activity' }>,
+  detail: TicketDetail,
+): ActivityEvent | undefined {
+  const payload = message.payload as Record<string, string | number | null | undefined>
+  const seq = Number(payload.seq)
+  if (!message.activityId || Number.isNaN(seq)) return undefined
+
+  const base: ActivityEvent = {
+    id: message.activityId,
+    ticketId: detail.ticket.reference,
+    runId: (payload.runId as string) ?? null,
+    seq,
+    type: message.name as ActivityEvent['type'],
+    fromAgent: null,
+    toAgent: null,
+    title: '',
+    body: null,
+    level: 'info',
+    taskId: (payload.taskId as string) ?? null,
+    durationMs: null,
+    createdAt: new Date().toISOString(),
+  }
+
+  switch (message.name) {
+    case 'brain.thought':
+      return { ...base, fromAgent: 'brain', title: String(payload.text ?? '') }
+
+    case 'run.started':
+      return { ...base, fromAgent: 'brain', title: 'Investigation started' }
+
+    case 'run.state':
+      return { ...base, fromAgent: 'brain', title: String(payload.state ?? '') }
+
+    case 'a2a.request':
+      return {
+        ...base,
+        fromAgent: String(payload.from ?? 'brain'),
+        toAgent: String(payload.to ?? ''),
+        title: String(payload.summary ?? payload.type ?? ''),
+      }
+
+    case 'a2a.response':
+      return {
+        ...base,
+        fromAgent: String(payload.from ?? ''),
+        toAgent: String(payload.to ?? 'brain'),
+        title: String(payload.summary ?? ''),
+        durationMs: typeof payload.durationMs === 'number' ? payload.durationMs : null,
+        level: payload.status === 'failed' ? 'error' : 'success',
+      }
+
+    case 'agent.log':
+      return { ...base, fromAgent: String(payload.agent ?? ''), title: String(payload.line ?? '') }
+
+    default:
+      return undefined
   }
 }
 
