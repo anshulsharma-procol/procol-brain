@@ -1,0 +1,183 @@
+/*
+ * Extra structure for the detailed resolution card.
+ *
+ * Shared primitives (.card, .quote, .checkList, .stepMarker, .detail) stay in
+ * ProcolBrain.module.css and are used as-is; only selectors unique to this card
+ * live here, so the two files never define the same class and never depend on
+ * which stylesheet the bundler emits first.
+ */
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+/*
+ * Small caps rather than the sentence-case .metaLabel: this card stacks four
+ * sections in a 400px panel, and the eye needs a harder edge between them.
+ */
+.sectionLabel {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--pb-muted);
+}
+
+/* ------------------------------------------------------------------ the fix */
+
+.prRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.prLink,
+.prNumber {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--pb-primary);
+  white-space: nowrap;
+}
+
+/* Underlined with the accent ring: unmistakably a link, without shouting. */
+.prLink {
+  text-decoration: none;
+  border-bottom: 1px solid var(--pb-primary-ring);
+}
+
+.prLink:hover {
+  border-bottom-color: var(--pb-primary);
+}
+
+.prLink:focus-visible {
+  outline: 2px solid var(--pb-primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* The PR lifecycle in one quiet word: created -> open -> merged. */
+.prStatus {
+  padding: 1px 7px;
+  border: 1px solid var(--pb-border);
+  border-radius: 999px;
+  background: var(--pb-surface);
+  color: var(--pb-muted);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.prTitle {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--pb-text);
+  overflow-wrap: anywhere;
+}
+
+.fileList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+}
+
+/*
+ * File names are code, so they get a monospace face. The theme has no mono
+ * token today; a host that defines --pb-mono is picked up automatically, and
+ * everyone else gets the platform UI monospace. `anywhere` keeps a long path
+ * inside the panel instead of widening the card.
+ */
+.fileChip {
+  max-width: 100%;
+  padding: 2px 7px;
+  border: 1px solid var(--pb-border);
+  border-radius: var(--pb-radius-sm);
+  background: var(--pb-surface);
+  color: var(--pb-text);
+  font-family: var(
+    --pb-mono,
+    ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    Consolas,
+    'Liberation Mono',
+    monospace
+  );
+  font-size: 11.5px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+/* ---------------------------------------------------------------- qa result */
+
+/*
+ * The headline number of the card, so it sits a step louder than the inline
+ * .testBadge: more padding, tabular figures, and the count in bold.
+ */
+.qaBadge {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 7px;
+  max-width: 100%;
+  padding: 7px 12px;
+  border-radius: 10px;
+  font-size: 12.5px;
+  font-weight: 500;
+}
+
+.qaCount {
+  font-size: 13.5px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.qaBadgePass {
+  background: var(--pb-success-soft);
+  color: var(--pb-success);
+}
+
+/*
+ * The theme exposes success, primary and ai - no failure colour - so the red is
+ * defined here at the same weight as --pb-success-soft / --pb-success, and
+ * stays overridable: a host that adds --pb-danger picks it up with no rebuild.
+ */
+.qaBadgeFail {
+  background: var(--pb-danger-soft, rgba(220, 38, 38, 0.1));
+  color: var(--pb-danger, #b91c1c);
+}
+
+/* ---------------------------------------------------------------- approval */
+
+/*
+ * Read-only by design: approval is granted in the internal console, so this row
+ * reports state and never offers the customer a control.
+ */
+.approval {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--pb-border);
+  border-radius: 10px;
+  background: var(--pb-surface);
+  color: var(--pb-muted);
+  font-size: 12.5px;
+  font-weight: 500;
+}
+
+.approvalDone {
+  border-color: transparent;
+  background: var(--pb-success-soft);
+  color: var(--pb-success);
+}
