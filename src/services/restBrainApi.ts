@@ -157,12 +157,25 @@ export function createRestBrainClient(options: RestBrainClientOptions): BrainApi
         context: { ...context, ticketId, identity },
       }
 
-      // One envelope starts the whole pipeline: Brain routes it to Clara, Dev
-      // and QA by capability, and we watch the result on the activity feed.
-      const accepted = toA2AResponse(await transport.post('/a2a/tasks', task, signal))
+      // Two ways to start the same pipeline. The ticket-scoped route is the
+      // documented one; if the backend has not built it yet we fall back to
+      // posting the A2A envelope straight at the orchestrator. Either way
+      // progress is read from the activity feed.
+      const investigatePath = `/tickets/${encodeURIComponent(ticketId)}/investigate`
+      let accepted: A2AResponse | undefined
+
+      try {
+        accepted = toA2AResponse(
+          await transport.post(investigatePath, { identity, context, task }, signal),
+        )
+      } catch (error) {
+        if (!isNotFound(error)) throw error
+        accepted = toA2AResponse(await transport.post('/a2a/tasks', task, signal))
+      }
+
       if (accepted?.status === 'failed') {
         throw new Error(
-          `Brain API POST /a2a/tasks rejected the investigation: ${accepted.error ?? 'no reason given'}`,
+          `Brain API rejected the investigation: ${accepted.error ?? 'no reason given'}`,
         )
       }
 
@@ -745,6 +758,14 @@ function toTaskContext(payload: unknown): A2ATaskContext {
  * Returns undefined when the body carries neither - a `202 { ok: true }` means
  * "accepted", not "failed", and must not abort the investigation.
  */
+/**
+ * True for a 404, so a missing endpoint can be retried elsewhere. Matches the
+ * `failed (404 Not Found)` suffix this module's transport produces.
+ */
+function isNotFound(error: unknown): boolean {
+  return error instanceof Error && /\(404\b/.test(error.message)
+}
+
 function toA2AResponse(payload: unknown): A2AResponse | undefined {
   const raw = asRecord(payload)
   const taskId = pickString(raw, 'taskId', 'task_id', 'id')

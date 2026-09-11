@@ -63,6 +63,15 @@ Same shape as above. Used to poll status.
 Kicks off the Brain orchestration. Returns immediately (`202` or `{ "ok": true }`);
 progress is read from the activity endpoint.
 
+```json
+// request: { identity, context, "task": { /* the A2A envelope below */ } }
+```
+
+**Either route works.** The widget posts here first; on a `404` it falls back
+to `POST /a2a/tasks` with the same envelope. Build whichever is easier — the
+ticket-scoped route if you want Brain to own task creation, `/a2a/tasks` if you
+want one uniform entry point for every agent message.
+
 ### `GET /tickets/:id/activity`
 The endpoint that drives the whole demo. Called on an interval until
 `resolution` is present.
