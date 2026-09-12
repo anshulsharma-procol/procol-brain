@@ -20,13 +20,21 @@ import { readFileSync } from 'node:fs'
 
 function envTarget() {
   for (const file of ['.env.local', '.env']) {
+    let text
     try {
-      const match = readFileSync(new URL(`../${file}`, import.meta.url), 'utf8').match(
-        /^VITE_BRAIN_API_TARGET\s*=\s*(.+)$/m,
-      )
-      if (match) return match[1].trim().replace(/\/+$/, '')
+      text = readFileSync(new URL(`../${file}`, import.meta.url), 'utf8')
     } catch {
-      // Not there; try the next one.
+      continue // Not there; try the next one.
+    }
+
+    // Whichever variable actually names a host. `VITE_BRAIN_API_URL` wins
+    // because it is what the app calls; it carries the `/api` base path, so
+    // take its origin. `/api` on its own names no host, which is the case
+    // where the app goes through the dev proxy and TARGET is the real one.
+    for (const key of ['VITE_BRAIN_API_URL', 'VITE_BRAIN_API_TARGET']) {
+      const value = text.match(new RegExp(`^${key}\\s*=\\s*(.+)$`, 'm'))?.[1].trim()
+      if (!value || !/^https?:\/\//.test(value)) continue
+      return new URL(value).origin
     }
   }
   return 'http://localhost:4000'
@@ -107,8 +115,8 @@ try {
   )
 } catch (error) {
   console.log(`  ${RED}The backend is not reachable.${OFF} ${error.message}\n`)
-  console.log('  If this is ngrok, restart the tunnel and put the new host in')
-  console.log('  frontend/.env.local as VITE_BRAIN_API_TARGET.\n')
+  console.log('  If this is ngrok, restart the tunnel and put the new host into')
+  console.log('  frontend/.env.local (VITE_BRAIN_API_URL) and DEMO-CURLS.md.\n')
   process.exit(1)
 }
 

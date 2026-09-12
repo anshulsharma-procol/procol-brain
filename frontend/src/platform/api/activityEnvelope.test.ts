@@ -13,6 +13,7 @@
  */
 import { normaliseActivities } from './activityEnvelope'
 import { toExchanges } from '../../utils/exchanges'
+import { normaliseArtifact } from './httpApi'
 import type { ActivityDto } from '../contract'
 
 /** Verbatim from the deployed Brain. Flat: one shape for every type. */
@@ -211,6 +212,40 @@ check(
 const contractExchanges = toExchanges(passthrough as never)
 check('still renders', contractExchanges.length === 1)
 check('still bolds the heading', contractExchanges[0]?.title === 'Investigation started')
+
+console.log('\nthe deployed Brain’s thin PR artifact')
+
+// Verbatim from GET /api/tickets/PRO-1245 on the tunnelled deployment: a url
+// and nothing else, where the contract's PrData has eight fields.
+const thinPr = normaliseArtifact({
+  id: 'a1',
+  ticketId: 'PRO-1245',
+  kind: 'PR',
+  title: 'Pull request',
+  createdAt: '2026-09-11T23:15:50.000Z',
+  data: { url: 'https://github.com/ayush21kumar03/demo-repo/pull/12' },
+} as never) as { data: Record<string, unknown> }
+
+check('filesChanged is an array, so `.join()` and `[0]` cannot throw',
+  Array.isArray(thinPr.data.filesChanged))
+check('the PR number is recovered from the url', thinPr.data.number === 12,
+  String(thinPr.data.number))
+check('a PR with a url is treated as real, so it renders as a link',
+  thinPr.data.real === true)
+check('nothing is invented for the patch itself', thinPr.data.diff === undefined)
+
+// A backend that does send the full shape must come through untouched.
+const fullPr = normaliseArtifact({
+  id: 'a2', ticketId: 'PRO-1245', kind: 'PR', title: 'Pull request',
+  createdAt: '2026-09-11T23:15:50.000Z',
+  data: { url: 'https://example.com/pull/7', number: 99, real: false,
+          filesChanged: ['tax.ts'], diff: '--- a\n+++ b' },
+} as never) as { data: Record<string, unknown> }
+
+check('an explicit number is not overwritten by the url', fullPr.data.number === 99)
+check('an explicit real:false is preserved', fullPr.data.real === false)
+check('an explicit filesChanged is preserved',
+  JSON.stringify(fullPr.data.filesChanged) === '["tax.ts"]')
 
 console.log(failures ? `\n${failures} failed\n` : '\nall green\n')
 process.exit(failures ? 1 : 0)

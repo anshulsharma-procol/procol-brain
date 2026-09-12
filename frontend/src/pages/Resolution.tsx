@@ -21,10 +21,13 @@ const APPROVER = 'Anshul Sharma'
  * happens to say. Showing "Merged" over a link that 404s is the one thing on
  * this page that would be worth a judge's time to disprove.
  */
-function prLabel(data: { state: string; real: boolean }): { label: string; merged: boolean } {
-  if (!data.real) return { label: 'Patch on a branch', merged: false }
+function prLabel(data: { state?: string; real?: boolean }): { label: string; merged: boolean } {
+  if (data.real === false) return { label: 'Patch on a branch', merged: false }
 
   const known: Record<string, string> = { created: 'Open', open: 'Open', merged: 'Merged' }
+  // A backend that opened a PR but does not report its state: "Open" is the
+  // honest reading, and it is the pill's least-claiming value.
+  if (!data.state) return { label: 'Open', merged: false }
   return { label: known[data.state] ?? data.state, merged: data.state === 'merged' }
 }
 
@@ -177,8 +180,13 @@ export default function Resolution() {
                     <span className="font-mono text-gray-600">
                       #{pr.data.number} · {pr.data.branch}
                     </span>
-                  )}{' '}
-                  · <span className="font-mono">{pr.data.filesChanged.join(', ')}</span>
+                  )}
+                  {pr.data.filesChanged?.length ? (
+                    <>
+                      {' '}
+                      · <span className="font-mono">{pr.data.filesChanged.join(', ')}</span>
+                    </>
+                  ) : null}
                 </p>
                 <StatusPill
                   label={prLabel(pr.data).label}
@@ -190,9 +198,13 @@ export default function Resolution() {
                 {pr.data.body}
               </p>
               {pr.data.note && <p className="mt-1 text-xs text-gray-400">{pr.data.note}</p>}
-              <div className="mt-3">
-                <DiffView diff={pr.data.diff} />
-              </div>
+              {/* A backend that sends only the PR url has no patch to show.
+                  Rendering the section empty would imply an empty diff. */}
+              {pr.data.diff && (
+                <div className="mt-3">
+                  <DiffView diff={pr.data.diff} />
+                </div>
+              )}
             </Card>
           )}
 
@@ -204,7 +216,7 @@ export default function Resolution() {
                 {configFix.data.rationale}
               </p>
               <ol className="mt-3 space-y-1.5">
-                {configFix.data.steps.map((step, index) => (
+                {(configFix.data.steps ?? []).map((step, index) => (
                   <li key={step} className="flex gap-2 text-sm text-gray-600">
                     <span className="font-mono text-xs text-gray-400">{index + 1}.</span>
                     {step}
@@ -229,7 +241,9 @@ export default function Resolution() {
                   {durationLabel(tests.data.durationMs)}
                 </span>
               </div>
-              <p className="mt-1 text-sm text-gray-500">{tests.data.suites.join(' · ')}</p>
+              {tests.data.suites?.length ? (
+                <p className="mt-1 text-sm text-gray-500">{tests.data.suites.join(' · ')}</p>
+              ) : null}
               <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-1">
                 {casesOf(tests.data).map((testCase: string) => (
                   <li key={testCase} className="flex items-center gap-1.5 text-xs text-gray-600">
@@ -279,7 +293,7 @@ export default function Resolution() {
               </div>
               <p className="mt-2 font-medium text-gray-900">{reply.data.subject}</p>
               <div className="mt-2 space-y-2 text-sm leading-relaxed text-gray-600">
-                {reply.data.body.split('\n\n').map((line: string) => (
+                {(reply.data.body ?? '').split('\n\n').map((line: string) => (
                   <p key={line}>{line}</p>
                 ))}
                 {sentToOf(reply.data) && (

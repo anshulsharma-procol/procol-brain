@@ -603,6 +603,52 @@ function humanise(category: TicketDto['category']): string {
   return category.charAt(0) + category.slice(1).toLowerCase()
 }
 
+/**
+ * Fills in what a PR artifact does not say.
+ *
+ * The contract's PrData carries `number`, `real`, `state`, `branch`,
+ * `filesChanged` and `diff`; the deployed Brain sends `{ url }` and nothing
+ * else. The screens read the rest positively — `filesChanged[0]`,
+ * `filesChanged.join()`, `diff.split()` — so the thin version does not degrade
+ * them, it throws, and with no error boundary above them a missing array is a
+ * white page on the one ticket the demo opens on.
+ *
+ * Two fields are recovered rather than defaulted, because guessing them wrong
+ * would be worse than the crash:
+ *
+ *  - `number` is read off the end of the PR url, which is where it came from.
+ *  - `real` defaults to true when a url is present. It gates whether the PR is
+ *    rendered as a link, and a backend that sends a github.com url has opened
+ *    a real one — defaulting it false would label a genuine PR "Patch on a
+ *    branch" and refuse to link it, which is precisely the claim that flag
+ *    exists to keep honest.
+ *
+ * Everything else is left absent so the screens can omit it.
+ */
+export function normaliseArtifact(artifact: ArtifactDto): ArtifactDto {
+  if (artifact.kind !== 'PR') return artifact
+
+  const data = artifact.data as {
+    url?: string
+    number?: number
+    real?: boolean
+    filesChanged?: string[]
+  }
+  if (!data?.url) return artifact
+
+  const fromUrl = /\/pull\/(\d+)/.exec(data.url)?.[1]
+
+  return {
+    ...artifact,
+    data: {
+      ...data,
+      number: data.number ?? (fromUrl ? Number(fromUrl) : undefined),
+      real: data.real ?? true,
+      filesChanged: data.filesChanged ?? [],
+    },
+  } as ArtifactDto
+}
+
 function buildDetail(
   detail: TicketDetailBody,
   activities: ActivityDto[],
@@ -618,7 +664,7 @@ function buildDetail(
     ticket,
     stages: ticket.stages ?? [],
     activity: activities,
-    artifacts: detail.artifacts,
+    artifacts: (detail.artifacts ?? []).map(normaliseArtifact),
     memoryMatches,
     approvalPolicy: detail.approval
       ? {

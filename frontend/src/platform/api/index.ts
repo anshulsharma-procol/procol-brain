@@ -26,10 +26,25 @@ const baseUrl = import.meta.env.VITE_BRAIN_API_URL as string | undefined
 const token = import.meta.env.VITE_BRAIN_API_TOKEN as string | undefined
 const chatBaseUrl = import.meta.env.VITE_BRAIN_CHAT_API_URL as string | undefined
 
+/**
+ * Sent on every request, always.
+ *
+ * A free ngrok tunnel answers a browser with an HTML interstitial rather than
+ * the JSON asked for, and this header is the documented way past it. It is
+ * meaningless to any other host, so it costs nothing to send unconditionally
+ * and removes a failure that presents as "the backend returned HTML".
+ *
+ * It cannot help `EventSource`, which has no way to set headers — so if a
+ * tunnel ever does interstitial the live transcript, the answer is to serve
+ * the API same-origin through the dev proxy (`VITE_BRAIN_API_URL=/api`)
+ * rather than to add anything here.
+ */
+const NGROK_BYPASS = { 'ngrok-skip-browser-warning': 'true' }
+
 export const consoleApi: ConsoleApi = baseUrl
   ? createHttpConsoleApi({
       baseUrl,
-      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      headers: token ? { ...NGROK_BYPASS, Authorization: `Bearer ${token}` } : NGROK_BYPASS,
     })
   : createFixtureConsoleApi()
 

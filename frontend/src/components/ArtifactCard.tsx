@@ -51,7 +51,7 @@ function Summary({ artifact }: { artifact: Artifact }) {
             <span className="ml-1.5 font-mono text-gray-400">{branch}</span>
           </>
         )}
-        <span className="ml-1.5 font-mono">{filesChanged[0]}</span>
+        {filesChanged?.[0] && <span className="ml-1.5 font-mono">{filesChanged[0]}</span>}
         {stat.additions !== undefined && (
           <span className="ml-1.5 text-green-600">+{stat.additions}</span>
         )}

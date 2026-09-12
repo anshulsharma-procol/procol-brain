@@ -5,16 +5,15 @@ own. There is no `BASE` to export and no token to set.
 
 Host: `https://thousand-upscale-shrunk.ngrok-free.dev`
 
-To point the whole file somewhere else, rewrite it in place:
-
-```bash
-sed -i '' 's|https://thousand-upscale-shrunk\.ngrok-free\.dev|http://localhost:4000|g' DEMO-CURLS.md
-```
-
 **The tunnel id changes every time ngrok restarts.** When these all return an
 HTML page containing `ERR_NGROK_3200`, the tunnel is down rather than the
-backend being broken — restart it, then `sed` the new id through this file and
-through `frontend/.env.local`.
+backend being broken. Restart it, then put the new id through this file and
+through `frontend/.env.local`:
+
+```bash
+sed -i '' 's|thousand-upscale-shrunk\.ngrok-free\.dev|<new-id>.ngrok-free.dev|g' \
+  DEMO-CURLS.md frontend/.env.local
+```
 
 There is no auth on any of these. `POST /api/demo/reset` takes no header.
 
