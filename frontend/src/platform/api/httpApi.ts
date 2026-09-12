@@ -9,6 +9,7 @@ import type {
   Stats,
   TicketDto,
 } from '../contract'
+import { createActivityNormaliser, normaliseActivities } from './activityEnvelope'
 import type {
   Connection,
   ConnectionType,
@@ -118,14 +119,39 @@ export function createHttpConsoleApi(options: HttpConsoleApiOptions): ConsoleApi
       const body = (await response.json().catch(() => null)) as
         | { error?: { message?: string } }
         | null
-      throw new Error(
-        body?.error?.message ??
-          `Brain API ${init?.method ?? 'GET'} ${path} failed (${response.status})`,
+      throw Object.assign(
+        new Error(
+          body?.error?.message ??
+            `Brain API ${init?.method ?? 'GET'} ${path} failed (${response.status})`,
+        ),
+        // Carried so `optional()` can tell "this backend does not have that
+        // endpoint" from "the network ate it". Those two must not be treated
+        // alike; see the latch below.
+        { status: response.status },
       )
     }
 
     // 204 and friends carry nothing to parse.
     if (response.status === 204) return undefined as T
+
+    // A tunnel that is down answers every path with an HTML page, and a free
+    // ngrok tunnel answers browser-shaped requests with its interstitial —
+    // both with a 2xx or a 404 and neither with JSON. Caught here so the
+    // failure names itself, rather than surfacing as a JSON parse error
+    // pointing at a backend that is behaving perfectly well.
+    const contentType = response.headers.get('content-type') ?? ''
+    if (!contentType.includes('json')) {
+      const body = await response.text().catch(() => '')
+      const tunnel = /ERR_NGROK_\d+/.exec(body)?.[0]
+      throw Object.assign(
+        new Error(
+          tunnel
+            ? `The Brain is not reachable — the tunnel reported ${tunnel}.`
+            : `Brain API ${init?.method ?? 'GET'} ${path} answered ${contentType || 'no content-type'} rather than JSON.`,
+        ),
+        { status: 0 },
+      )
+    }
 
     return (await response.json()) as T
   }
@@ -136,8 +162,16 @@ export function createHttpConsoleApi(options: HttpConsoleApiOptions): ConsoleApi
 
     try {
       return await request<T>(path, init)
-    } catch {
-      unavailable.add(key)
+    } catch (error) {
+      // Latch only on an answer that means "there is no such endpoint here".
+      // Anything else — a 5xx, a dropped connection, a tunnel serving its own
+      // error page — is a backend having a moment, and a moment must not
+      // disable a panel for the rest of the session. Getting this wrong is
+      // invisible and expensive: one flap during startup and Memory,
+      // Knowledge and the workspace switcher stay empty until a reload, while
+      // the backend serves them perfectly.
+      const status = (error as { status?: number }).status
+      if (status === 404 || status === 501) unavailable.add(key)
       return undefined
     }
   }
@@ -146,6 +180,21 @@ export function createHttpConsoleApi(options: HttpConsoleApiOptions): ConsoleApi
   const post = <T,>(path: string, body?: unknown) =>
     request<T>(path, { method: 'POST', body: body === undefined ? undefined : JSON.stringify(body) })
   const listOf = async <T,>(path: string) => (await get<{ data: T[] }>(path)).data
+
+  /**
+   * The transcript, from either envelope and either wrapper.
+   *
+   * The contract lists this as `{ data: [...] }`; a deployment that answers
+   * with a bare array is taken too, because that difference is not worth a
+   * blank page. Rows are reconciled on the way in — see activityEnvelope.ts,
+   * which is the only thing on this side that knows two envelopes exist.
+   */
+  const activitiesOf = async (ticketRef: string): Promise<ActivityDto[]> => {
+    const body = await get<{ data?: unknown[] } | unknown[]>(
+      `/tickets/${ref(ticketRef)}/activities`,
+    )
+    return normaliseActivities(Array.isArray(body) ? body : (body?.data ?? []))
+  }
   const ref = (value: string) => encodeURIComponent(value)
   const scope = (workspaceId: string | undefined, separator = '?') =>
     workspaceId ? `${separator}workspace=${ref(workspaceId)}` : ''
@@ -252,7 +301,7 @@ export function createHttpConsoleApi(options: HttpConsoleApiOptions): ConsoleApi
     async getTicket(ticketRef) {
       const [detail, activities] = await Promise.all([
         get<TicketDetailBody>(`/tickets/${ref(ticketRef)}`),
-        listOf<ActivityDto>(`/tickets/${ref(ticketRef)}/activities`),
+        activitiesOf(ticketRef),
       ])
 
       const matches = await optional<{ data: MemoryMatch[] }>(
@@ -357,11 +406,19 @@ export function createHttpConsoleApi(options: HttpConsoleApiOptions): ConsoleApi
 
       const handlers = new Map<string, EventListener>()
 
+      // Its own normaliser, not the history's: hop grouping is reconstructed
+      // from the rows seen so far, and a reconnect must not inherit
+      // half-open delegations from the connection it replaced.
+      const normalise = createActivityNormaliser()
+
       for (const name of NAMES) {
         const handler = ((event: MessageEvent<string>) => {
           // The payload IS the activity row — the same object `/activities`
-          // returns, down to the id and the seq. Nothing is reassembled.
-          listener({ type: 'activity', activity: JSON.parse(event.data) as ActivityDto })
+          // returns, down to the id and the seq. Nothing is reassembled, and
+          // both paths go through the same normaliser so a row that arrives
+          // live and the same row re-fetched are identical.
+          const activity = normalise(JSON.parse(event.data))
+          if (activity) listener({ type: 'activity', activity })
         }) as EventListener
 
         handlers.set(name, handler)
@@ -641,17 +698,22 @@ function buildImplicitWorkspace(agents: AgentDto[], connectors: ConnectorDto[]):
     tagline: 'Single tenant — this backend serves one control tower',
     accent: 'violet',
     supportEmailDomain: 'example.com',
+    // Every field but `id` is treated as optional here on purpose. This is the
+    // path taken when the backend has no `/workspaces` extension, so it is
+    // exactly the path a leaner deployment takes — and a registry row that
+    // omits `tools` or `name` would otherwise throw inside the provider that
+    // wraps the whole application, turning a thin agent list into a blank app.
     agents: agents.map((agent) => ({
       id: agent.id,
-      name: agent.name,
+      name: agent.name ?? agent.id,
       shortLabel: shortLabel(agent),
       role: roleOf(agent),
       summary: agent.description ?? '',
       description: agent.description ?? '',
-      protocol: agent.protocol,
+      protocol: agent.protocol ?? 'A2A',
       protocolNote: '',
-      capabilities: agent.capabilities,
-      tools: agent.tools.map((tool) => ({
+      capabilities: agent.capabilities ?? [],
+      tools: (agent.tools ?? []).map((tool) => ({
         name: tool.name,
         via: tool.via,
         description: '',
@@ -679,8 +741,9 @@ function roleOf(agent: AgentDto): Workspace['agents'][number]['role'] {
   const declared = (agent as { role?: string }).role
   if (declared) return declared as Workspace['agents'][number]['role']
 
-  if (agent.id === 'brain' || agent.capabilities.includes('route_capability')) return 'orchestrator'
-  if (agent.capabilities.includes('approve_fix')) return 'approval'
+  const capabilities = agent.capabilities ?? []
+  if (agent.id === 'brain' || capabilities.includes('route_capability')) return 'orchestrator'
+  if (capabilities.includes('approve_fix')) return 'approval'
 
   switch (agent.kind) {
     case 'knowledge':
@@ -695,8 +758,9 @@ function roleOf(agent: AgentDto): Workspace['agents'][number]['role'] {
 }
 
 function shortLabel(agent: AgentDto): string {
-  const words = agent.name.split(/\s+/)
-  if (words.length === 1) return agent.name.slice(0, 2).toUpperCase()
+  const name = agent.name ?? agent.id
+  const words = name.split(/[\s-]+/).filter(Boolean)
+  if (words.length <= 1) return name.slice(0, 2).toUpperCase()
   return words
     .slice(0, 3)
     .map((word) => word[0]!.toUpperCase())

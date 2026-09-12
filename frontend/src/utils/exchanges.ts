@@ -85,17 +85,23 @@ export function toExchanges(activity: ActivityEvent[]): Exchange[] {
     const extra = row as Extra
 
     switch (row.type) {
-      case 'ticket.created':
+      case 'ticket.created': {
+        // Guarded because this row is the one that can take the page down
+        // with it: a backend that names the ticket only in the envelope
+        // leaves `ticket` undefined, and reading through it throws before
+        // anything renders. The id on the row itself is always there.
+        const raised = row.ticket ?? { id: row.ticketId, description: null }
         exchanges.push({
           id: row.id,
           at: row.at,
           from: 'customer',
-          title: `${row.ticket.id} raised${text(extra.via) ? ` via ${String(extra.via)}` : ''}`,
-          body: row.ticket.description,
+          title: `${raised.id} raised${text(extra.via) ? ` via ${String(extra.via)}` : ''}`,
+          body: raised.description,
           level: 'info',
           logs: [],
         })
         break
+      }
 
       case 'run.started':
         // The thought that follows says what the run is doing, so the marker
@@ -164,8 +170,25 @@ export function toExchanges(activity: ActivityEvent[]): Exchange[] {
       }
 
       case 'agent.log': {
-        const existing = byTask.get(row.taskId)
-        if (existing) existing.logs.push({ id: row.id, line: row.line })
+        const existing = row.taskId ? byTask.get(row.taskId) : undefined
+        if (existing) {
+          existing.logs.push({ id: row.id, line: row.line })
+          break
+        }
+
+        // No hop to sit under — either the request has not arrived yet, or
+        // this backend does not send the task id that groups them. The line
+        // is still something an agent said, so it is shown on its own rather
+        // than thrown away, which is the difference between a thin transcript
+        // and a misleading one.
+        exchanges.push({
+          id: row.id,
+          at: row.at,
+          from: row.agent,
+          title: row.line,
+          level: 'info',
+          logs: [],
+        })
         break
       }
 

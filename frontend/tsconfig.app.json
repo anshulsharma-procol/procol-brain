@@ -23,5 +23,9 @@
     "noFallthroughCasesInSwitch": true
   },
   "include": ["src"],
-  "exclude": ["src/brain-chat/dist", "src/brain-chat/vite.config.ts"]
+  "exclude": [
+    "src/brain-chat/dist",
+    "src/brain-chat/vite.config.ts",
+    "src/**/*.test.ts"
+  ]
 }

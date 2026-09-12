@@ -4,5 +4,3 @@ build/
 .env
 .env.local
 .DS_Store
-*.log.state.json
-backend/.state.json
